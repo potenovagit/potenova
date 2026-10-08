@@ -1,6 +1,6 @@
 # ADR-0003: Curriculum / prerequisite knowledge-graph representation
 
-- **Status:** Proposed (for WP-00 approval gate G0)
+- **Status:** Accepted — 2026-10-08 (G0 gate, approved by Cristian Miron)
 - **Date:** 2026-10-08
 - **Deciders:** Curriculum / Learning
 - **Requirement IDs:** LRN-007 (versioned canonical skill graph, typed weighted edges),

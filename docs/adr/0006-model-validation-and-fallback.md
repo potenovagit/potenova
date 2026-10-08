@@ -1,6 +1,6 @@
 # ADR-0006: Model-output validation and fallback
 
-- **Status:** Proposed (for WP-00 approval gate G0)
+- **Status:** Accepted — 2026-10-08 (G0 gate, approved by Cristian Miron)
 - **Date:** 2026-10-08
 - **Deciders:** AI Governance / Curriculum / Child Safety
 - **Requirement IDs:** AI-001 (independent pre-delivery validation, fail to approved content),

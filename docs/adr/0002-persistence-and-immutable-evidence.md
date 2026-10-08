@@ -1,6 +1,6 @@
 # ADR-0002: Persistence and the immutable-evidence model
 
-- **Status:** Proposed (for WP-00 approval gate G0)
+- **Status:** Accepted — 2026-10-08 (G0 gate, approved by Cristian Miron)
 - **Date:** 2026-10-08
 - **Deciders:** Learning / Data (with Operations)
 - **Requirement IDs:** LRN-003 (immutable evidence + versioned recalculation),

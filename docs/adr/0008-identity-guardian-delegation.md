@@ -1,6 +1,6 @@
 # ADR-0008: Identity, authentication and guardian delegation
 
-- **Status:** Proposed (for WP-00 approval gate G0)
+- **Status:** Accepted — 2026-10-08 (G0 gate, approved by Cristian Miron)
 - **Date:** 2026-10-08
 - **Deciders:** Identity / Security
 - **Requirement IDs:** ACC-001..013 (Identity & Family), ACC-007 (MFA/passkeys + step-up),

@@ -1,6 +1,6 @@
 # ADR-0005: AI providers, model routing and residency controls
 
-- **Status:** Proposed — records an **EVIDENCE REQUIRED** gate (ER-16)
+- **Status:** Accepted (direction) — 2026-10-08 (G0, Cristian Miron); specific model/region remains **EVIDENCE REQUIRED** (ER-16)
 - **Date:** 2026-10-08
 - **Deciders:** AI Governance / Privacy (with Operations)
 - **Requirement IDs:** AI-002/003/004 (registry, no prod data to candidates, quality-gated

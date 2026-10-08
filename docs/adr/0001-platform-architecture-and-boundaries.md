@@ -1,6 +1,6 @@
 # ADR-0001: Application/platform architecture and deployable boundaries
 
-- **Status:** Proposed (for WP-00 approval gate G0)
+- **Status:** Accepted — 2026-10-08 (G0 gate, approved by Cristian Miron)
 - **Date:** 2026-10-08
 - **Deciders:** Product / Operations (architecture owner)
 - **Requirement IDs:** Architecture §1 (modular-first, avoid premature microservices),

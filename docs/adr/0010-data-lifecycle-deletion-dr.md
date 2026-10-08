@@ -1,6 +1,6 @@
 # ADR-0010: Data lifecycle, deletion orchestration and disaster recovery
 
-- **Status:** Proposed — records **EVIDENCE REQUIRED** gates (ER-06, ER-07)
+- **Status:** Accepted (mechanism) — 2026-10-08 (G0, Cristian Miron); RTO/RPO & retention remain **EVIDENCE REQUIRED** (ER-06, ER-07)
 - **Date:** 2026-10-08
 - **Deciders:** Privacy / Operations / Security
 - **Requirement IDs:** PRIV-005 (orchestrated export/deletion incl. derived data),

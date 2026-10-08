@@ -1,6 +1,6 @@
 # ADR-0013: Infrastructure, CI/CD, deployment and rollback
 
-- **Status:** Proposed (for WP-00 approval gate G0)
+- **Status:** Accepted — 2026-10-08 (G0 gate, approved by Cristian Miron)
 - **Date:** 2026-10-08
 - **Deciders:** Operations / Security
 - **Requirement IDs:** OPS-003 (staged deploy, feature flags, kill switches, automated
