@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Format check
+        run: npm run format:check
+      - name: Typecheck (project references)
+        run: npm run typecheck
+      - name: Unit & architecture-fitness tests
+        run: npm run test
+      - name: Requirement trace (v2 register import + shape gate)
+        run: npm run trace:evidence
+      - name: Upload WP-00 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp-00-evidence
+          path: evidence/

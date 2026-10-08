@@ -1,0 +1,55 @@
+{
+  "generatedAt": "2026-10-08T21:24:04.746Z",
+  "csvPath": "spec/requirements.csv",
+  "totalRequirements": 276,
+  "byDomain": {
+    "ACC": 13,
+    "CUR": 17,
+    "EDU": 37,
+    "DIA": 12,
+    "TUT": 27,
+    "PAR": 19,
+    "CONT": 12,
+    "AI": 22,
+    "DATA": 22,
+    "SAFE": 17,
+    "SEC": 16,
+    "OPS": 16,
+    "BILL": 15,
+    "UX": 11,
+    "SUP": 5,
+    "GOV": 15
+  },
+  "byWorkPackage": {
+    "WP-01": 13,
+    "WP-02": 17,
+    "WP-03": 37,
+    "WP-06": 12,
+    "WP-07": 27,
+    "WP-10": 19,
+    "WP-05": 12,
+    "WP-04": 22,
+    "WP-11": 55,
+    "WP-13": 21,
+    "WP-12": 15,
+    "WP-08": 11,
+    "WP-00": 15
+  },
+  "byRiskClass": {
+    "High": 89,
+    "Standard": 132,
+    "Critical": 55
+  },
+  "byScope": {
+    "MVP REQUIRED": 266,
+    "POST-MVP": 9,
+    "PRE-PAID GATE": 1
+  },
+  "byState": {
+    "LOCKED": 276
+  },
+  "implementationStatus": {
+    "SPECIFIED_NOT_IMPLEMENTED": 276
+  },
+  "problems": []
+}

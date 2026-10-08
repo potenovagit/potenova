@@ -1,0 +1,17 @@
+﻿Domain,Domain description,Requirements,MVP Required,Prepaid gate,Post MVP
+ACC,Identity & Family,13,13,0,0
+CUR,Curriculum & Skill Graph,17,17,0,0
+EDU,Learning Evidence & Mastery,37,35,0,2
+DIA,Diagnostic,12,12,0,0
+TUT,Tutoring & Student Experience,27,25,0,2
+PAR,Parent Experience,19,17,0,2
+CONT,Curriculum Content & Validation,12,12,0,0
+AI,AI Orchestration & Model Governance,22,22,0,0
+DATA,Data & Privacy Architecture,22,22,0,0
+SAFE,Child Safety,17,17,0,0
+SEC,Security & Privacy Controls,16,15,1,0
+OPS,Operations & Architecture,16,16,0,0
+BILL,Subscriptions & Entitlements,15,13,0,2
+UX,Cross-platform UX & Accessibility,11,10,0,1
+SUP,Support & Service,5,5,0,0
+GOV,"Governance, Beta and Launch",15,15,0,0

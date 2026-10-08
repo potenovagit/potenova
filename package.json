@@ -1,0 +1,31 @@
+{
+  "name": "potenova",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Potenova platform monorepo — WP-00 engineering foundation (no child-facing features).",
+  "type": "module",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "workspaces": [
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "trace": "tsx packages/requirement-trace/src/cli.ts --csv spec/requirements.csv",
+    "trace:evidence": "tsx packages/requirement-trace/src/cli.ts --csv spec/requirements.csv --out evidence/WP-00/requirement-trace.json",
+    "ci": "npm run format:check && npm run typecheck && npm run test && npm run trace"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "prettier": "3.4.2",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3",
+    "vitest": "2.1.8"
+  }
+}
