@@ -11,6 +11,7 @@ export default defineConfig({
       '@potenova/config': pkg('config'),
       '@potenova/domain-core': pkg('domain-core'),
       '@potenova/identity': pkg('identity'),
+      '@potenova/curriculum': pkg('curriculum'),
       '@potenova/requirement-trace': pkg('requirement-trace'),
       '@potenova/fixtures': pkg('fixtures'),
     },

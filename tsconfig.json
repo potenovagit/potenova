@@ -5,6 +5,7 @@
     { "path": "packages/config" },
     { "path": "packages/domain-core" },
     { "path": "packages/identity" },
+    { "path": "packages/curriculum" },
     { "path": "packages/requirement-trace" },
     { "path": "packages/fixtures" },
     { "path": "services/api" }
