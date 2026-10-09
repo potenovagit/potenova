@@ -4,6 +4,7 @@
     { "path": "packages/contracts" },
     { "path": "packages/config" },
     { "path": "packages/domain-core" },
+    { "path": "packages/identity" },
     { "path": "packages/requirement-trace" },
     { "path": "packages/fixtures" },
     { "path": "services/api" }

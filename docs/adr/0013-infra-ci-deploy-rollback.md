@@ -1,7 +1,7 @@
 # ADR-0013: Infrastructure, CI/CD, deployment and rollback
 
-- **Status:** Accepted — 2026-10-08 (G0 gate, approved by Cristian Miron)
-- **Date:** 2026-10-08
+- **Status:** Accepted — 2026-10-09 (G0 gate, approved by Cristian Miron)
+- **Date:** 2026-10-09
 - **Deciders:** Operations / Security
 - **Requirement IDs:** OPS-003 (staged deploy, feature flags, kill switches, automated
   rollback), SEC-002 (environment separation), OPS-001 (observability), GOV-002 (traceability),
@@ -24,6 +24,10 @@ non-prod**.
   green" WP-00 exit condition.
 - **Infrastructure as code** (declarative, region-pinned to Canada) with four isolated
   environments and per-environment secrets (never committed; `.env.example` is the template).
+- **Venture segregation (ADR-0005):** Potenova lives in its **own Azure tenant/subscription**,
+  separate from the owner's AWS-hosted HiveDays/SectorVec — distinct billing, IAM, repos and CI.
+  Built on **portable primitives** (containers, PostgreSQL, object storage, standard queues) so
+  the cloud stays swappable.
 - **Feature flags + capability kill switches** as a first-class operational control, with
   model/route and content-selection kill switches independent of app deploys (S-06, S-10).
 - **Staged releases + automated rollback**; releases recorded as `ReleaseRecord` with

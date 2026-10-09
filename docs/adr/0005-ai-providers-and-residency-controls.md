@@ -1,7 +1,7 @@
 # ADR-0005: AI providers, model routing and residency controls
 
-- **Status:** Accepted (direction) — 2026-10-08 (G0, Cristian Miron); specific model/region remains **EVIDENCE REQUIRED** (ER-16)
-- **Date:** 2026-10-08
+- **Status:** Accepted (direction) — 2026-10-09 (G0, Cristian Miron); specific model/region remains **EVIDENCE REQUIRED** (ER-16)
+- **Date:** 2026-10-09
 - **Deciders:** AI Governance / Privacy (with Operations)
 - **Requirement IDs:** AI-002/003/004 (registry, no prod data to candidates, quality-gated
   routing), PRIV-003 (no training on child data), Master §4 (Canadian processing residency),
@@ -58,8 +58,20 @@ model/region availability changes):
   Intelligence, with the no-training / limited-abuse-logging exemption in place.
 - The specific model(s), versions and the residency proof are an **ER-16 evidence decision**
   resolved by third-party diligence + a controlled residency PoC in WP-04, before G2.
-- Maintain a **second approved provider and/or a self-hosted Canadian-resident open model** as
-  the routing fallback so no single vendor is a hard dependency (AI-004, S-10).
+- Treat **model/provider independence as a first-class principle, not a fallback** (AI-004):
+  the gateway must support open-weight, **self-hostable models run in-region** as a routable tier
+  alongside hosted APIs, so the product is never wired to one vendor's model and the strongest
+  residency/sovereignty posture (nothing leaves our VPC) is always available. A second approved
+  provider and/or self-hosted Canadian-resident open model is maintained so no single vendor is a
+  hard dependency (S-10).
+- **Venture segregation (owner decision, 2026-10-09):** Potenova runs in its **own Azure tenant
+  and subscription**, isolated from the owner's other venture (HiveDays/SectorVec, which stays on
+  AWS) — separate billing, IAM, repos and CI. This is a governance/account boundary, not a
+  technical dependency; it supports clean onboarding of future dedicated staff and keeps the
+  child-data environment access-isolated from unrelated systems (reinforces SEC-001/SEC-002).
+- **Portable primitives:** build on containers + PostgreSQL + object storage + standard queues
+  rather than deep proprietary PaaS, so the cloud underneath stays swappable and a future
+  jurisdiction/provider move is not a re-platform.
 
 ## Consequences
 
@@ -69,6 +81,13 @@ model/region availability changes):
   LLM + speech + vision).
 - **Reversal/revisit trigger:** ER-16 diligence shows a materially better residency/quality/cost
   provider; or a provider changes its Canadian in-region guarantees.
+- **Decision rationale (2026-10-09):** the owner weighted future flexibility and
+  privacy/residency as the drivers and **explicitly excluded existing-team familiarity** as a
+  factor. Because the HiveDays AWS footprint is deliberately segregated (above), footprint-reuse
+  was not a tiebreaker. Flexibility is delivered by the gateway + model independence + portable
+  primitives (cloud-neutral); the residency tiebreak then favours Azure Canada's single-umbrella
+  in-region LLM+speech+OCR. The choice is low-regret: reversible behind the gateway and validated
+  by the ER-16 PoC.
 
 ## Compliance / verification
 

@@ -1,6 +1,6 @@
 # ADR-0008: Identity, authentication and guardian delegation
 
-- **Status:** Accepted — 2026-10-08 (G0 gate, approved by Cristian Miron)
+- **Status:** Accepted — 2026-10-09 (G0 gate, approved by Cristian Miron)
 - **Date:** 2026-10-08
 - **Deciders:** Identity / Security
 - **Requirement IDs:** ACC-001..013 (Identity & Family), ACC-007 (MFA/passkeys + step-up),
@@ -29,12 +29,18 @@ appropriate, and audited (ACC-004/005/006). Risk-based child device verification
 
 Use a **managed identity provider** for primary auth/passkey/MFA plumbing (reversible behind
 the `identity` module) rather than hand-rolling credential storage; the family/role/consent
-model and all authorization decisions stay in our `identity`/`privacy` modules.
+model and all authorization decisions stay in our `identity`/`privacy` modules. On the Azure
+home (ADR-0005) the candidate CIAM service is **Microsoft Entra External ID** with its directory
+resident in Canada; only **guardians** get IdP identities — **children never get an IdP account**,
+they receive our own device-bound, least-privileged `ChildSessionCredential`. The IdP choice is
+confirmed at WP-01 against child-flow suitability and Canadian residency; it stays reversible
+because authorization lives in our modules, not the IdP.
 
 ## Options considered
 
 1. Hand-rolled auth. **Rejected** — credential-handling risk for a small team.
-2. Managed IdP for auth primitives + our own family/role/consent authority. **Chosen.**
+2. Managed IdP (Entra External ID on the Azure home) for auth primitives + our own family/role/
+   consent authority. **Chosen.**
 
 ## Consequences
 

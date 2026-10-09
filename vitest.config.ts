@@ -10,6 +10,7 @@ export default defineConfig({
       '@potenova/contracts': pkg('contracts'),
       '@potenova/config': pkg('config'),
       '@potenova/domain-core': pkg('domain-core'),
+      '@potenova/identity': pkg('identity'),
       '@potenova/requirement-trace': pkg('requirement-trace'),
       '@potenova/fixtures': pkg('fixtures'),
     },
