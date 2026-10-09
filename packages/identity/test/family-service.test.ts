@@ -15,14 +15,33 @@ describe('family/identity authority (ACC-001/002/009, AT-03)', () => {
   it('a learner cannot be created without a parent-owned family', () => {
     const svc = new FamilyService();
     try {
-      svc.createLearner(ownerOf('does-not-exist'), 'does-not-exist', {
-        nickname: 'Kit',
-        grade: 3,
-        ageBand: '6-8',
-      });
+      svc.createLearner(ownerOf('does-not-exist'), 'does-not-exist', { nickname: 'Kit', grade: 3 });
       throw new Error('expected NOT_FOUND');
     } catch (e) {
       expect(isDomainError(e) && e.code).toBe('NOT_FOUND');
+    }
+  });
+
+  it('derives the age band from grade and spans all three Ontario divisions', () => {
+    const svc = new FamilyService();
+    const { family } = svc.createFamily('idp-subject-1', 'ca-on');
+    const actor = ownerOf(family.familyId);
+    const p = svc.createLearner(actor, family.familyId, { nickname: 'P', grade: 2 });
+    const j = svc.createLearner(actor, family.familyId, { nickname: 'J', grade: 5 });
+    const i = svc.createLearner(actor, family.familyId, { nickname: 'I', grade: 8 });
+    expect(p.ageBand).toBe('primary');
+    expect(j.ageBand).toBe('junior');
+    expect(i.ageBand).toBe('intermediate');
+  });
+
+  it('rejects a learner with a grade outside Ontario G1-8', () => {
+    const svc = new FamilyService();
+    const { family } = svc.createFamily('idp-1', 'ca-on');
+    try {
+      svc.createLearner(ownerOf(family.familyId), family.familyId, { nickname: 'X', grade: 9 });
+      throw new Error('expected POLICY_BLOCKED');
+    } catch (e) {
+      expect(isDomainError(e) && e.code).toBe('POLICY_BLOCKED');
     }
   });
 
@@ -30,19 +49,9 @@ describe('family/identity authority (ACC-001/002/009, AT-03)', () => {
     const svc = new FamilyService();
     const { family } = svc.createFamily('idp-subject-1', 'ca-on');
     const actor = ownerOf(family.familyId);
-    const a = svc.createLearner(actor, family.familyId, {
-      nickname: 'A',
-      grade: 3,
-      ageBand: '6-8',
-    });
-    const b = svc.createLearner(actor, family.familyId, {
-      nickname: 'B',
-      grade: 5,
-      ageBand: '9-11',
-    });
-
+    const a = svc.createLearner(actor, family.familyId, { nickname: 'A', grade: 3 });
+    const b = svc.createLearner(actor, family.familyId, { nickname: 'B', grade: 5 });
     expect(svc.listLearners(family.familyId)).toHaveLength(2);
-    // in-scope resolves; cross-checking returns the right learner only
     expect(svc.getLearnerScoped(actor, a.learnerId).nickname).toBe('A');
     expect(svc.getLearnerScoped(actor, b.learnerId).nickname).toBe('B');
   });
@@ -54,9 +63,7 @@ describe('family/identity authority (ACC-001/002/009, AT-03)', () => {
     const learnerInF1 = svc.createLearner(ownerOf(f1.familyId), f1.familyId, {
       nickname: 'OnlyF1',
       grade: 4,
-      ageBand: '9-11',
     });
-    // An actor scoped to family 2 must not be able to read family 1's learner.
     try {
       svc.getLearnerScoped(ownerOf(f2.familyId), learnerInF1.learnerId);
       throw new Error('expected NOT_FOUND');
@@ -68,11 +75,7 @@ describe('family/identity authority (ACC-001/002/009, AT-03)', () => {
   it('issues a least-privileged child session bound to the learner + device', () => {
     const svc = new FamilyService();
     const f = svc.createFamily('idp-1', 'ca-on').family;
-    const l = svc.createLearner(ownerOf(f.familyId), f.familyId, {
-      nickname: 'Kit',
-      grade: 3,
-      ageBand: '6-8',
-    });
+    const l = svc.createLearner(ownerOf(f.familyId), f.familyId, { nickname: 'Kit', grade: 3 });
     const cred = svc.startChildSession(l.learnerId, 'device-alias-xyz');
     expect(cred.learnerId).toBe(l.learnerId);
     expect(cred.familyId).toBe(f.familyId);

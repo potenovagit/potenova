@@ -1,11 +1,6 @@
 import { type ActorContext, DomainError } from '@potenova/contracts';
-import type {
-  FamilyAccount,
-  Guardian,
-  LearnerProfile,
-  ChildSessionCredential,
-  AgeBand,
-} from './entities';
+import { ageBandForGrade } from './entities';
+import type { FamilyAccount, Guardian, LearnerProfile, ChildSessionCredential } from './entities';
 
 /**
  * Family/identity authority (WP-01), storage-agnostic reference implementation.
@@ -22,8 +17,8 @@ const nextId = (p: string): string => `${p}-${(++seq).toString(36)}`;
 
 export interface CreateLearnerInput {
   readonly nickname: string;
+  /** Registered grade (Ontario G1-8); the age band is derived from it (F-08). */
   readonly grade: number;
-  readonly ageBand: AgeBand;
 }
 
 export class FamilyService {
@@ -69,7 +64,7 @@ export class FamilyService {
       familyId,
       nickname: input.nickname,
       grade: input.grade,
-      ageBand: input.ageBand,
+      ageBand: ageBandForGrade(input.grade), // F-08: derived, validates G1-8 range
       lifecycleStatus: 'active',
     };
     this.#learners.set(learner.learnerId, learner);

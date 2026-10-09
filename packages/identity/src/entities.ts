@@ -6,6 +6,7 @@
  * identifiers are opaque aliases; no exact DOB, legal name, school or precise
  * location is modelled (PRIV-001).
  */
+import { DomainError } from '@potenova/contracts';
 
 /** Guardian roles (ACC-004/005). Owner is the single legal account owner. */
 export const GUARDIAN_ROLES = ['owner', 'learning_viewer'] as const;
@@ -38,18 +39,51 @@ export interface GuardianRoleGrant {
 }
 
 /**
- * Age band is a PROVISIONAL taxonomy pending F-08 (age-band + grade mapping).
- * The structure is final; the literal values are placeholders and MUST be
- * replaced from the signed F-08 taxonomy before WP-01 exit.
+ * Age-band taxonomy (F-08, accepted 2026-10-09).
+ * Aligned to Ontario's curriculum divisions so the band maps cleanly from the
+ * registered grade (which we collect) rather than an exact DOB (which we do not,
+ * PRIV-001). Band STRUCTURE + grade mapping are final here; the per-band
+ * behavioural parameters — session/daily caps and safety-escalation matrices —
+ * remain EVIDENCE REQUIRED (ER-09 / ER-08) and are NOT encoded here.
+ *
+ *   primary       Grades 1-3  (~ages 6-8)
+ *   junior        Grades 4-6  (~ages 9-11)
+ *   intermediate  Grades 7-8  (~ages 12-14)
  */
-export const PROVISIONAL_AGE_BANDS = ['6-8', '9-11'] as const;
-export type AgeBand = (typeof PROVISIONAL_AGE_BANDS)[number];
+export const AGE_BANDS = ['primary', 'junior', 'intermediate'] as const;
+export type AgeBand = (typeof AGE_BANDS)[number];
+
+export const MIN_GRADE = 1;
+export const MAX_GRADE = 8;
+
+/** Derive the age band from the registered grade (Ontario G1-8). */
+export function ageBandForGrade(grade: number): AgeBand {
+  if (!Number.isInteger(grade) || grade < MIN_GRADE || grade > MAX_GRADE) {
+    throw new DomainError('POLICY_BLOCKED', 'grade is outside the Ontario G1-8 range');
+  }
+  if (grade <= 3) return 'primary';
+  if (grade <= 6) return 'junior';
+  return 'intermediate';
+}
+
+/**
+ * Conservative, DOB-free approximation of whether a learner is confidently
+ * under 13, for FUTURE app-store / U.S.-COPPA handling (ER-13 / ER-14) only.
+ * It is not used to gate any MVP behaviour — every G1-8 learner receives full
+ * child protections regardless. Grades 1-7 are confidently under 13; Grade 8
+ * (~13-14) is the boundary cohort and returns false.
+ */
+export function under13ByGrade(grade: number): boolean {
+  ageBandForGrade(grade); // validate range (throws on out-of-range)
+  return grade <= 7;
+}
 
 export interface LearnerProfile {
   readonly learnerId: string;
   readonly familyId: string;
   readonly nickname: string;
   readonly grade: number;
+  /** Derived from `grade` via `ageBandForGrade` — not independently supplied. */
   readonly ageBand: AgeBand;
   readonly lifecycleStatus: 'active' | 'deleted';
 }

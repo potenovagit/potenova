@@ -27,7 +27,7 @@ function rng(seed: number): () => number {
 export interface SyntheticLearner {
   readonly marker: typeof SYNTHETIC_MARKER;
   readonly learnerAlias: string;
-  readonly ageBand: '6-8' | '9-11';
+  readonly ageBand: 'primary' | 'junior' | 'intermediate'; // F-08 Ontario divisions
   readonly grade: number;
 }
 
@@ -38,19 +38,25 @@ export interface SyntheticFamily {
   readonly learners: readonly SyntheticLearner[];
 }
 
-const AGE_BANDS = ['6-8', '9-11'] as const;
 const SKILLS = ['SK-math-count-01', 'SK-math-add-01', 'SK-math-frac-01', 'SK-eng-decode-01'];
+
+/** Mirror of identity's F-08 mapping (fixtures stay dependency-light). */
+function bandForGrade(grade: number): SyntheticLearner['ageBand'] {
+  if (grade <= 3) return 'primary';
+  if (grade <= 6) return 'junior';
+  return 'intermediate';
+}
 
 export function makeFamily(seed: number, learnerCount = 2): SyntheticFamily {
   const r = rng(seed);
   const learners: SyntheticLearner[] = [];
   for (let i = 0; i < learnerCount; i++) {
-    const band = AGE_BANDS[Math.floor(r() * AGE_BANDS.length)] ?? '9-11';
+    const grade = 1 + Math.floor(r() * 8); // Ontario G1-8
     learners.push({
       marker: SYNTHETIC_MARKER,
       learnerAlias: `syn-learner-${seed}-${i}`,
-      ageBand: band,
-      grade: band === '6-8' ? 2 + Math.floor(r() * 2) : 4 + Math.floor(r() * 2),
+      ageBand: bandForGrade(grade),
+      grade,
     });
   }
   return {
