@@ -22,6 +22,7 @@ export default defineConfig({
       '@potenova/parent': pkg('parent'),
       '@potenova/safety': pkg('safety'),
       '@potenova/billing': pkg('billing'),
+      '@potenova/operator': pkg('operator'),
       '@potenova/requirement-trace': pkg('requirement-trace'),
       '@potenova/fixtures': pkg('fixtures'),
     },
