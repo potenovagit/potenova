@@ -1,0 +1,21 @@
+{
+  "name": "@potenova/diagnostic",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@potenova/contracts": "*",
+    "@potenova/domain-core": "*",
+    "@potenova/curriculum": "*",
+    "@potenova/learner-state": "*",
+    "@potenova/content": "*"
+  }
+}

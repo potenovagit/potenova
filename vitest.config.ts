@@ -15,6 +15,7 @@ export default defineConfig({
       '@potenova/learner-state': pkg('learner-state'),
       '@potenova/ai-gateway': pkg('ai-gateway'),
       '@potenova/content': pkg('content'),
+      '@potenova/diagnostic': pkg('diagnostic'),
       '@potenova/requirement-trace': pkg('requirement-trace'),
       '@potenova/fixtures': pkg('fixtures'),
     },
