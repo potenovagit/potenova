@@ -112,3 +112,26 @@ and the G2 security gate.
 
 ER-16 (primary) · ER-05 (latency) · PRIV-003, TM-20/22 (no training, voice retention) ·
 TM-21 / AT-55 (residency routing) · NFR-11/14 · feeds **G2**.
+
+## Update — 2026-10-10 (Stage 2 Step 3)
+
+The product owner chose to **defer selecting and connecting a real provider** until
+near beta, to avoid premature cloud spend and because the UI and infrastructure
+stages do not need a live model. The app continues on the offline
+`TestDoubleProvider`.
+
+What is now in code (account-free, no spend):
+
+- `@potenova/ai-gateway/provider-registry` — the concrete provider "slot":
+  `ProviderDescriptor` + `CANDIDATE_PROVIDERS` (Azure OpenAI CA-Central / CA-East,
+  self-hosted CA) and the residency PoC `assessProviderResidency` /
+  `isProviderApprovedForChildData`, proving fail-closed admission (Canadian region
+  - training-disabled, and `approved` status only after written confirmation).
+- The real adapter plugs into the existing `ProviderAdapter` interface
+  (`providers.ts`); the gateway's routing/residency enforcement is already proven
+  (`router.test.ts`).
+
+**Still EVIDENCE REQUIRED (owner actions, lead time):** provision the in-region
+Azure resource group, obtain Microsoft's written in-region inference confirmation,
+secure the Limited Access / no-logging exemption, and record the final model in
+ADR-0005. None of these are code; they are flagged for the pre-beta provider step.
