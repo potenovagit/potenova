@@ -13,6 +13,7 @@
     { "path": "packages/planner" },
     { "path": "packages/learner-ux" },
     { "path": "packages/english" },
+    { "path": "packages/parent" },
     { "path": "packages/requirement-trace" },
     { "path": "packages/fixtures" },
     { "path": "services/api" }

@@ -1,0 +1,22 @@
+{
+  "name": "@potenova/parent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@potenova/contracts": "*",
+    "@potenova/identity": "*",
+    "@potenova/learner-state": "*",
+    "@potenova/diagnostic": "*",
+    "@potenova/planner": "*",
+    "@potenova/learner-ux": "*"
+  }
+}
