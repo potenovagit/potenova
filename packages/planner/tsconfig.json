@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "references": [
+    { "path": "../contracts" },
+    { "path": "../domain-core" },
+    { "path": "../curriculum" },
+    { "path": "../learner-state" },
+    { "path": "../content" },
+    { "path": "../diagnostic" }
+  ],
+  "include": ["src/**/*.ts"]
+}

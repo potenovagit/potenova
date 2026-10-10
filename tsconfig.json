@@ -10,6 +10,7 @@
     { "path": "packages/ai-gateway" },
     { "path": "packages/content" },
     { "path": "packages/diagnostic" },
+    { "path": "packages/planner" },
     { "path": "packages/requirement-trace" },
     { "path": "packages/fixtures" },
     { "path": "services/api" }
