@@ -20,6 +20,7 @@ export default defineConfig({
       '@potenova/learner-ux': pkg('learner-ux'),
       '@potenova/english': pkg('english'),
       '@potenova/parent': pkg('parent'),
+      '@potenova/safety': pkg('safety'),
       '@potenova/requirement-trace': pkg('requirement-trace'),
       '@potenova/fixtures': pkg('fixtures'),
     },
