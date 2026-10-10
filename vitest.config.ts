@@ -30,7 +30,11 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['packages/**/test/**/*.test.ts', 'services/**/test/**/*.test.ts'],
+    include: [
+      'packages/**/test/**/*.test.ts',
+      'services/**/test/**/*.test.ts',
+      'apps/**/test/**/*.test.ts',
+    ],
     reporters: ['default'],
     coverage: {
       enabled: false,
