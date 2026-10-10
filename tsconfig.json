@@ -6,6 +6,7 @@
     { "path": "packages/domain-core" },
     { "path": "packages/identity" },
     { "path": "packages/curriculum" },
+    { "path": "packages/learner-state" },
     { "path": "packages/requirement-trace" },
     { "path": "packages/fixtures" },
     { "path": "services/api" }

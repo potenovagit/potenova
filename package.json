@@ -5,7 +5,7 @@
   "description": "Potenova platform monorepo — WP-00 engineering foundation (no child-facing features).",
   "type": "module",
   "engines": {
-    "node": ">=22 <23"
+    "node": ">=22"
   },
   "workspaces": [
     "packages/*",
