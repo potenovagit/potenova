@@ -23,6 +23,7 @@ export default defineConfig({
       '@potenova/safety': pkg('safety'),
       '@potenova/billing': pkg('billing'),
       '@potenova/operator': pkg('operator'),
+      '@potenova/persistence': pkg('persistence'),
       '@potenova/requirement-trace': pkg('requirement-trace'),
       '@potenova/fixtures': pkg('fixtures'),
     },

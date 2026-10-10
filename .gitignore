@@ -14,5 +14,10 @@ dist/
 *.log
 .DS_Store
 
+# local database data (PGlite dev/demo) — never commit; prod is managed Postgres
+.data/
+**/.data/
+*.pgdata
+
 # generated evidence runs (keep structure + README, ignore large run artifacts)
 evidence/**/run-*/

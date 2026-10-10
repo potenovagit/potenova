@@ -17,6 +17,7 @@
     { "path": "packages/safety" },
     { "path": "packages/billing" },
     { "path": "packages/operator" },
+    { "path": "packages/persistence" },
     { "path": "packages/requirement-trace" },
     { "path": "packages/fixtures" },
     { "path": "services/api" }
