@@ -6,19 +6,19 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "dev": "tsx watch src/server.ts"
+    "dev": "tsx watch --tsconfig ../../tsconfig.dev.json src/dev.ts"
   },
   "dependencies": {
+    "@hono/node-server": "^2.1.4",
+    "@potenova/billing": "*",
     "@potenova/config": "*",
     "@potenova/contracts": "*",
+    "@potenova/diagnostic": "*",
     "@potenova/domain-core": "*",
     "@potenova/identity": "*",
     "@potenova/learner-state": "*",
-    "@potenova/diagnostic": "*",
     "@potenova/parent": "*",
-    "@potenova/billing": "*",
     "@potenova/persistence": "*",
-    "hono": "4.6.14",
-    "@hono/node-server": "1.13.7"
+    "hono": "4.6.14"
   }
 }

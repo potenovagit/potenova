@@ -5,23 +5,46 @@ consent, learner, dashboard) and a **child practice screen**. Synthetic data
 only; no account or cloud needed. Real tutoring content arrives with the approved
 AI provider (deferred, pre-beta).
 
-## Run it (two terminals)
+## Run it
 
-Terminal 1 — the API:
+From the repo root, once:
 
 ```
-APP_ENV=dev PRIMARY_REGION=ca-central DR_REGION=ca-east PORT=8080 \
-  npm run dev --workspace @potenova/api
+npm install
 ```
 
-Terminal 2 — the web app:
+Then two terminals (identical on Windows PowerShell, macOS and Linux — no
+environment variables to set):
+
+**Terminal 1 — the API**
+
+```
+npm run dev:api
+```
+
+Wait for `potenova api on :8080 [dev, ca-central]`, then leave it running.
+
+**Terminal 2 — the web app**
 
 ```
 npm run dev:web
 ```
 
-Then open http://localhost:5173. The browser calls the API same-origin under
-`/api/*`; Vite proxies that to the API on :8080 (so there is no CORS setup in dev).
+Open **http://localhost:5173**. The top status line should read
+"API ready · dev · ca-central · 14 modules" — that means the browser is talking
+to the API. The browser calls the API same-origin under `/api/*`; Vite proxies
+that to the API on :8080, so there is no CORS setup in dev.
+
+Stop either server with `Ctrl+C`.
+
+### Notes
+
+- `npm run dev:api` runs the dev entry (`services/api/src/dev.ts`): it sets safe
+  dev defaults and resolves the workspace packages from source, so **no build
+  step and no env vars are needed**. Production uses `server.ts`, which has no
+  defaults and fails closed on missing config.
+- The dev database is in-memory, so restarting the API resets any family/learner
+  you created. Set `POTENOVA_DB_DIR` to a folder to persist it.
 
 ## How auth works here
 

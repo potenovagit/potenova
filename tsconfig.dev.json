@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "declaration": false,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@potenova/contracts": ["packages/contracts/src/index.ts"],
+      "@potenova/config": ["packages/config/src/index.ts"],
+      "@potenova/domain-core": ["packages/domain-core/src/index.ts"],
+      "@potenova/identity": ["packages/identity/src/index.ts"],
+      "@potenova/curriculum": ["packages/curriculum/src/index.ts"],
+      "@potenova/learner-state": ["packages/learner-state/src/index.ts"],
+      "@potenova/ai-gateway": ["packages/ai-gateway/src/index.ts"],
+      "@potenova/content": ["packages/content/src/index.ts"],
+      "@potenova/diagnostic": ["packages/diagnostic/src/index.ts"],
+      "@potenova/planner": ["packages/planner/src/index.ts"],
+      "@potenova/learner-ux": ["packages/learner-ux/src/index.ts"],
+      "@potenova/english": ["packages/english/src/index.ts"],
+      "@potenova/parent": ["packages/parent/src/index.ts"],
+      "@potenova/safety": ["packages/safety/src/index.ts"],
+      "@potenova/billing": ["packages/billing/src/index.ts"],
+      "@potenova/operator": ["packages/operator/src/index.ts"],
+      "@potenova/persistence": ["packages/persistence/src/index.ts"]
+    }
+  }
+}
