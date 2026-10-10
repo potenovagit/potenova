@@ -35,7 +35,15 @@ authoritative; `EVIDENCE REQUIRED` is an unresolved decision with an owner and g
 6. Report deviations and residual risks; **wait for approval** before changing any LOCKED
    requirement (use the deviation protocol — DEV record).
 
-## Scope boundary for this repository state (WP-00)
+## Scope boundary — superseded for Stage 2 (owner-approved; ADR-0018)
 
-No child-facing endpoint, tutoring, diagnostic, subscription or production child-data
-processing. Build in dependency order: WP-00 → WP-01/02 → WP-03/04 → …
+The original WP-00 boundary (below) barred any child-facing endpoint. WP-00→WP-13
+are complete, and the product owner has approved **Stage 2 (make it a running
+app)**: a persistent database (ADR-0017) and an HTTP API (ADR-0018). The API is
+exercised on **synthetic data only** and still honours every non-negotiable at
+the edge — consent fence, content gate, Canadian residency, role/actor authz,
+and mastery-stays-derived. No real model is wired yet, and no real child data is
+processed before Gate G2. The original boundary, retained for history:
+
+> No child-facing endpoint, tutoring, diagnostic, subscription or production child-data
+> processing. Build in dependency order: WP-00 → WP-01/02 → WP-03/04 → …

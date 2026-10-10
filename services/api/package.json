@@ -10,6 +10,15 @@
   },
   "dependencies": {
     "@potenova/config": "*",
-    "@potenova/contracts": "*"
+    "@potenova/contracts": "*",
+    "@potenova/domain-core": "*",
+    "@potenova/identity": "*",
+    "@potenova/learner-state": "*",
+    "@potenova/diagnostic": "*",
+    "@potenova/parent": "*",
+    "@potenova/billing": "*",
+    "@potenova/persistence": "*",
+    "hono": "4.6.14",
+    "@hono/node-server": "1.13.7"
   }
 }

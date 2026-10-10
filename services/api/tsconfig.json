@@ -4,6 +4,16 @@
     "rootDir": "src",
     "outDir": "dist"
   },
-  "references": [{ "path": "../../packages/contracts" }, { "path": "../../packages/config" }],
+  "references": [
+    { "path": "../../packages/contracts" },
+    { "path": "../../packages/config" },
+    { "path": "../../packages/domain-core" },
+    { "path": "../../packages/identity" },
+    { "path": "../../packages/learner-state" },
+    { "path": "../../packages/diagnostic" },
+    { "path": "../../packages/parent" },
+    { "path": "../../packages/billing" },
+    { "path": "../../packages/persistence" }
+  ],
   "include": ["src/**/*.ts"]
 }

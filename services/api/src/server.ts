@@ -1,20 +1,17 @@
-import { createServer } from 'node:http';
+import { serve } from '@hono/node-server';
+import { loadConfig } from '@potenova/config';
 import { createApp } from './app';
 
 /**
- * Dev-only HTTP host for the WP-00 probes. Uses the Node stdlib server so the
- * scaffold runs with zero web-framework commitment (framework = ADR-0001).
+ * Dev HTTP host. Serves the Hono app on Node. The database directory comes from
+ * POTENOVA_DB_DIR (a local PGlite dir in dev; the managed Postgres connection in
+ * prod via ADR-0017). Nothing child-facing calls a real model yet.
  */
 const app = createApp();
+const config = loadConfig(process.env);
 const port = Number(process.env.PORT ?? 8080);
 
-const server = createServer((req, res) => {
-  const result = app.handle({ method: req.method ?? 'GET', path: (req.url ?? '/').split('?')[0]! });
-  res.writeHead(result.status, { 'content-type': 'application/json' });
-  res.end(JSON.stringify(result.body));
-});
-
-server.listen(port, () => {
+serve({ fetch: app.fetch, port }, () => {
   // eslint-disable-next-line no-console
-  console.log(`potenova api (WP-00 probes only) on :${port} [${app.config.environment}]`);
+  console.log(`potenova api on :${port} [${config.environment}, ${config.primaryRegion}]`);
 });
