@@ -13,6 +13,7 @@ export default defineConfig({
       '@potenova/identity': pkg('identity'),
       '@potenova/curriculum': pkg('curriculum'),
       '@potenova/learner-state': pkg('learner-state'),
+      '@potenova/ai-gateway': pkg('ai-gateway'),
       '@potenova/requirement-trace': pkg('requirement-trace'),
       '@potenova/fixtures': pkg('fixtures'),
     },
