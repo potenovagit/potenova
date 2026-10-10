@@ -8,6 +8,7 @@
     { "path": "packages/curriculum" },
     { "path": "packages/learner-state" },
     { "path": "packages/ai-gateway" },
+    { "path": "packages/content" },
     { "path": "packages/requirement-trace" },
     { "path": "packages/fixtures" },
     { "path": "services/api" }

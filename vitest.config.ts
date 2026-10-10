@@ -14,6 +14,7 @@ export default defineConfig({
       '@potenova/curriculum': pkg('curriculum'),
       '@potenova/learner-state': pkg('learner-state'),
       '@potenova/ai-gateway': pkg('ai-gateway'),
+      '@potenova/content': pkg('content'),
       '@potenova/requirement-trace': pkg('requirement-trace'),
       '@potenova/fixtures': pkg('fixtures'),
     },
