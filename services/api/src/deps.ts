@@ -1,6 +1,6 @@
 import { loadConfig, type PotenovaConfig } from '@potenova/config';
 import {
-  openDatabase,
+  openDatabaseFromEnv,
   type PotenovaDb,
   EvidenceRepository,
   IdentityRepository,
@@ -31,8 +31,9 @@ export interface BuildDepsOptions {
 }
 
 export function buildDeps(opts: BuildDepsOptions = {}): Deps {
-  const config = loadConfig(opts.env ?? process.env);
-  const db = opts.db ?? openDatabase(process.env.POTENOVA_DB_DIR || undefined);
+  const env = opts.env ?? process.env;
+  const config = loadConfig(env);
+  const db = opts.db ?? openDatabaseFromEnv(env);
   return {
     config,
     db,

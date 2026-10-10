@@ -12,9 +12,13 @@
     }
   },
   "dependencies": {
+    "@electric-sql/pglite": "0.2.17",
     "@potenova/contracts": "*",
     "@potenova/learner-state": "*",
-    "@electric-sql/pglite": "0.2.17",
-    "drizzle-orm": "0.36.4"
+    "drizzle-orm": "0.36.4",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.10"
   }
 }

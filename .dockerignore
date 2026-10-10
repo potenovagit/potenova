@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+dist
+**/dist
+*.tsbuildinfo
+.git
+.github
+.data
+**/.data
+*.pgdata
+*.log
+evidence/**/run-*
+apps/web/dist
