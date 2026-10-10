@@ -17,6 +17,7 @@ export default defineConfig({
       '@potenova/content': pkg('content'),
       '@potenova/diagnostic': pkg('diagnostic'),
       '@potenova/planner': pkg('planner'),
+      '@potenova/learner-ux': pkg('learner-ux'),
       '@potenova/requirement-trace': pkg('requirement-trace'),
       '@potenova/fixtures': pkg('fixtures'),
     },
