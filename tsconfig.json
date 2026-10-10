@@ -15,6 +15,7 @@
     { "path": "packages/english" },
     { "path": "packages/parent" },
     { "path": "packages/safety" },
+    { "path": "packages/billing" },
     { "path": "packages/requirement-trace" },
     { "path": "packages/fixtures" },
     { "path": "services/api" }
