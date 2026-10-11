@@ -14,8 +14,10 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.1.4",
+    "@potenova/ai-gateway": "*",
     "@potenova/billing": "*",
     "@potenova/config": "*",
+    "@potenova/content": "*",
     "@potenova/contracts": "*",
     "@potenova/diagnostic": "*",
     "@potenova/domain-core": "*",

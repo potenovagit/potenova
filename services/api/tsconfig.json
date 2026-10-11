@@ -8,6 +8,8 @@
     { "path": "../../packages/contracts" },
     { "path": "../../packages/config" },
     { "path": "../../packages/domain-core" },
+    { "path": "../../packages/ai-gateway" },
+    { "path": "../../packages/content" },
     { "path": "../../packages/identity" },
     { "path": "../../packages/learner-state" },
     { "path": "../../packages/diagnostic" },
