@@ -3,6 +3,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { DOMAIN_MODULES } from './modules';
 import { buildDeps, type BuildDepsOptions, type Deps } from './deps';
 import { onError } from './errors';
+import { authMiddleware, readAuthConfig } from './auth';
 import { registerFamilies } from './routes/families';
 import { registerLearning } from './routes/learning';
 import { registerCommerce } from './routes/commerce';
@@ -43,6 +44,9 @@ export function createApp(opts: CreateAppOptions = {}): Hono {
       modules: DOMAIN_MODULES.length,
     }),
   );
+
+  // Authenticate API paths (UI + health stay public). dev headers or verified JWT.
+  app.use('*', authMiddleware(readAuthConfig(opts.env ?? process.env), deps.config.primaryRegion));
 
   registerFamilies(app, deps);
   registerLearning(app, deps);
