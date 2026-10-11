@@ -34,6 +34,7 @@ export interface EvalEvidenceArtifact {
     readonly incorrectContained: number;
     readonly byDelivery: EvalSuiteReport['byDelivery'];
     readonly byVerdict: EvalSuiteReport['byVerdict'];
+    readonly bySkill: EvalSuiteReport['bySkill'];
   };
   /** PASS only when containment held — a wrong answer reaching a child is the failure. */
   readonly result: 'PASS' | 'FAIL';
@@ -58,8 +59,8 @@ export interface BuildEvidenceParams {
 /** A stable synthetic fixture id per task, so the evidence cites what ran. */
 function fixtureId(report: EvalSuiteReport, index: number): string {
   const item = report.items[index];
-  const { left, right } = item.task;
-  return `SYN-FRAC-${left.numerator}_${left.denominator}-vs-${right.numerator}_${right.denominator}`;
+  const slug = item.label.replace(/[^0-9a-zA-Z]+/g, '-').replace(/^-+|-+$/g, '');
+  return `SYN-${item.kind.toUpperCase()}-${slug}`;
 }
 
 export function buildEvalEvidence(params: BuildEvidenceParams): EvalEvidenceArtifact {
@@ -90,6 +91,7 @@ export function buildEvalEvidence(params: BuildEvidenceParams): EvalEvidenceArti
       incorrectContained: report.incorrectContained,
       byDelivery: report.byDelivery,
       byVerdict: report.byVerdict,
+      bySkill: report.bySkill,
     },
     result: report.containmentHeld ? 'PASS' : 'FAIL',
     reviewer: null,
@@ -112,6 +114,7 @@ export function renderEvalEvidenceMarkdown(a: EvalEvidenceArtifact): string {
     '',
     '## Scores',
     `- Accuracy: ${pct(a.actual.accuracy)} (${a.report.correct}/${a.report.total})`,
+    `- By skill: comparison ${a.actual.bySkill.comparison.correct}/${a.actual.bySkill.comparison.total} · equivalence ${a.actual.bySkill.equivalence.correct}/${a.actual.bySkill.equivalence.total}`,
     `- Incorrect answers: ${a.actual.incorrect} — contained: ${a.actual.incorrectContained}`,
     `- Delivery: DELIVER ${a.actual.byDelivery.DELIVER} · FALLBACK ${a.actual.byDelivery.FALLBACK} · BLOCK ${a.actual.byDelivery.BLOCK}`,
     `- Verdicts: PASS ${a.actual.byVerdict.PASS} · FAIL ${a.actual.byVerdict.FAIL} · UNCERTAIN ${a.actual.byVerdict.UNCERTAIN} · UNAVAILABLE ${a.actual.byVerdict.UNAVAILABLE}`,

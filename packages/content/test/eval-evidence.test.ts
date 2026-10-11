@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { runMathEvalSuite, DEFAULT_MATH_EVAL_SUITE } from '../src/eval-suite';
+import { runEvalSuite, DEFAULT_EVAL_SUITE, type SuiteGenerate } from '../src/eval-suite';
 import { buildEvalEvidence, renderEvalEvidenceMarkdown } from '../src/eval-evidence';
-import { trueRelation } from '../src/math-check';
+import { trueRelation, areEquivalent } from '../src/math-check';
 
 const base = {
   generatorId: 'cand-model',
@@ -10,20 +10,23 @@ const base = {
   now: () => '2026-10-11T00:00:00Z',
 } as const;
 
-async function reportFor(answer: 'perfect' | 'alwaysGt') {
-  return runMathEvalSuite({
-    ...base,
-    tasks: DEFAULT_MATH_EVAL_SUITE,
-    generate:
-      answer === 'perfect'
-        ? async (task) => ({ claimedAnswer: trueRelation(task.left, task.right), explanation: 'x' })
-        : async () => ({ claimedAnswer: 'gt', explanation: 'gt' }),
-  });
-}
+const perfect: SuiteGenerate = async (task) =>
+  task.kind === 'comparison'
+    ? { kind: 'comparison', claimedAnswer: trueRelation(task.left, task.right), explanation: 'x' }
+    : {
+        kind: 'equivalence',
+        claimedEquivalent: areEquivalent(task.left, task.right),
+        explanation: 'x',
+      };
+
+const biased: SuiteGenerate = async (task) =>
+  task.kind === 'comparison'
+    ? { kind: 'comparison', claimedAnswer: 'gt', explanation: 'gt' }
+    : { kind: 'equivalence', claimedEquivalent: true, explanation: 'yes' };
 
 describe('buildEvalEvidence', () => {
-  it('produces a PASS gate artifact with synthetic fixture ids and no child delivery', async () => {
-    const report = await reportFor('perfect');
+  it('produces a PASS gate artifact with per-skill scores and no child delivery', async () => {
+    const report = await runEvalSuite({ ...base, tasks: DEFAULT_EVAL_SUITE, generate: perfect });
     const a = buildEvalEvidence({
       report,
       model: 'azure-openai:tutor-mini',
@@ -33,25 +36,22 @@ describe('buildEvalEvidence', () => {
     });
     expect(a.gate).toBe('G2');
     expect(a.requirementId).toBe('AI-003');
-    expect(a.synthetic).toBe(true);
     expect(a.deliveredToChild).toBe(false);
     expect(a.result).toBe('PASS');
     expect(a.syntheticFixtureIds).toHaveLength(report.total);
-    expect(a.syntheticFixtureIds[0]).toMatch(/^SYN-FRAC-/);
+    expect(a.syntheticFixtureIds[0]).toMatch(/^SYN-(COMPARISON|EQUIVALENCE)-/);
+    expect(a.actual.bySkill.comparison.total).toBeGreaterThan(0);
+    expect(a.actual.bySkill.equivalence.total).toBeGreaterThan(0);
     expect(a.reviewer).toBeNull();
   });
 
   it('still PASSES when the model is wrong, because wrong answers were contained', async () => {
-    const report = await reportFor('alwaysGt');
-    const a = buildEvalEvidence({
-      report,
-      model: 'm',
-      processingRegion: 'ca-east',
-      runId: 'r',
-    });
-    // Containment, not accuracy, is the gate property.
+    const report = await runEvalSuite({ ...base, tasks: DEFAULT_EVAL_SUITE, generate: biased });
+    const a = buildEvalEvidence({ report, model: 'm', processingRegion: 'ca-east', runId: 'r' });
     expect(report.accuracy).toBeLessThan(1);
     expect(a.result).toBe('PASS');
-    expect(renderEvalEvidenceMarkdown(a)).toContain('Result: **PASS**');
+    const md = renderEvalEvidenceMarkdown(a);
+    expect(md).toContain('Result: **PASS**');
+    expect(md).toContain('By skill:');
   });
 });

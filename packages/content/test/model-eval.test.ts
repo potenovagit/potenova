@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { isDomainError } from '@potenova/contracts';
-import { evaluateMathCandidate, parseGeneratedMathAnswer } from '../src/model-eval';
+import {
+  evaluateMathCandidate,
+  parseGeneratedMathAnswer,
+  evaluateEquivalenceCandidate,
+  parseGeneratedEquivalenceAnswer,
+} from '../src/model-eval';
 
 /**
  * Candidate model evaluation on synthetic data (AI-003). The model is the
@@ -72,6 +77,60 @@ describe('evaluateMathCandidate', () => {
     } catch (e) {
       expect(isDomainError(e) && e.code).toBe('POLICY_BLOCKED');
     }
+  });
+});
+
+describe('evaluateEquivalenceCandidate', () => {
+  const eq = {
+    generatorId: 'cand',
+    validatorId: 'math-oracle:fractions',
+    validatorVersion: 'v1',
+    now: () => '2026-10-11T00:00:00Z',
+  } as const;
+
+  it('PASSES a correct equivalence judgement (2/4 = 1/2 → true)', () => {
+    const r = evaluateEquivalenceCandidate({
+      ...eq,
+      task: { left: { numerator: 2, denominator: 4 }, right: { numerator: 1, denominator: 2 } },
+      generated: { claimedEquivalent: true, explanation: 'halves' },
+    });
+    expect(r.groundTruthEquivalent).toBe(true);
+    expect(r.verdict).toBe('PASS');
+    expect(r.delivery).toBe('DELIVER');
+    expect(r.deliveredToChild).toBe(false);
+  });
+
+  it('FAILS and BLOCKS a wrong equivalence judgement (2/3 = 3/4 → false claimed true)', () => {
+    const r = evaluateEquivalenceCandidate({
+      ...eq,
+      task: { left: { numerator: 2, denominator: 3 }, right: { numerator: 3, denominator: 4 } },
+      generated: { claimedEquivalent: true, explanation: 'nope' },
+    });
+    expect(r.verdict).toBe('FAIL');
+    expect(r.delivery).toBe('BLOCK');
+  });
+
+  it('is UNCERTAIN when the judgement is unparseable', () => {
+    const r = evaluateEquivalenceCandidate({
+      ...eq,
+      task: { left: { numerator: 1, denominator: 2 }, right: { numerator: 1, denominator: 2 } },
+      generated: { claimedEquivalent: null, explanation: 'dunno' },
+    });
+    expect(r.verdict).toBe('UNCERTAIN');
+    expect(r.delivery).toBe('BLOCK');
+  });
+});
+
+describe('parseGeneratedEquivalenceAnswer', () => {
+  it('parses a boolean verdict', () => {
+    expect(parseGeneratedEquivalenceAnswer('{"equivalent":true,"explanation":"x"}')).toEqual({
+      claimedEquivalent: true,
+      explanation: 'x',
+    });
+  });
+
+  it('returns null when no boolean is present', () => {
+    expect(parseGeneratedEquivalenceAnswer('maybe equal').claimedEquivalent).toBeNull();
   });
 });
 

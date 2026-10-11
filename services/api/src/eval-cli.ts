@@ -7,15 +7,12 @@ import {
   type GenerativeProvider,
 } from '@potenova/ai-gateway';
 import {
-  runMathEvalSuite,
-  buildComparisonPrompt,
-  parseGeneratedMathAnswer,
+  runEvalSuite,
   buildEvalEvidence,
   renderEvalEvidenceMarkdown,
-  DEFAULT_MATH_EVAL_SUITE,
-  type GeneratedMathAnswer,
-  type MathEvalTask,
+  DEFAULT_EVAL_SUITE,
 } from '@potenova/content';
+import { providerSuiteRunner } from './ai-eval-run';
 
 /**
  * CLI: run the synthetic model-evaluation suite against the live in-Canada Azure
@@ -73,20 +70,15 @@ async function main(): Promise<void> {
     processingRegion: provider.region,
   });
 
-  let tokenUnits = 0;
-  const generate = async (task: MathEvalTask): Promise<GeneratedMathAnswer> => {
-    const gen = await provider.generate({ ...buildComparisonPrompt(task), temperature: 0 });
-    tokenUnits += gen.units;
-    return parseGeneratedMathAnswer(gen.text);
-  };
-
-  const report = await runMathEvalSuite({
-    tasks: DEFAULT_MATH_EVAL_SUITE,
+  const runner = providerSuiteRunner(provider);
+  const report = await runEvalSuite({
+    tasks: DEFAULT_EVAL_SUITE,
     generatorId: provider.id,
     validatorId: VALIDATOR_ID,
     validatorVersion: VALIDATOR_VERSION,
-    generate,
+    generate: runner.generate,
   });
+  const tokenUnits = runner.getTokens();
 
   const runId = `run-${report.generatedAt.replace(/[:.]/g, '-')}`;
   const artifact = buildEvalEvidence({

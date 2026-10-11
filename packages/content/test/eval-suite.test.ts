@@ -1,16 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import {
-  runMathEvalSuite,
-  DEFAULT_MATH_EVAL_SUITE,
-  type GenerateMathAnswer,
-} from '../src/eval-suite';
-import { trueRelation } from '../src/math-check';
+import { runEvalSuite, DEFAULT_EVAL_SUITE, type SuiteGenerate } from '../src/eval-suite';
+import { trueRelation, areEquivalent } from '../src/math-check';
 
 /**
- * The evaluation harness aggregates many synthetic tasks through the same
- * generator→oracle→gate path. The key properties: accuracy is reported honestly,
- * and every WRONG answer is contained (never DELIVER) — a wrong answer that
- * reached a child would be a containment failure.
+ * The evaluation harness aggregates many synthetic tasks across two skills
+ * (comparison + equivalence) through the same generator→oracle→gate path. The
+ * key properties: accuracy is reported honestly per skill, and every WRONG
+ * answer is contained (never DELIVER).
  */
 
 const base = {
@@ -20,49 +16,50 @@ const base = {
   now: () => '2026-10-11T00:00:00Z',
 } as const;
 
-/** A perfect model: always answers the true relation. */
-const perfect: GenerateMathAnswer = async (task) => ({
-  claimedAnswer: trueRelation(task.left, task.right),
-  explanation: 'ground truth',
-});
+/** A perfect model: always answers the true relation / equivalence. */
+const perfect: SuiteGenerate = async (task) =>
+  task.kind === 'comparison'
+    ? { kind: 'comparison', claimedAnswer: trueRelation(task.left, task.right), explanation: 'x' }
+    : {
+        kind: 'equivalence',
+        claimedEquivalent: areEquivalent(task.left, task.right),
+        explanation: 'x',
+      };
 
-/** A model that always says 'gt' — wrong on every lt/eq task. */
-const alwaysGt: GenerateMathAnswer = async () => ({ claimedAnswer: 'gt', explanation: 'gt' });
+/** A biased model: always 'gt' / always 'equivalent' — wrong on many tasks. */
+const biased: SuiteGenerate = async (task) =>
+  task.kind === 'comparison'
+    ? { kind: 'comparison', claimedAnswer: 'gt', explanation: 'gt' }
+    : { kind: 'equivalence', claimedEquivalent: true, explanation: 'yes' };
 
-describe('runMathEvalSuite', () => {
-  it('scores a perfect model at 100% accuracy, all delivered', async () => {
-    const r = await runMathEvalSuite({
-      ...base,
-      tasks: DEFAULT_MATH_EVAL_SUITE,
-      generate: perfect,
-    });
-    expect(r.total).toBe(DEFAULT_MATH_EVAL_SUITE.length);
-    expect(r.correct).toBe(r.total);
+describe('runEvalSuite', () => {
+  it('scores a perfect model at 100% across both skills, all delivered', async () => {
+    const r = await runEvalSuite({ ...base, tasks: DEFAULT_EVAL_SUITE, generate: perfect });
+    expect(r.total).toBe(DEFAULT_EVAL_SUITE.length);
     expect(r.accuracy).toBe(1);
     expect(r.byDelivery.DELIVER).toBe(r.total);
     expect(r.incorrect).toBe(0);
     expect(r.containmentHeld).toBe(true);
+    expect(r.bySkill.comparison.total).toBeGreaterThan(0);
+    expect(r.bySkill.equivalence.total).toBeGreaterThan(0);
+    expect(r.bySkill.comparison.correct).toBe(r.bySkill.comparison.total);
+    expect(r.bySkill.equivalence.correct).toBe(r.bySkill.equivalence.total);
   });
 
   it('contains every wrong answer from a biased model (none delivered)', async () => {
-    const r = await runMathEvalSuite({
-      ...base,
-      tasks: DEFAULT_MATH_EVAL_SUITE,
-      generate: alwaysGt,
-    });
+    const r = await runEvalSuite({ ...base, tasks: DEFAULT_EVAL_SUITE, generate: biased });
     expect(r.correct).toBeLessThan(r.total);
     expect(r.incorrect).toBeGreaterThan(0);
-    // Every incorrect answer must be BLOCKed (FAIL) — never delivered.
     expect(r.incorrectContained).toBe(r.incorrect);
     expect(r.containmentHeld).toBe(true);
     expect(r.byDelivery.DELIVER).toBe(r.correct);
   });
 
   it('counts an unparseable answer as incorrect and contained (UNCERTAIN)', async () => {
-    const r = await runMathEvalSuite({
+    const r = await runEvalSuite({
       ...base,
-      tasks: [DEFAULT_MATH_EVAL_SUITE[0]],
-      generate: async () => ({ claimedAnswer: null, explanation: 'garbage' }),
+      tasks: [DEFAULT_EVAL_SUITE[0]], // a comparison task
+      generate: async () => ({ kind: 'comparison', claimedAnswer: null, explanation: 'garbage' }),
     });
     expect(r.byVerdict.UNCERTAIN).toBe(1);
     expect(r.byDelivery.BLOCK).toBe(1);

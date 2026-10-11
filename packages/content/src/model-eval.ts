@@ -3,7 +3,13 @@ import {
   type CandidateContent,
   type ValidationVerdict,
 } from '@potenova/domain-core';
-import { checkMathTask, trueRelation, type Fraction, type FractionRelation } from './math-check';
+import {
+  checkMathTask,
+  trueRelation,
+  areEquivalent,
+  type Fraction,
+  type FractionRelation,
+} from './math-check';
 import { validateCandidate, validationRecordRef } from './validation';
 
 /**
@@ -164,4 +170,132 @@ export function parseGeneratedMathAnswer(text: string): GeneratedMathAnswer {
   }
 
   return { claimedAnswer: answer, explanation };
+}
+
+// ---------------------------------------------------------------------------
+// Fraction equivalence — a second candidate skill (are two fractions equal?).
+// Same generator→independent-oracle→content-gate path, different oracle check.
+// ---------------------------------------------------------------------------
+
+export interface GeneratedEquivalenceAnswer {
+  /** Parsed from the model; null when it could not be parsed. */
+  readonly claimedEquivalent: boolean | null;
+  readonly explanation: string;
+}
+
+export interface EquivalenceEvalParams {
+  readonly task: MathEvalTask;
+  readonly generatorId: string;
+  readonly validatorId: string;
+  readonly validatorVersion: string;
+  readonly generated: GeneratedEquivalenceAnswer;
+  readonly fallbackAssetId?: string | null;
+  readonly now?: () => string;
+}
+
+export interface EquivalenceEvalResult {
+  readonly generatorId: string;
+  readonly groundTruthEquivalent: boolean;
+  readonly claimedEquivalent: boolean | null;
+  readonly explanation: string;
+  readonly verdict: ValidationVerdict;
+  readonly reasonCodes: readonly string[];
+  readonly delivery: DeliveryOutcomeKind;
+  readonly deliveredToChild: false;
+}
+
+/**
+ * Evaluate a candidate model's equivalence judgement on a synthetic task.
+ *
+ * @throws DomainError POLICY_BLOCKED — generatorId === validatorId.
+ */
+export function evaluateEquivalenceCandidate(params: EquivalenceEvalParams): EquivalenceEvalResult {
+  const { left, right } = params.task;
+  const groundTruthEquivalent = areEquivalent(left, right);
+  const parsed = params.generated.claimedEquivalent !== null;
+
+  const correct = parsed
+    ? checkMathTask({
+        kind: 'fraction_equivalence',
+        left,
+        right,
+        claimedEquivalent: params.generated.claimedEquivalent as boolean,
+      }).correct
+    : null;
+
+  const record = validateCandidate(
+    {
+      candidateId: `eval:${params.generatorId}`,
+      generatorId: params.generatorId,
+      validatorId: params.validatorId,
+      validatorVersion: params.validatorVersion,
+      math: { ran: true, correct },
+      safety: { available: true, pass: true },
+      onTopic: true,
+    },
+    params.now,
+  );
+
+  const candidate: CandidateContent = {
+    candidateId: record.candidateId,
+    verdict: record.verdict,
+    validationRecordRef: validationRecordRef(record),
+  };
+
+  const delivery = decideDelivery(
+    candidate,
+    params.fallbackAssetId ? { assetId: params.fallbackAssetId } : null,
+  );
+
+  return {
+    generatorId: params.generatorId,
+    groundTruthEquivalent,
+    claimedEquivalent: params.generated.claimedEquivalent,
+    explanation: params.generated.explanation,
+    verdict: record.verdict,
+    reasonCodes: record.reasonCodes,
+    delivery: delivery.kind,
+    deliveredToChild: false,
+  };
+}
+
+/** Prompt pair for a fraction-equivalence question (kept beside its parser). */
+export function buildEquivalencePrompt(task: MathEvalTask): { system: string; prompt: string } {
+  return {
+    system:
+      'You are a grade-school math checker. Decide whether the LEFT and RIGHT fractions are ' +
+      'equal in value. Respond with ONLY compact JSON: ' +
+      '{"equivalent":true|false,"explanation":"<one sentence>"}.',
+    prompt:
+      `LEFT = ${task.left.numerator}/${task.left.denominator}, ` +
+      `RIGHT = ${task.right.numerator}/${task.right.denominator}.`,
+  };
+}
+
+/**
+ * Parse a model's reply to an equivalence prompt. Returns `claimedEquivalent: null`
+ * when no boolean can be extracted — treated as inconclusive, never guessed.
+ */
+export function parseGeneratedEquivalenceAnswer(text: string): GeneratedEquivalenceAnswer {
+  const stripped = text
+    .replace(/```(?:json)?/gi, '')
+    .replace(/```/g, '')
+    .trim();
+
+  let equivalent: boolean | null = null;
+  let explanation = '';
+
+  try {
+    const parsed = JSON.parse(stripped) as { equivalent?: unknown; explanation?: unknown };
+    if (typeof parsed.equivalent === 'boolean') {
+      equivalent = parsed.equivalent;
+    }
+    if (typeof parsed.explanation === 'string') {
+      explanation = parsed.explanation;
+    }
+  } catch {
+    explanation = stripped.slice(0, 2000);
+  }
+
+  return { claimedEquivalent: equivalent, explanation };
 }

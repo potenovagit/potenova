@@ -1,30 +1,51 @@
 import type { ValidationVerdict } from '@potenova/domain-core';
-import { trueRelation, type FractionRelation } from './math-check';
+import { trueRelation, areEquivalent, type Fraction } from './math-check';
 import {
   evaluateMathCandidate,
+  evaluateEquivalenceCandidate,
   type DeliveryOutcomeKind,
   type GeneratedMathAnswer,
-  type MathEvalTask,
+  type GeneratedEquivalenceAnswer,
 } from './model-eval';
 
 /**
  * Candidate-model evaluation harness on SYNTHETIC data (AI-003; ADR-0005/0006;
- * the ER-16 quality/safety evaluation that fixes the final model before G2).
+ * the ER-16 quality/safety evaluation + NFR-07/NFR-08 that fix the model before G2).
  *
- * Runs a fixed synthetic task suite through the same generator→independent-oracle
- * →content-gate path as a single eval, and aggregates the results into an
- * evidence-ready report: how often the candidate was right, and — the safety
- * property that actually matters — how often a WRONG answer was caught and blocked
- * rather than delivered. Nothing here is ever delivered to a child.
+ * Runs a fixed synthetic suite spanning two fraction skills — comparison and
+ * equivalence — through the same generator→independent-oracle→content-gate path,
+ * and aggregates an evidence-ready report: accuracy overall and per skill, and —
+ * the property that actually gates — containment: every WRONG answer must be kept
+ * from delivery (FALLBACK/BLOCK), never delivered. Nothing reaches a child.
  */
 
+export type SuiteSkill = 'comparison' | 'equivalence';
+
+export type SuiteTask =
+  | { readonly kind: 'comparison'; readonly left: Fraction; readonly right: Fraction }
+  | { readonly kind: 'equivalence'; readonly left: Fraction; readonly right: Fraction };
+
+export type SuiteAnswer =
+  | ({ readonly kind: 'comparison' } & GeneratedMathAnswer)
+  | ({ readonly kind: 'equivalence' } & GeneratedEquivalenceAnswer);
+
+/** Produce a candidate's answer for a task (async: the real provider is a network call). */
+export type SuiteGenerate = (task: SuiteTask) => Promise<SuiteAnswer>;
+
 export interface EvalSuiteItem {
-  readonly task: MathEvalTask;
-  readonly groundTruth: FractionRelation;
-  readonly claimedAnswer: FractionRelation | null;
+  readonly kind: SuiteSkill;
+  /** Human-readable task label, e.g. "1/2 vs 1/3" or "2/4 = 1/2?". */
+  readonly label: string;
+  readonly expected: string;
+  readonly claimed: string | null;
   readonly correct: boolean;
   readonly verdict: ValidationVerdict;
   readonly delivery: DeliveryOutcomeKind;
+}
+
+export interface SkillTally {
+  readonly total: number;
+  readonly correct: number;
 }
 
 export interface EvalSuiteReport {
@@ -32,57 +53,162 @@ export interface EvalSuiteReport {
   readonly validatorId: string;
   readonly validatorVersion: string;
   readonly total: number;
-  /** Candidate answers that matched ground truth. */
   readonly correct: number;
-  /** correct / total, 0–1. */
   readonly accuracy: number;
-  /** Count of each validation verdict. */
   readonly byVerdict: Record<ValidationVerdict, number>;
-  /** Count of each content-gate delivery outcome. */
   readonly byDelivery: Record<DeliveryOutcomeKind, number>;
-  /**
-   * The safety invariant: of the answers that were NOT correct, how many were
-   * kept from delivery (FALLBACK or BLOCK). Must equal the number of incorrect
-   * answers — a wrong answer that reached DELIVER is a containment failure.
-   */
+  readonly bySkill: Record<SuiteSkill, SkillTally>;
   readonly incorrect: number;
   readonly incorrectContained: number;
+  /** True iff no incorrect answer was delivered — the gate property. */
   readonly containmentHeld: boolean;
   readonly generatedAt: string;
   readonly items: readonly EvalSuiteItem[];
 }
 
-/** Produce a candidate's answer for a task (async: the real provider is a network call). */
-export type GenerateMathAnswer = (task: MathEvalTask) => Promise<GeneratedMathAnswer>;
-
 export interface RunEvalSuiteParams {
-  readonly tasks: readonly MathEvalTask[];
+  readonly tasks: readonly SuiteTask[];
   readonly generatorId: string;
   readonly validatorId: string;
   readonly validatorVersion: string;
-  readonly generate: GenerateMathAnswer;
+  readonly generate: SuiteGenerate;
   readonly fallbackAssetId?: string | null;
   readonly now?: () => string;
 }
 
+const frac = (f: Fraction): string => `${f.numerator}/${f.denominator}`;
+
 /**
- * A fixed synthetic suite spanning lt / gt / eq, including unreduced-but-equal
- * pairs (2/4 = 1/2, 5/10 = 1/2) that trip up a weak comparator. Deterministic, so
- * a run is reproducible and the report is comparable across models.
+ * A fixed synthetic suite across both skills. Comparison spans lt/gt/eq including
+ * same-numerator, same-denominator, near-equal, improper and whole-number cases;
+ * equivalence mixes equal and unequal pairs (incl. unreduced and improper). All
+ * deterministic, so runs are reproducible and comparable across models.
  */
-export const DEFAULT_MATH_EVAL_SUITE: readonly MathEvalTask[] = [
-  { left: { numerator: 1, denominator: 2 }, right: { numerator: 1, denominator: 3 } }, // gt
-  { left: { numerator: 1, denominator: 3 }, right: { numerator: 1, denominator: 2 } }, // lt
-  { left: { numerator: 2, denominator: 4 }, right: { numerator: 1, denominator: 2 } }, // eq
-  { left: { numerator: 3, denominator: 4 }, right: { numerator: 2, denominator: 3 } }, // gt
-  { left: { numerator: 2, denominator: 5 }, right: { numerator: 3, denominator: 5 } }, // lt
-  { left: { numerator: 5, denominator: 10 }, right: { numerator: 1, denominator: 2 } }, // eq
-  { left: { numerator: 7, denominator: 8 }, right: { numerator: 3, denominator: 4 } }, // gt
-  { left: { numerator: 1, denominator: 6 }, right: { numerator: 1, denominator: 4 } }, // lt
+export const DEFAULT_EVAL_SUITE: readonly SuiteTask[] = [
+  // comparison
+  {
+    kind: 'comparison',
+    left: { numerator: 1, denominator: 2 },
+    right: { numerator: 1, denominator: 3 },
+  },
+  {
+    kind: 'comparison',
+    left: { numerator: 1, denominator: 3 },
+    right: { numerator: 1, denominator: 2 },
+  },
+  {
+    kind: 'comparison',
+    left: { numerator: 2, denominator: 4 },
+    right: { numerator: 1, denominator: 2 },
+  },
+  {
+    kind: 'comparison',
+    left: { numerator: 3, denominator: 4 },
+    right: { numerator: 2, denominator: 3 },
+  },
+  {
+    kind: 'comparison',
+    left: { numerator: 2, denominator: 5 },
+    right: { numerator: 3, denominator: 5 },
+  },
+  {
+    kind: 'comparison',
+    left: { numerator: 5, denominator: 10 },
+    right: { numerator: 1, denominator: 2 },
+  },
+  {
+    kind: 'comparison',
+    left: { numerator: 7, denominator: 8 },
+    right: { numerator: 3, denominator: 4 },
+  },
+  {
+    kind: 'comparison',
+    left: { numerator: 1, denominator: 6 },
+    right: { numerator: 1, denominator: 4 },
+  },
+  {
+    kind: 'comparison',
+    left: { numerator: 3, denominator: 5 },
+    right: { numerator: 3, denominator: 7 },
+  }, // same numerator
+  {
+    kind: 'comparison',
+    left: { numerator: 4, denominator: 9 },
+    right: { numerator: 5, denominator: 9 },
+  }, // same denominator
+  {
+    kind: 'comparison',
+    left: { numerator: 5, denominator: 8 },
+    right: { numerator: 7, denominator: 11 },
+  }, // near-equal
+  {
+    kind: 'comparison',
+    left: { numerator: 9, denominator: 4 },
+    right: { numerator: 7, denominator: 3 },
+  }, // improper
+  {
+    kind: 'comparison',
+    left: { numerator: 6, denominator: 3 },
+    right: { numerator: 2, denominator: 1 },
+  }, // whole, equal
+  {
+    kind: 'comparison',
+    left: { numerator: 11, denominator: 12 },
+    right: { numerator: 1, denominator: 1 },
+  }, // vs whole
+  // equivalence
+  {
+    kind: 'equivalence',
+    left: { numerator: 2, denominator: 4 },
+    right: { numerator: 1, denominator: 2 },
+  }, // true
+  {
+    kind: 'equivalence',
+    left: { numerator: 3, denominator: 6 },
+    right: { numerator: 1, denominator: 2 },
+  }, // true
+  {
+    kind: 'equivalence',
+    left: { numerator: 2, denominator: 3 },
+    right: { numerator: 3, denominator: 4 },
+  }, // false
+  {
+    kind: 'equivalence',
+    left: { numerator: 6, denominator: 9 },
+    right: { numerator: 2, denominator: 3 },
+  }, // true
+  {
+    kind: 'equivalence',
+    left: { numerator: 4, denominator: 8 },
+    right: { numerator: 1, denominator: 3 },
+  }, // false
+  {
+    kind: 'equivalence',
+    left: { numerator: 7, denominator: 8 },
+    right: { numerator: 3, denominator: 4 },
+  }, // false
+  {
+    kind: 'equivalence',
+    left: { numerator: 10, denominator: 4 },
+    right: { numerator: 5, denominator: 2 },
+  }, // true (improper)
+  {
+    kind: 'equivalence',
+    left: { numerator: 5, denominator: 10 },
+    right: { numerator: 1, denominator: 2 },
+  }, // true
 ];
 
-export async function runMathEvalSuite(params: RunEvalSuiteParams): Promise<EvalSuiteReport> {
+export async function runEvalSuite(params: RunEvalSuiteParams): Promise<EvalSuiteReport> {
   const at = params.now ?? (() => new Date().toISOString());
+  const common = {
+    generatorId: params.generatorId,
+    validatorId: params.validatorId,
+    validatorVersion: params.validatorVersion,
+    fallbackAssetId: params.fallbackAssetId ?? null,
+    now: at,
+  };
+
   const items: EvalSuiteItem[] = [];
   const byVerdict: Record<ValidationVerdict, number> = {
     PASS: 0,
@@ -91,30 +217,56 @@ export async function runMathEvalSuite(params: RunEvalSuiteParams): Promise<Eval
     UNAVAILABLE: 0,
   };
   const byDelivery: Record<DeliveryOutcomeKind, number> = { DELIVER: 0, FALLBACK: 0, BLOCK: 0 };
+  const bySkill: Record<SuiteSkill, { total: number; correct: number }> = {
+    comparison: { total: 0, correct: 0 },
+    equivalence: { total: 0, correct: 0 },
+  };
 
   for (const task of params.tasks) {
-    const generated = await params.generate(task);
-    const result = evaluateMathCandidate({
-      task,
-      generatorId: params.generatorId,
-      validatorId: params.validatorId,
-      validatorVersion: params.validatorVersion,
-      generated,
-      fallbackAssetId: params.fallbackAssetId ?? null,
-      now: at,
-    });
-    const groundTruth = trueRelation(task.left, task.right);
-    const correct = result.claimedAnswer === groundTruth;
-    byVerdict[result.verdict] += 1;
-    byDelivery[result.delivery] += 1;
-    items.push({
-      task,
-      groundTruth,
-      claimedAnswer: result.claimedAnswer,
-      correct,
-      verdict: result.verdict,
-      delivery: result.delivery,
-    });
+    const answer = await params.generate(task);
+    let item: EvalSuiteItem;
+
+    if (task.kind === 'comparison') {
+      const generated: GeneratedMathAnswer =
+        answer.kind === 'comparison'
+          ? { claimedAnswer: answer.claimedAnswer, explanation: answer.explanation }
+          : { claimedAnswer: null, explanation: '' };
+      const r = evaluateMathCandidate({ ...common, task, generated });
+      const expected = trueRelation(task.left, task.right);
+      const correct = r.claimedAnswer === expected;
+      item = {
+        kind: 'comparison',
+        label: `${frac(task.left)} vs ${frac(task.right)}`,
+        expected,
+        claimed: r.claimedAnswer,
+        correct,
+        verdict: r.verdict,
+        delivery: r.delivery,
+      };
+    } else {
+      const generated: GeneratedEquivalenceAnswer =
+        answer.kind === 'equivalence'
+          ? { claimedEquivalent: answer.claimedEquivalent, explanation: answer.explanation }
+          : { claimedEquivalent: null, explanation: '' };
+      const r = evaluateEquivalenceCandidate({ ...common, task, generated });
+      const expected = areEquivalent(task.left, task.right);
+      const correct = r.claimedEquivalent === expected;
+      item = {
+        kind: 'equivalence',
+        label: `${frac(task.left)} = ${frac(task.right)}?`,
+        expected: String(expected),
+        claimed: r.claimedEquivalent === null ? null : String(r.claimedEquivalent),
+        correct,
+        verdict: r.verdict,
+        delivery: r.delivery,
+      };
+    }
+
+    byVerdict[item.verdict] += 1;
+    byDelivery[item.delivery] += 1;
+    bySkill[item.kind].total += 1;
+    if (item.correct) bySkill[item.kind].correct += 1;
+    items.push(item);
   }
 
   const total = items.length;
@@ -131,6 +283,7 @@ export async function runMathEvalSuite(params: RunEvalSuiteParams): Promise<Eval
     accuracy: total === 0 ? 0 : correct / total,
     byVerdict,
     byDelivery,
+    bySkill,
     incorrect,
     incorrectContained,
     containmentHeld: incorrectContained === incorrect,

@@ -4,14 +4,13 @@ import {
   evaluateMathCandidate,
   parseGeneratedMathAnswer,
   buildComparisonPrompt,
-  runMathEvalSuite,
-  DEFAULT_MATH_EVAL_SUITE,
+  runEvalSuite,
+  DEFAULT_EVAL_SUITE,
   type Fraction,
-  type GeneratedMathAnswer,
-  type MathEvalTask,
 } from '@potenova/content';
 import { readAuth, requireActorType, assertRegion } from '../auth';
 import { now, type Deps } from '../deps';
+import { providerSuiteRunner } from '../ai-eval-run';
 
 /**
  * AI candidate-evaluation surface (AI-003; ADR-0005/0006).
@@ -124,19 +123,13 @@ export function registerAiEval(app: Hono, deps: Deps): void {
       processingRegion: provider.region,
     });
 
-    let tokenUnits = 0;
-    const generate = async (task: MathEvalTask): Promise<GeneratedMathAnswer> => {
-      const gen = await provider.generate({ ...buildComparisonPrompt(task), temperature: 0 });
-      tokenUnits += gen.units;
-      return parseGeneratedMathAnswer(gen.text);
-    };
-
-    const report = await runMathEvalSuite({
-      tasks: DEFAULT_MATH_EVAL_SUITE,
+    const runner = providerSuiteRunner(provider);
+    const report = await runEvalSuite({
+      tasks: DEFAULT_EVAL_SUITE,
       generatorId: deps.ai.candidateModelId,
       validatorId: VALIDATOR_ID,
       validatorVersion: VALIDATOR_VERSION,
-      generate,
+      generate: runner.generate,
       now,
     });
 
@@ -145,7 +138,7 @@ export function registerAiEval(app: Hono, deps: Deps): void {
       deliveredToChild: false,
       model: provider.id,
       processingRegion: provider.region,
-      tokenUnits,
+      tokenUnits: runner.getTokens(),
       report,
     });
   });
