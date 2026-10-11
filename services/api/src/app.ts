@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { serveStatic } from '@hono/node-server/serve-static';
 import { DOMAIN_MODULES } from './modules';
 import { buildDeps, type BuildDepsOptions, type Deps } from './deps';
 import { onError } from './errors';
@@ -6,6 +7,15 @@ import { registerFamilies } from './routes/families';
 import { registerLearning } from './routes/learning';
 import { registerCommerce } from './routes/commerce';
 import { registerOps } from './routes/ops';
+
+export interface CreateAppOptions extends BuildDepsOptions {
+  /**
+   * If set, serve the built web app (apps/web/dist) from this root for any GET
+   * not matched by an API route — so one service hosts both the UI and the API
+   * on a single origin (no CORS). Left unset in dev/tests; set in the container.
+   */
+  readonly webRoot?: string;
+}
 
 /**
  * Potenova API service (Stage 2 Step 2; ADR-0018).
@@ -18,7 +28,7 @@ import { registerOps } from './routes/ops';
  * derived). No real model is called here — that arrives with the AI provider
  * (Stage 2 Step 3). Runs on synthetic data only.
  */
-export function createApp(opts: BuildDepsOptions = {}): Hono {
+export function createApp(opts: CreateAppOptions = {}): Hono {
   const deps: Deps = buildDeps(opts);
   const app = new Hono();
   app.onError(onError);
@@ -38,6 +48,11 @@ export function createApp(opts: BuildDepsOptions = {}): Hono {
   registerLearning(app, deps);
   registerCommerce(app, deps);
   registerOps(app, deps);
+
+  // Serve the built web UI from the same origin (after API routes, so they win).
+  if (opts.webRoot) {
+    app.get('*', serveStatic({ root: opts.webRoot }));
+  }
   return app;
 }
 

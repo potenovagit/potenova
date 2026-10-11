@@ -7,7 +7,7 @@ import { createApp } from './app';
  * POTENOVA_DB_DIR (a local PGlite dir in dev; the managed Postgres connection in
  * prod via ADR-0017). Nothing child-facing calls a real model yet.
  */
-const app = createApp();
+const app = createApp({ webRoot: process.env.POTENOVA_WEB_ROOT });
 const config = loadConfig(process.env);
 const port = Number(process.env.PORT ?? 8080);
 

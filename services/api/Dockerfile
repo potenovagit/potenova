@@ -21,6 +21,11 @@ COPY services ./services
 COPY apps ./apps
 RUN npm ci
 
+# Build the web UI pointed at the same origin ('' API base) so this one service
+# serves both the API and the app with no CORS (POTENOVA_WEB_ROOT, below).
+RUN VITE_API_BASE="" npm run build --workspace @potenova/web
+ENV POTENOVA_WEB_ROOT=apps/web/dist
+
 EXPOSE 8080
 USER node
 CMD ["npx", "tsx", "--tsconfig", "tsconfig.dev.json", "services/api/src/server.ts"]
