@@ -89,6 +89,26 @@ model/region availability changes):
   in-region LLM+speech+OCR. The choice is low-regret: reversible behind the gateway and validated
   by the ER-16 PoC.
 
+## Implementation note — Canada East residency PoC (2026-10-11)
+
+First hands-on confirmation of the Azure residency finding above, on Potenova's own subscription:
+
+- Provisioned an Azure OpenAI resource (`oai-potenova-digitery`) in **Canada East**.
+- Confirmed from the deployable-SKU list that **only `gpt-4o` and `gpt-4.1-mini` support the
+  Regional `Standard` SKU in Canada East**; the current flagship `gpt-5.x` / `gpt-6.x` models are
+  **GlobalStandard-only** there — i.e. not residency-admissible under the inference-in-Canada
+  reading. This narrows the ER-16 model shortlist to regionally-deployable models, or a
+  Data-Zone / second-provider / self-hosted path if a stronger in-region model is required.
+- Deployed `gpt-4.1-mini` (Regional `Standard`) and verified a live completion. The deployment is
+  **not wired to any child-facing path** — it is the residency PoC and a target for gateway
+  integration on **synthetic data only**.
+- Prerequisite learned: **trial subscriptions carry zero Azure OpenAI quota**; pay-as-you-go (or
+  EA) is required even to deploy a model.
+
+Still open for ER-16 before G2: the modified-abuse-monitoring / no-retention exemption,
+Microsoft's written in-region + no-training confirmation, and the quality/safety evaluation that
+fixes the final model(s).
+
 ## Compliance / verification
 
 Routing fail-closed behaviour is tested now (`ai-gateway-policy.test.ts`: unapproved,
