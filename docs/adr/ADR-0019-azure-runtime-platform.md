@@ -1,8 +1,12 @@
 # ADR-0019 — Azure runtime platform for the API (compute, data, secrets)
 
-- **Status:** Proposed (implementation decision, reversible) — 2026-10-10.
-  Recommendation pending the owner's Azure subscription; the IaC is authored and
-  validated against the live subscription before this moves to Accepted.
+- **Status:** Accepted (implementation decision, reversible) — 2026-10-11.
+  Validated by a working `staging` deploy on the owner's subscription: API on
+  Azure Container Apps (Canada Central) serving over managed TLS, backed by
+  Azure Database for PostgreSQL Flexible Server (Canada Central), image built in
+  GitHub Actions and pulled from ACR. Verified end to end — consent fence →
+  evidence ingest → derived dashboard — reading and writing the managed Postgres.
+  Remaining: codify the imperative provisioning as Bicep IaC (ADR-0013).
 - **Date:** 2026-10-10
 - **Deciders:** Operations / Security (owner: Cristian Miron)
 - **Requirement IDs:** OPS-003 (staged deploy, kill switches, rollback), SEC-002
@@ -62,10 +66,11 @@ API processes synthetic data and still enforces every edge non-negotiable.
 - Residency holds end-to-end (compute, data, logs, backup all Canadian).
 - Portability preserved: a plain OCI container + standard PostgreSQL move to AKS or
   another cloud if scale/compliance later demands (ADR-0013 reversal trigger).
-- **Owner actions required before Accepted:** create the Azure tenant/subscription
-  (segregated per ADR-0013), confirm the Canada Central/East region pair, and
-  provide billing. Then the Bicep is authored, `az`-validated, and deployed behind
-  approval gates. Cost envelope is an owner decision, not fixed here.
+- **Owner actions (done):** Azure subscription created (Free Trial), Canada
+  Central/East region pair confirmed, resources provisioned imperatively via the
+  Azure CLI. **Remaining:** codify as Bicep behind approval gates; move the DB
+  onto a private network and swap ACR admin creds for a federated service
+  principal at hardening. Cost envelope is an owner decision, not fixed here.
 
 ## Compliance / verification
 
