@@ -53,10 +53,19 @@ password, or pass `-p pgAdminPassword=...` on the command line. `appEnv` stays
 `staging` until the G2 gate — the app permits real child data only when it is
 exactly `prod`.
 
+## Done
+
+- **CI/CD**: the `deploy-api` workflow builds, pushes, and rolls out the image,
+  authenticating via GitHub OIDC federated to a service principal — no stored
+  credentials.
+- **Registry auth**: ACR admin is disabled. GitHub pushes with the SP (AcrPush);
+  the Container App pulls with its system-assigned managed identity (AcrPull).
+  On a fresh deploy the AcrPull role is assigned after the app's identity exists,
+  so the first revision may retry its pull for a minute before it succeeds.
+
 ## Not yet in code (hardening follow-ups, ADR-0019)
 
 - Private networking for PostgreSQL (replacing the public "allow Azure services"
   rule).
-- A federated service principal for registry auth (replacing ACR admin creds).
 - Real authentication in front of the app; a custom domain.
-- An automated deploy step wired into CI behind an approval gate.
+- An approval gate (GitHub environment) on the deploy workflow.

@@ -71,9 +71,14 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
     name: 'Basic'
   }
   properties: {
-    adminUserEnabled: true
+    // Admin disabled: GitHub pushes via a federated service principal (AcrPush),
+    // the Container App pulls via its managed identity (AcrPull, below).
+    adminUserEnabled: false
   }
 }
+
+// AcrPull role definition id (built-in).
+var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 
 resource pg 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-preview' = {
   name: pgServerName
@@ -138,6 +143,9 @@ var databaseUrl = 'postgresql://${pgAdminUser}:${pgAdminPassword}@${pg.propertie
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: containerAppName
   location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     managedEnvironmentId: managedEnv.id
     configuration: {
@@ -149,15 +157,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       registries: [
         {
           server: acr.properties.loginServer
-          username: acr.name
-          passwordSecretRef: 'acr-password'
+          identity: 'system'
         }
       ]
       secrets: [
-        {
-          name: 'acr-password'
-          value: acr.listCredentials().passwords[0].value
-        }
         {
           name: 'db-url'
           value: databaseUrl
@@ -207,6 +210,17 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
     pgDatabase
     pgFirewallAzure
   ]
+}
+
+// Let the app's managed identity pull images from the registry.
+resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(acr.id, containerApp.id, 'AcrPull')
+  scope: acr
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleId)
+    principalId: containerApp.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
 }
 
 output apiUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
