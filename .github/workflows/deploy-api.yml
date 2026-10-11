@@ -1,45 +1,63 @@
 name: deploy-api
 
-# Builds the API container image and pushes it to Azure Container Registry.
-# Manually triggered (workflow_dispatch). The Free Trial subscription blocks
-# server-side ACR Tasks builds, so the image is built here on the GitHub runner
-# and pushed — the CI/CD build path ADR-0013 calls for. Deploying the image to
-# the running service is a separate, gated step.
+# Builds the API image, pushes it to Azure Container Registry, and rolls it out
+# to the Container App — all in one run (ADR-0013 CI/CD). Authentication is
+# passwordless via GitHub OIDC federated with an Azure service principal, so no
+# registry or Azure credentials are stored as secrets.
 #
-# Required repository secrets (Settings -> Secrets and variables -> Actions):
-#   ACR_LOGIN_SERVER  e.g. acrpotenovadigitery.azurecr.io
-#   ACR_USERNAME      ACR admin username
-#   ACR_PASSWORD      ACR admin password
+# Required repository secrets (the SP's identifiers — not passwords):
+#   AZURE_CLIENT_ID        app (client) id of the federated service principal
+#   AZURE_TENANT_ID        Entra tenant id
+#   AZURE_SUBSCRIPTION_ID  subscription id
+# The SP needs AcrPush on the registry and a role that can update the
+# Container App (e.g. Contributor on the resource group). See infra/azure/README.
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Image tag to publish
-        default: v1
+        description: Image tag to build and deploy
+        default: v4
 
 permissions:
+  id-token: write
   contents: read
 
+env:
+  ACR_NAME: acrpotenovadigitery
+  ACR_LOGIN_SERVER: acrpotenovadigitery.azurecr.io
+  RESOURCE_GROUP: rg-potenova-dev
+  CONTAINER_APP: ca-potenova-api
+  IMAGE: potenova-api
+
 jobs:
-  build-push:
+  build-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Log in to Azure Container Registry
-        uses: docker/login-action@v3
+      - name: Azure login (OIDC, no stored secret)
+        uses: azure/login@v2
         with:
-          registry: ${{ secrets.ACR_LOGIN_SERVER }}
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Registry login
+        run: az acr login --name "$ACR_NAME"
 
       - name: Build and push image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: services/api/Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.ACR_LOGIN_SERVER }}/potenova-api:${{ github.event.inputs.tag }}
-            ${{ secrets.ACR_LOGIN_SERVER }}/potenova-api:${{ github.sha }}
+        run: |
+          TAG="${{ github.event.inputs.tag }}"
+          docker build -f services/api/Dockerfile \
+            -t "$ACR_LOGIN_SERVER/$IMAGE:$TAG" \
+            -t "$ACR_LOGIN_SERVER/$IMAGE:${{ github.sha }}" .
+          docker push "$ACR_LOGIN_SERVER/$IMAGE:$TAG"
+          docker push "$ACR_LOGIN_SERVER/$IMAGE:${{ github.sha }}"
+
+      - name: Deploy to Container App
+        run: |
+          az containerapp update \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$ACR_LOGIN_SERVER/$IMAGE:${{ github.event.inputs.tag }}"
