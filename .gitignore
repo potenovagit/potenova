@@ -19,5 +19,8 @@ dist/
 **/.data/
 *.pgdata
 
+# Bicep parameter file with real secrets (keep main.sample.bicepparam only)
+infra/azure/main.bicepparam
+
 # generated evidence runs (keep structure + README, ignore large run artifacts)
 evidence/**/run-*/
