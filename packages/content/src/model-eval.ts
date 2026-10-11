@@ -117,6 +117,23 @@ export function evaluateMathCandidate(params: MathEvalParams): MathEvalResult {
 }
 
 /**
+ * The prompt pair used to ask a model for a fraction comparison. Kept here so the
+ * single-task route and the evaluation suite ask the model identically, and so the
+ * expected JSON shape stays in lock-step with `parseGeneratedMathAnswer`.
+ */
+export function buildComparisonPrompt(task: MathEvalTask): { system: string; prompt: string } {
+  return {
+    system:
+      'You are a grade-school math checker. Compare the LEFT fraction to the RIGHT fraction. ' +
+      'Respond with ONLY compact JSON: {"answer":"lt"|"eq"|"gt","explanation":"<one sentence>"} ' +
+      'where the answer is LEFT relative to RIGHT (lt = LEFT is smaller, gt = LEFT is larger, eq = equal).',
+    prompt:
+      `LEFT = ${task.left.numerator}/${task.left.denominator}, ` +
+      `RIGHT = ${task.right.numerator}/${task.right.denominator}.`,
+  };
+}
+
+/**
  * Parse a model's structured reply to a fraction-comparison prompt.
  *
  * Expects JSON `{ "answer": "lt"|"eq"|"gt", "explanation": "..." }`, tolerating

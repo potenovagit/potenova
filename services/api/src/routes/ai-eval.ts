@@ -1,6 +1,15 @@
 import type { Hono } from 'hono';
 import { DomainError } from '@potenova/contracts';
-import { evaluateMathCandidate, parseGeneratedMathAnswer, type Fraction } from '@potenova/content';
+import {
+  evaluateMathCandidate,
+  parseGeneratedMathAnswer,
+  buildComparisonPrompt,
+  runMathEvalSuite,
+  DEFAULT_MATH_EVAL_SUITE,
+  type Fraction,
+  type GeneratedMathAnswer,
+  type MathEvalTask,
+} from '@potenova/content';
 import { readAuth, requireActorType, assertRegion } from '../auth';
 import { now, type Deps } from '../deps';
 
@@ -70,15 +79,7 @@ export function registerAiEval(app: Hono, deps: Deps): void {
       right: readFraction(body.right, DEFAULT_TASK.right),
     };
 
-    const system =
-      'You are a grade-school math checker. Compare the LEFT fraction to the RIGHT fraction. ' +
-      'Respond with ONLY compact JSON: {"answer":"lt"|"eq"|"gt","explanation":"<one sentence>"} ' +
-      'where the answer is LEFT relative to RIGHT (lt = LEFT is smaller, gt = LEFT is larger, eq = equal).';
-    const prompt =
-      `LEFT = ${task.left.numerator}/${task.left.denominator}, ` +
-      `RIGHT = ${task.right.numerator}/${task.right.denominator}.`;
-
-    const gen = await provider.generate({ system, prompt, temperature: 0 });
+    const gen = await provider.generate({ ...buildComparisonPrompt(task), temperature: 0 });
     const generated = parseGeneratedMathAnswer(gen.text);
 
     const result = evaluateMathCandidate({
@@ -104,6 +105,48 @@ export function registerAiEval(app: Hono, deps: Deps): void {
       reasonCodes: result.reasonCodes,
       delivery: result.delivery,
       tokenUnits: gen.units,
+    });
+  });
+
+  // Run the full synthetic evaluation suite against the candidate and return a
+  // scored, evidence-ready report (ER-16 quality/safety evaluation).
+  app.post('/operator/model-eval/suite', async (c) => {
+    const a = readAuth(c, deps.config.primaryRegion);
+    requireActorType(a, 'operator');
+    assertRegion(a);
+
+    const provider = deps.ai.provider;
+    if (!provider || !deps.ai.candidateModelId) {
+      throw new DomainError('DEPENDENCY_UNAVAILABLE', 'no AI provider configured for evaluation');
+    }
+    deps.ai.gateway.routeForEvaluation(deps.ai.candidateModelId, {
+      synthetic: true,
+      processingRegion: provider.region,
+    });
+
+    let tokenUnits = 0;
+    const generate = async (task: MathEvalTask): Promise<GeneratedMathAnswer> => {
+      const gen = await provider.generate({ ...buildComparisonPrompt(task), temperature: 0 });
+      tokenUnits += gen.units;
+      return parseGeneratedMathAnswer(gen.text);
+    };
+
+    const report = await runMathEvalSuite({
+      tasks: DEFAULT_MATH_EVAL_SUITE,
+      generatorId: deps.ai.candidateModelId,
+      validatorId: VALIDATOR_ID,
+      validatorVersion: VALIDATOR_VERSION,
+      generate,
+      now,
+    });
+
+    return c.json({
+      synthetic: true,
+      deliveredToChild: false,
+      model: provider.id,
+      processingRegion: provider.region,
+      tokenUnits,
+      report,
     });
   });
 }

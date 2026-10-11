@@ -77,4 +77,17 @@ describe('POST /operator/model-eval', () => {
     );
     expect(res.status).toBe(451);
   });
+
+  it('runs the suite and reports accuracy with every wrong answer contained', async () => {
+    // Always-"gt" stub: correct only on the gt tasks, wrong (and blocked) elsewhere.
+    const app = appWith(new StubGenerativeProvider('{"answer":"gt","explanation":"gt"}'));
+    const res = await app.request('/operator/model-eval/suite', post(operator, {}));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.deliveredToChild).toBe(false);
+    expect(body.report.total).toBeGreaterThan(0);
+    expect(body.report.incorrectContained).toBe(body.report.incorrect);
+    expect(body.report.containmentHeld).toBe(true);
+    expect(body.report.byDelivery.DELIVER).toBe(body.report.correct);
+  });
 });
