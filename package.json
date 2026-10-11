@@ -22,9 +22,10 @@
     "trace:evidence": "tsx packages/requirement-trace/src/cli.ts --csv spec/requirements.csv --out evidence/WP-00/requirement-trace.json",
     "demo:persist": "tsx packages/persistence/demo/persist-demo.ts",
     "build:web": "npm run build --workspace @potenova/web",
+    "build:api": "npm run build --workspace @potenova/api",
     "dev:api": "npm run dev --workspace @potenova/api",
     "dev:web": "npm run dev --workspace @potenova/web",
-    "ci": "npm run format:check && npm run typecheck && npm run test && npm run trace && npm run build:web"
+    "ci": "npm run format:check && npm run typecheck && npm run test && npm run trace && npm run build:web && npm run build:api"
   },
   "devDependencies": {
     "@types/node": "22.10.2",

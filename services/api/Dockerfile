@@ -4,29 +4,29 @@
 # config). Config (APP_ENV, PRIMARY_REGION, DR_REGION, DATABASE_URL, PORT) is
 # injected at runtime by the platform, never baked in.
 #
-# The API is executed with tsx, which resolves the workspace packages from
-# source via tsconfig.dev.json's path map. The codebase uses extensionless ESM
-# imports, which plain `node` cannot resolve on the emitted JS; tsx resolves
-# them. Producing a bundled single-file artifact runnable by plain node is a
-# later production-hardening step.
+# The API is bundled to a single ESM file with esbuild (workspace packages
+# inlined; pg/pglite/drizzle/hono/jose kept external) so it runs on plain `node`.
+# Dev dependencies (tsc, vite, tsx, esbuild) are used only to build, then pruned
+# — the runtime image carries no build toolchain.
 
 FROM node:22-bookworm-slim
 WORKDIR /app
-# NODE_ENV is intentionally NOT set to production: the build and runtime need
-# devDependencies (tsc, vite, tsx). App config comes from APP_ENV, not NODE_ENV.
 
-# Manifests first for layer caching.
-COPY package.json package-lock.json tsconfig.base.json tsconfig.json tsconfig.dev.json ./
+COPY package.json package-lock.json tsconfig.base.json tsconfig.json ./
 COPY packages ./packages
 COPY services ./services
 COPY apps ./apps
+
 RUN npm ci
-
-# Build the web UI pointed at the same origin ('' API base) so this one service
-# serves both the API and the app with no CORS (POTENOVA_WEB_ROOT, below).
+# Compile workspace packages (so the bundler resolves @potenova/* from dist),
+# build the web UI (same-origin API base), then bundle the API to dist/server.mjs.
+RUN npm run typecheck
 RUN VITE_API_BASE="" npm run build --workspace @potenova/web
-ENV POTENOVA_WEB_ROOT=apps/web/dist
+RUN npm run build --workspace @potenova/api
+# Drop devDependencies (tsc, vite, tsx, esbuild, types) from the runtime image.
+RUN npm prune --omit=dev
 
+ENV POTENOVA_WEB_ROOT=apps/web/dist
 EXPOSE 8080
 USER node
-CMD ["npx", "tsx", "--tsconfig", "tsconfig.dev.json", "services/api/src/server.ts"]
+CMD ["node", "services/api/dist/server.mjs"]

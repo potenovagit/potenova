@@ -6,7 +6,11 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "dev": "tsx watch --tsconfig ../../tsconfig.dev.json src/dev.ts"
+    "dev": "tsx watch --tsconfig ../../tsconfig.dev.json src/dev.ts",
+    "build": "esbuild src/server.ts --bundle --platform=node --format=esm --outfile=dist/server.mjs --external:pg --external:@electric-sql/pglite --external:drizzle-orm --external:hono --external:@hono/node-server --external:jose"
+  },
+  "devDependencies": {
+    "esbuild": "0.23.1"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.4",
