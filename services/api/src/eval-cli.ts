@@ -102,6 +102,7 @@ async function main(): Promise<void> {
       `  model:      ${artifact.model} (${artifact.processingRegion})`,
       `  accuracy:   ${(report.accuracy * 100).toFixed(1)}% (${report.correct}/${report.total})`,
       `  contained:  ${report.incorrectContained}/${report.incorrect} incorrect`,
+      `  latency:    P50 ${report.latency.p50Ms}ms · P95 ${report.latency.p95Ms}ms · P99 ${report.latency.p99Ms}ms`,
       `  tokens:     ${tokenUnits}`,
       `  evidence:   ${dir}/`,
     ].join('\n'),

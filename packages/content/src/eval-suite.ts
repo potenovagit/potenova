@@ -41,11 +41,26 @@ export interface EvalSuiteItem {
   readonly correct: boolean;
   readonly verdict: ValidationVerdict;
   readonly delivery: DeliveryOutcomeKind;
+  /** End-to-end generation latency for this task, milliseconds. */
+  readonly latencyMs: number;
 }
 
 export interface SkillTally {
   readonly total: number;
   readonly correct: number;
+}
+
+/**
+ * End-to-end generation latency over the run (text modality), ms (ER-05/NFR-11).
+ * Reported, not pass/failed — the P95 threshold is an owner decision (ER-05).
+ */
+export interface LatencySummary {
+  readonly count: number;
+  readonly meanMs: number;
+  readonly p50Ms: number;
+  readonly p95Ms: number;
+  readonly p99Ms: number;
+  readonly maxMs: number;
 }
 
 export interface EvalSuiteReport {
@@ -62,6 +77,7 @@ export interface EvalSuiteReport {
   readonly incorrectContained: number;
   /** True iff no incorrect answer was delivered — the gate property. */
   readonly containmentHeld: boolean;
+  readonly latency: LatencySummary;
   readonly generatedAt: string;
   readonly items: readonly EvalSuiteItem[];
 }
@@ -74,9 +90,30 @@ export interface RunEvalSuiteParams {
   readonly generate: SuiteGenerate;
   readonly fallbackAssetId?: string | null;
   readonly now?: () => string;
+  /** Monotonic clock in ms; injected in tests for determinism. Default performance.now. */
+  readonly clock?: () => number;
 }
 
 const frac = (f: Fraction): string => `${f.numerator}/${f.denominator}`;
+
+const round1 = (n: number): number => Math.round(n * 10) / 10;
+
+/** Nearest-rank percentiles + mean/max over a set of latencies (ms). */
+function summarizeLatency(durations: readonly number[]): LatencySummary {
+  const n = durations.length;
+  if (n === 0) return { count: 0, meanMs: 0, p50Ms: 0, p95Ms: 0, p99Ms: 0, maxMs: 0 };
+  const sorted = [...durations].sort((a, b) => a - b);
+  const at = (p: number): number => sorted[Math.min(n - 1, Math.ceil((p / 100) * n) - 1)];
+  const mean = durations.reduce((a, b) => a + b, 0) / n;
+  return {
+    count: n,
+    meanMs: round1(mean),
+    p50Ms: round1(at(50)),
+    p95Ms: round1(at(95)),
+    p99Ms: round1(at(99)),
+    maxMs: round1(sorted[n - 1]),
+  };
+}
 
 /**
  * A fixed synthetic suite across both skills. Comparison spans lt/gt/eq including
@@ -221,9 +258,14 @@ export async function runEvalSuite(params: RunEvalSuiteParams): Promise<EvalSuit
     comparison: { total: 0, correct: 0 },
     equivalence: { total: 0, correct: 0 },
   };
+  const clock = params.clock ?? (() => performance.now());
+  const durations: number[] = [];
 
   for (const task of params.tasks) {
+    const started = clock();
     const answer = await params.generate(task);
+    const latencyMs = Math.max(0, clock() - started);
+    durations.push(latencyMs);
     let item: EvalSuiteItem;
 
     if (task.kind === 'comparison') {
@@ -242,6 +284,7 @@ export async function runEvalSuite(params: RunEvalSuiteParams): Promise<EvalSuit
         correct,
         verdict: r.verdict,
         delivery: r.delivery,
+        latencyMs,
       };
     } else {
       const generated: GeneratedEquivalenceAnswer =
@@ -259,6 +302,7 @@ export async function runEvalSuite(params: RunEvalSuiteParams): Promise<EvalSuit
         correct,
         verdict: r.verdict,
         delivery: r.delivery,
+        latencyMs,
       };
     }
 
@@ -287,6 +331,7 @@ export async function runEvalSuite(params: RunEvalSuiteParams): Promise<EvalSuit
     incorrect,
     incorrectContained,
     containmentHeld: incorrectContained === incorrect,
+    latency: summarizeLatency(durations),
     generatedAt: at(),
     items,
   };

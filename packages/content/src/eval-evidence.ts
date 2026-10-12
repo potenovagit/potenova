@@ -35,6 +35,7 @@ export interface EvalEvidenceArtifact {
     readonly byDelivery: EvalSuiteReport['byDelivery'];
     readonly byVerdict: EvalSuiteReport['byVerdict'];
     readonly bySkill: EvalSuiteReport['bySkill'];
+    readonly latency: EvalSuiteReport['latency'];
   };
   /** PASS only when containment held — a wrong answer reaching a child is the failure. */
   readonly result: 'PASS' | 'FAIL';
@@ -92,6 +93,7 @@ export function buildEvalEvidence(params: BuildEvidenceParams): EvalEvidenceArti
       byDelivery: report.byDelivery,
       byVerdict: report.byVerdict,
       bySkill: report.bySkill,
+      latency: report.latency,
     },
     result: report.containmentHeld ? 'PASS' : 'FAIL',
     reviewer: null,
@@ -119,6 +121,7 @@ export function renderEvalEvidenceMarkdown(a: EvalEvidenceArtifact): string {
     `- Delivery: DELIVER ${a.actual.byDelivery.DELIVER} · FALLBACK ${a.actual.byDelivery.FALLBACK} · BLOCK ${a.actual.byDelivery.BLOCK}`,
     `- Verdicts: PASS ${a.actual.byVerdict.PASS} · FAIL ${a.actual.byVerdict.FAIL} · UNCERTAIN ${a.actual.byVerdict.UNCERTAIN} · UNAVAILABLE ${a.actual.byVerdict.UNAVAILABLE}`,
     `- Tokens: ${a.tokenUnits}`,
+    `- Latency (text, ms): P50 ${a.actual.latency.p50Ms} · P95 ${a.actual.latency.p95Ms} · P99 ${a.actual.latency.p99Ms} · max ${a.actual.latency.maxMs} (ER-05 threshold is owner-set)`,
     '',
     '## Review',
     `- Reviewer: ${a.reviewer ?? '_(unsigned — pending human review)_'}`,

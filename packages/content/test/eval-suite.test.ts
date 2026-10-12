@@ -55,6 +55,28 @@ describe('runEvalSuite', () => {
     expect(r.byDelivery.DELIVER).toBe(r.correct);
   });
 
+  it('summarizes end-to-end latency with an injected clock (ER-05/NFR-11)', async () => {
+    // Monotonic clock advancing 5ms per read → a deterministic 5ms per task
+    // (each task reads the clock once before and once after generate).
+    let t = 0;
+    const clock = (): number => {
+      const v = t;
+      t += 5;
+      return v;
+    };
+    const r = await runEvalSuite({
+      ...base,
+      tasks: DEFAULT_EVAL_SUITE,
+      generate: perfect,
+      clock,
+    });
+    expect(r.latency.count).toBe(r.total);
+    expect(r.latency.p50Ms).toBe(5);
+    expect(r.latency.p95Ms).toBe(5);
+    expect(r.latency.maxMs).toBe(5);
+    expect(r.items.every((i) => i.latencyMs === 5)).toBe(true);
+  });
+
   it('counts an unparseable answer as incorrect and contained (UNCERTAIN)', async () => {
     const r = await runEvalSuite({
       ...base,
