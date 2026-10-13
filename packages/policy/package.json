@@ -12,6 +12,7 @@
     }
   },
   "dependencies": {
-    "@potenova/contracts": "*"
+    "@potenova/contracts": "*",
+    "@potenova/identity": "*"
   }
 }
