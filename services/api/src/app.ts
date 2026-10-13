@@ -9,6 +9,7 @@ import { registerLearning } from './routes/learning';
 import { registerCommerce } from './routes/commerce';
 import { registerOps } from './routes/ops';
 import { registerAiEval } from './routes/ai-eval';
+import { registerSessions } from './routes/sessions';
 
 export interface CreateAppOptions extends BuildDepsOptions {
   /**
@@ -54,6 +55,7 @@ export function createApp(opts: CreateAppOptions = {}): Hono {
   registerCommerce(app, deps);
   registerOps(app, deps);
   registerAiEval(app, deps);
+  registerSessions(app, deps);
 
   // Serve the built web UI from the same origin (after API routes, so they win).
   if (opts.webRoot) {

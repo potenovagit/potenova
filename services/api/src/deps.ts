@@ -16,6 +16,15 @@ import {
   AzureOpenAiChatProvider,
   type GenerativeProvider,
 } from '@potenova/ai-gateway';
+import {
+  proposedRetentionPolicy,
+  usageCapsPolicyFrom,
+  emptyUsageCapsPolicy,
+  type RetentionPolicy,
+  type UsageCapsPolicy,
+} from '@potenova/policy';
+import { emptyEscalationMatrix, type EscalationMatrix } from '@potenova/safety';
+import { DRAFT_MASTERY_POLICY, type MasteryPolicy } from '@potenova/learner-state';
 
 /** Everything the routes need: config + the shared database and its repositories. */
 export interface Deps {
@@ -30,6 +39,54 @@ export interface Deps {
   readonly session: SessionRepository;
   /** AI candidate-evaluation plumbing (synthetic data only; AI-003). */
   readonly ai: AiDeps;
+  /** EVIDENCE-REQUIRED policy bundle enforced at the edge (ER-03/07/08/09). */
+  readonly policies: PolicyDeps;
+}
+
+/**
+ * The fail-closed policy bundle. In prod every policy must be approved or the
+ * enforcing route refuses; in non-prod, configured-but-unapproved values let the
+ * synthetic slice run. Usage caps are illustrative in non-prod and EMPTY in prod
+ * (so prod fails closed until the child-safety expert's approved caps are loaded).
+ */
+export interface PolicyDeps {
+  readonly isProd: boolean;
+  readonly retention: RetentionPolicy;
+  readonly usageCaps: UsageCapsPolicy;
+  readonly escalation: EscalationMatrix;
+  readonly mastery: MasteryPolicy;
+}
+
+/** Illustrative caps for non-prod only — clearly NOT approved (ER-09 pending). */
+function stagingUsageCaps(): UsageCapsPolicy {
+  const setBy = 'staging-illustrative (NOT approved — ER-09 pending)';
+  return usageCapsPolicyFrom({
+    primary: {
+      caps: { maxContinuousMinutes: 20, maxDailyMinutes: 40, breakAfterMinutes: 10 },
+      setBy,
+      approved: false,
+    },
+    junior: {
+      caps: { maxContinuousMinutes: 30, maxDailyMinutes: 60, breakAfterMinutes: 10 },
+      setBy,
+      approved: false,
+    },
+    intermediate: {
+      caps: { maxContinuousMinutes: 40, maxDailyMinutes: 80, breakAfterMinutes: 10 },
+      setBy,
+      approved: false,
+    },
+  });
+}
+
+function buildPolicies(isProd: boolean): PolicyDeps {
+  return {
+    isProd,
+    retention: proposedRetentionPolicy(),
+    usageCaps: isProd ? emptyUsageCapsPolicy() : stagingUsageCaps(),
+    escalation: emptyEscalationMatrix(),
+    mastery: DRAFT_MASTERY_POLICY,
+  };
 }
 
 /**
@@ -112,6 +169,7 @@ export function buildDeps(opts: BuildDepsOptions = {}): Deps {
     operator: new OperatorRepository(db),
     session: new SessionRepository(db),
     ai: buildAiDeps(env, opts.aiProvider),
+    policies: buildPolicies(config.environment === 'prod'),
   };
 }
 

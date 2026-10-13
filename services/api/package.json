@@ -24,6 +24,8 @@
     "@potenova/identity": "*",
     "@potenova/learner-state": "*",
     "@potenova/parent": "*",
+    "@potenova/policy": "*",
+    "@potenova/safety": "*",
     "@potenova/persistence": "*",
     "hono": "4.6.14",
     "jose": "5.9.6"

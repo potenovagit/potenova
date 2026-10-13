@@ -12,6 +12,8 @@
     { "path": "../../packages/content" },
     { "path": "../../packages/identity" },
     { "path": "../../packages/learner-state" },
+    { "path": "../../packages/policy" },
+    { "path": "../../packages/safety" },
     { "path": "../../packages/diagnostic" },
     { "path": "../../packages/parent" },
     { "path": "../../packages/billing" },
