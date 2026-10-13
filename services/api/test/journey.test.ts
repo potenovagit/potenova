@@ -56,10 +56,41 @@ describe('G1 journey (capstone)', () => {
       updatedAt: '2026-10-13T00:00:00Z',
     });
 
+    // Diagnostic selects what to probe first — it picks the foundational,
+    // low-confidence fractions skill we then coach.
+    const probeRes = await app.request(
+      '/diagnostic/next-probe',
+      json(child, {
+        learnerGrade: 5,
+        candidates: [
+          {
+            skillId: 'fractions-comparison',
+            grade: 5,
+            priorConfidence: 0.1,
+            priorState: 'UNASSESSED',
+            representationsCovered: 0,
+            foundationalFanout: 4,
+            valid: true,
+          },
+          {
+            skillId: 'counting',
+            grade: 1,
+            priorConfidence: 0.95,
+            priorState: 'RETAINED',
+            representationsCovered: 3,
+            foundationalFanout: 1,
+            valid: true,
+          },
+        ],
+      }),
+    );
+    const { probe } = await probeRes.json();
+    expect(probe.skillId).toBe('fractions-comparison');
+
     // Start a session — the full guard stack must pass.
     const startRes = await app.request(
       '/learners/kid1/sessions',
-      json(child, { subject: 'math', requestedMinutes: 20, ageBand: 'junior' }),
+      json(child, { subject: 'math', requestedMinutes: 20 }),
     );
     expect(startRes.status).toBe(201);
     const { session } = await startRes.json();
@@ -109,5 +140,14 @@ describe('G1 journey (capstone)', () => {
     );
     expect(dashRes.status).toBe(200);
     expect(JSON.stringify(await dashRes.json())).toContain('fractions-comparison');
+
+    // Session-scoped parent report: observed this session + derived mastery.
+    const reportRes = await app.request(`/learners/kid1/sessions/${sessionId}/report`, json(owner));
+    expect(reportRes.status).toBe(200);
+    const report = await reportRes.json();
+    expect(report.observed.attempts).toBe(3);
+    expect(report.observed.correct).toBe(3);
+    expect(report.observed.bySkill[0].skillId).toBe('fractions-comparison');
+    expect(report.mastery[0].projection.dimensions.independent).toBe(true);
   });
 });

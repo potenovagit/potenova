@@ -10,6 +10,7 @@ import {
 import { learningActive, type EntitlementState } from '@potenova/billing';
 import { decideUsage } from '@potenova/policy';
 import { AGE_BANDS, type AgeBand } from '@potenova/identity';
+import { projectShadow, assertMasteryPolicyApproved } from '@potenova/learner-state';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import { type Deps } from '../deps';
 
@@ -134,5 +135,65 @@ export function registerSessions(app: Hono, deps: Deps): void {
     const { session: ended, masteryChanged } = endEarly(current);
     await deps.session.saveTutoringSession({ ...row, state: ended.state });
     return c.json({ session: ended, masteryChanged });
+  });
+
+  // Session-scoped parent report (guardian): what the child did in THIS session.
+  // Observed evidence (this session) is kept separate from derived mastery (the
+  // cumulative, re-computed state) — never a predicted grade (PAR-001/002/003).
+  app.get('/learners/:alias/sessions/:sessionId/report', async (c) => {
+    const a = authed(c);
+    requireActorType(a, 'guardian');
+    const alias = c.req.param('alias');
+    const sessionId = c.req.param('sessionId');
+
+    const row = await deps.session.getTutoringSession(sessionId);
+    if (!row || row.learnerAlias !== alias) throw new DomainError('NOT_FOUND', 'session not found');
+
+    // Tenant isolation: the guardian must belong to the learner's family (TM-45).
+    const learner = await deps.identity.getLearner(alias);
+    if (!learner || learner.familyId !== a.actor.familyAlias) {
+      throw new DomainError('FORBIDDEN_ROLE', 'not authorized for this learner');
+    }
+
+    const prefix = `${sessionId}:`;
+    const sessionEvidence = (await deps.evidence.listEvidenceForLearner(alias)).filter((e) =>
+      e.eventId.startsWith(prefix),
+    );
+    const skillIds = [...new Set(sessionEvidence.map((e) => e.skillId))];
+
+    const observedBySkill = skillIds.map((skillId) => {
+      const items = sessionEvidence.filter((e) => e.skillId === skillId);
+      return {
+        skillId,
+        attempts: items.length,
+        correct: items.filter((e) => e.correct).length,
+        representations: [...new Set(items.map((e) => e.representation))],
+      };
+    });
+
+    // Derived mastery (cumulative) — ER-03 gated, never hand-set.
+    assertMasteryPolicyApproved(deps.policies.mastery, deps.policies.isProd);
+    const mastery = [];
+    for (const skillId of skillIds) {
+      const events = await deps.evidence.listEvidence(alias, skillId);
+      const corrections = await deps.evidence.listCorrections(events.map((e) => e.eventId));
+      mastery.push({
+        skillId,
+        projection: projectShadow(alias, skillId, events, corrections, deps.policies.mastery),
+      });
+    }
+
+    return c.json({
+      sessionId,
+      subject: row.subject,
+      state: row.state,
+      observed: {
+        attempts: sessionEvidence.length,
+        correct: sessionEvidence.filter((e) => e.correct).length,
+        bySkill: observedBySkill,
+      },
+      mastery,
+      note: 'Observed = this session only; mastery = cumulative derived state, not a predicted grade.',
+    });
   });
 }

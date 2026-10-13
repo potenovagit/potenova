@@ -75,6 +75,28 @@ export class EvidenceRepository {
     }));
   }
 
+  /** All evidence for a learner across skills (for session-scoped reports). */
+  async listEvidenceForLearner(learnerAlias: string): Promise<MasteryEvidence[]> {
+    const db = await this.h.ready();
+    const rows = await db
+      .select()
+      .from(masteryEvidence)
+      .where(eq(masteryEvidence.learnerAlias, learnerAlias));
+    return rows.map((r) => ({
+      eventId: r.eventId,
+      learnerAlias: r.learnerAlias,
+      skillId: r.skillId,
+      mode: r.mode as EvidenceMode,
+      assistanceBand: r.assistanceBand as AssistanceBand,
+      correct: r.correct,
+      representation: r.representation,
+      recognitionConfidence: r.recognitionConfidence,
+      observedAt: r.observedAt,
+      curriculumReleaseId: r.curriculumReleaseId,
+      schemaVersion: r.schemaVersion,
+    }));
+  }
+
   async listCorrections(targetEventIds: readonly string[]): Promise<EvidenceCorrectionRecord[]> {
     if (targetEventIds.length === 0) return [];
     const db = await this.h.ready();

@@ -146,3 +146,38 @@ describe('coaching turn', () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe('session report', () => {
+  it('a guardian gets observed-this-session + derived mastery', async () => {
+    const { app, sessionId } = await activeSession();
+    await app.request(
+      `/learners/kid1/sessions/${sessionId}/answer`,
+      json(child, { clientSubmissionId: 'r1', taskId: 'frac-cmp-1', answer: 'gt' }),
+    );
+    const res = await app.request(`/learners/kid1/sessions/${sessionId}/report`, json(owner));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.observed.attempts).toBe(1);
+    expect(body.observed.correct).toBe(1);
+    expect(body.observed.bySkill[0].skillId).toBe('fractions-comparison');
+    expect(body.mastery[0].skillId).toBe('fractions-comparison');
+  });
+
+  it('403s for a non-guardian actor', async () => {
+    const { app, sessionId } = await activeSession();
+    const res = await app.request(`/learners/kid1/sessions/${sessionId}/report`, json(child));
+    expect(res.status).toBe(403);
+  });
+
+  it('403s for a guardian of a different family (tenant isolation)', async () => {
+    const { app, sessionId } = await activeSession();
+    const other = {
+      'x-actor-type': 'guardian',
+      'x-actor-alias': 'g2',
+      'x-guardian-role': 'owner',
+      'x-family-alias': 'fam2',
+    };
+    const res = await app.request(`/learners/kid1/sessions/${sessionId}/report`, json(other));
+    expect(res.status).toBe(403);
+  });
+});
