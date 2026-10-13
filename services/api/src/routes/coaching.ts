@@ -29,6 +29,7 @@ import {
   assessStall,
   sessionBudget,
   hintFor,
+  buildSessionSummary,
   type Subject,
 } from '../adaptive';
 
@@ -399,11 +400,16 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       recognitionConfidence: 1,
     });
 
-    // Reaching the item ceiling with this turn ends the session cleanly (COMPLETED).
+    // Reaching the item ceiling with this turn ends the session cleanly (COMPLETED)
+    // and returns the session-scoped summary inline as a wrap-up.
     const postBudget = await sessionBudget(deps, alias, sessionId);
     if (postBudget.itemCeilingReached) {
       await endSessionComplete(deps, sessionId);
-      return c.json({ graded: true, ...graded, budget: postBudget, sessionComplete: true }, 201);
+      const summary = await buildSessionSummary(deps, alias, sessionId);
+      return c.json(
+        { graded: true, ...graded, budget: postBudget, sessionComplete: true, summary },
+        201,
+      );
     }
 
     // Self-driving loop: the planner recommends the next objective off the freshly
@@ -512,6 +518,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     const postBudget = await sessionBudget(deps, alias, sessionId);
     if (postBudget.itemCeilingReached) {
       await endSessionComplete(deps, sessionId);
+      const summary = await buildSessionSummary(deps, alias, sessionId);
       return c.json(
         {
           graded: true,
@@ -520,6 +527,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
           ...graded,
           budget: postBudget,
           sessionComplete: true,
+          summary,
         },
         201,
       );

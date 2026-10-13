@@ -10,10 +10,9 @@ import {
 import { learningActive, type EntitlementState } from '@potenova/billing';
 import { decideUsage } from '@potenova/policy';
 import { AGE_BANDS, type AgeBand } from '@potenova/identity';
-import { projectShadow, assertMasteryPolicyApproved } from '@potenova/learner-state';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import { type Deps } from '../deps';
-import { buildReportRationale, computeNext, sessionBudget } from '../adaptive';
+import { buildSessionSummary, computeNext, sessionBudget } from '../adaptive';
 
 /**
  * Child-facing tutoring sessions (the vertical slice start).
@@ -143,7 +142,9 @@ export function registerSessions(app: Hono, deps: Deps): void {
     };
     const { session: ended, masteryChanged } = endEarly(current);
     await deps.session.saveTutoringSession({ ...row, state: ended.state });
-    return c.json({ session: ended, masteryChanged });
+    // Wrap-up: the session-scoped summary (neutral — AT-26, no mastery loss).
+    const summary = await buildSessionSummary(deps, row.learnerAlias, row.sessionId);
+    return c.json({ session: ended, masteryChanged, summary });
   });
 
   // Session-scoped parent report (guardian): what the child did in THIS session.
@@ -164,55 +165,6 @@ export function registerSessions(app: Hono, deps: Deps): void {
       throw new DomainError('FORBIDDEN_ROLE', 'not authorized for this learner');
     }
 
-    const prefix = `${sessionId}:`;
-    const sessionEvidence = (await deps.evidence.listEvidenceForLearner(alias)).filter((e) =>
-      e.eventId.startsWith(prefix),
-    );
-    const skillIds = [...new Set(sessionEvidence.map((e) => e.skillId))];
-
-    const observedBySkill = skillIds.map((skillId) => {
-      const items = sessionEvidence.filter((e) => e.skillId === skillId);
-      return {
-        skillId,
-        attempts: items.length,
-        correct: items.filter((e) => e.correct).length,
-        representations: [...new Set(items.map((e) => e.representation))],
-      };
-    });
-
-    // Derived mastery (cumulative) — ER-03 gated, never hand-set.
-    assertMasteryPolicyApproved(deps.policies.mastery, deps.policies.isProd);
-    const mastery = [];
-    for (const skillId of skillIds) {
-      const events = await deps.evidence.listEvidence(alias, skillId);
-      const corrections = await deps.evidence.listCorrections(events.map((e) => e.eventId));
-      mastery.push({
-        skillId,
-        projection: projectShadow(alias, skillId, events, corrections, deps.policies.mastery),
-      });
-    }
-
-    // "Why this skill": the planner's audit reason code for each worked skill,
-    // plus what it would coach next — rendered in plain language for the guardian.
-    const rationale = await buildReportRationale(
-      deps,
-      alias,
-      skillIds,
-      row.subject as 'math' | 'english',
-    );
-
-    return c.json({
-      sessionId,
-      subject: row.subject,
-      state: row.state,
-      observed: {
-        attempts: sessionEvidence.length,
-        correct: sessionEvidence.filter((e) => e.correct).length,
-        bySkill: observedBySkill,
-      },
-      mastery,
-      rationale,
-      note: 'Observed = this session only; mastery = cumulative derived state, not a predicted grade. Rationale explains the engine’s skill choices; it is not a prediction or diagnosis.',
-    });
+    return c.json(await buildSessionSummary(deps, alias, sessionId));
   });
 }

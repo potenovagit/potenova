@@ -88,11 +88,16 @@ describe('session item budget (ER-09)', () => {
       expect(body.sessionComplete).toBeUndefined();
     }
 
-    // The 8th graded item reaches the ceiling → session ends cleanly.
+    // The 8th graded item reaches the ceiling → session ends cleanly, with the
+    // session-scoped summary returned inline as a wrap-up.
     const eighth = await (await answer(app, sessionId, 't8')).json();
     expect(eighth.sessionComplete).toBe(true);
     expect(eighth.budget.itemsDelivered).toBe(8);
     expect(eighth.budget.itemCeilingReached).toBe(true);
+    expect(eighth.summary.state).toBe('COMPLETED');
+    expect(eighth.summary.observed.attempts).toBe(8);
+    expect(eighth.summary.observed.bySkill[0].skillId).toBe('SK-FR-compare');
+    expect(eighth.summary.rationale.nextObjective.explanation.length).toBeGreaterThan(0);
 
     // The session is COMPLETED — a 9th answer is refused.
     const ninth = await answer(app, sessionId, 't9');

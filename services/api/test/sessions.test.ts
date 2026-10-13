@@ -192,5 +192,8 @@ describe('POST /learners/:alias/sessions/:id/end', () => {
     const body = await res.json();
     expect(body.session.state).toBe('ENDED_EARLY');
     expect(body.masteryChanged).toBe(false);
+    // A wrap-up summary accompanies the end (empty observed when nothing was done).
+    expect(body.summary.state).toBe('ENDED_EARLY');
+    expect(body.summary.observed.attempts).toBe(0);
   });
 });
