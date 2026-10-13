@@ -2,7 +2,13 @@ import { projectShadow, type SkillProjection } from '@potenova/learner-state';
 import {
   buildFractionsDraftGraph,
   buildEnglishDraftGraph,
+  hintsForSkill,
+  FRACTION_MISCONCEPTIONS,
+  FRACTION_STRATEGIES,
   CurriculumGraph,
+  type MisconceptionDefinition,
+  type InstructionalStrategy,
+  type SkillHint,
 } from '@potenova/curriculum';
 import {
   selectNextObjective,
@@ -38,6 +44,9 @@ interface SubjectPlan {
   readonly defaultTask: Readonly<Record<string, string>>;
   /** Strategy-change representation ladder (first = most concrete). */
   readonly remediationReps: readonly string[];
+  /** Misconception KB for the hint ladder (empty when a subject has none yet). */
+  readonly misconceptions: readonly MisconceptionDefinition[];
+  readonly strategies: readonly InstructionalStrategy[];
 }
 
 const SUBJECTS: Record<Subject, SubjectPlan> = {
@@ -46,12 +55,16 @@ const SUBJECTS: Record<Subject, SubjectPlan> = {
     coachableSkillIds: ['SK-FR-equiv', 'SK-FR-compare'],
     defaultTask: { 'SK-FR-compare': 'frac-cmp-1', 'SK-FR-equiv': 'frac-eq-1' },
     remediationReps: ['area-model', 'number-line', 'set', 'symbolic'],
+    misconceptions: FRACTION_MISCONCEPTIONS,
+    strategies: FRACTION_STRATEGIES,
   },
   english: {
     buildGraph: buildEnglishDraftGraph,
     coachableSkillIds: ['SK-EN-plural-base', 'SK-EN-plural-sibilant'],
     defaultTask: { 'SK-EN-plural-base': 'eng-base-1', 'SK-EN-plural-sibilant': 'eng-sib-1' },
     remediationReps: ['spoken', 'picture', 'written'],
+    misconceptions: [], // no misconception KB authored for English yet
+    strategies: [],
   },
 };
 
@@ -198,6 +211,40 @@ export async function buildReportRationale(
       plannerPolicyVersion: DRAFT_PLANNER_POLICY.policyVersion,
     },
     plannerPolicyVersion: DRAFT_PLANNER_POLICY.policyVersion,
+  };
+}
+
+/**
+ * The first rung of the coaching ladder: a targeted, AUTHORED hint for an early
+ * wrong answer, resolved from the subject's misconception → remediation-strategy
+ * KB. The stall-driven strategy change (assessStall) is the next rung. Returns
+ * null when the KB has no misconception for the skill. Pure.
+ */
+export interface Hint {
+  skillId: string;
+  level: number;
+  misconceptionId: string;
+  strategyId: string;
+  /** Child-facing, actionable instruction (the strategy intent). */
+  message: string;
+  representations: readonly string[];
+  /** The full ordered ladder of authored hints for the skill. */
+  ladder: readonly SkillHint[];
+}
+
+export function hintFor(subject: Subject, skillId: string): Hint | null {
+  const plan = SUBJECTS[subject];
+  const ladder = hintsForSkill(skillId, plan.misconceptions, plan.strategies);
+  const top = ladder[0];
+  if (!top) return null;
+  return {
+    skillId,
+    level: 1,
+    misconceptionId: top.misconceptionId,
+    strategyId: top.strategyId,
+    message: top.intent,
+    representations: top.representations,
+    ladder,
   };
 }
 

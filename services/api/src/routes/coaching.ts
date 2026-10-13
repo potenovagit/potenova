@@ -23,7 +23,14 @@ import { decideEscalation, handleDisclosure, type EscalationInput } from '@poten
 import { completeSession, type SessionState } from '@potenova/planner';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import { now, type Deps } from '../deps';
-import { projectSkill, computeNext, assessStall, sessionBudget, type Subject } from '../adaptive';
+import {
+  projectSkill,
+  computeNext,
+  assessStall,
+  sessionBudget,
+  hintFor,
+  type Subject,
+} from '../adaptive';
 
 /**
  * Coaching turn (the heart of the vertical slice).
@@ -402,12 +409,21 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     // Self-driving loop: the planner recommends the next objective off the freshly
     // re-derived mastery (advancement once the prerequisite is independent).
     const next = await computeNext(deps, alias, subject);
-    // On repeated wrong answers, change strategy (AT-08) instead of re-serving.
+    // Coaching ladder on a wrong answer: a targeted HINT first (early wrong), then
+    // a stall-driven strategy change (AT-08) once the learner keeps missing.
     const coaching = graded.correct
       ? null
       : await assessStall(deps, alias, sessionId, task.skillId, subject);
+    const hint = !graded.correct && !coaching ? hintFor(subject, task.skillId) : null;
     return c.json(
-      { graded: true, ...graded, next, budget: postBudget, ...(coaching ? { coaching } : {}) },
+      {
+        graded: true,
+        ...graded,
+        next,
+        budget: postBudget,
+        ...(coaching ? { coaching } : {}),
+        ...(hint ? { hint } : {}),
+      },
       201,
     );
   });
@@ -513,6 +529,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     const coaching = graded.correct
       ? null
       : await assessStall(deps, alias, sessionId, task.skillId, subject);
+    const hint = !graded.correct && !coaching ? hintFor(subject, task.skillId) : null;
     return c.json(
       {
         graded: true,
@@ -522,6 +539,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
         next,
         budget: postBudget,
         ...(coaching ? { coaching } : {}),
+        ...(hint ? { hint } : {}),
       },
       201,
     );
