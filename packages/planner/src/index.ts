@@ -3,6 +3,7 @@ export * from './session';
 export * from './priority';
 export * from './adaptive-selection';
 export * from './stall';
+export * from './session-budget';
 export * from './strategy';
 export * from './retention';
 export * from './mastery-guard';

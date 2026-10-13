@@ -20,9 +20,10 @@ import {
 } from '@potenova/learner-state';
 import { CONSENT_PURPOSES } from '@potenova/identity';
 import { decideEscalation, handleDisclosure, type EscalationInput } from '@potenova/safety';
+import { completeSession, type SessionState } from '@potenova/planner';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import { now, type Deps } from '../deps';
-import { projectSkill, computeNext, assessStall, type Subject } from '../adaptive';
+import { projectSkill, computeNext, assessStall, sessionBudget, type Subject } from '../adaptive';
 
 /**
  * Coaching turn (the heart of the vertical slice).
@@ -211,6 +212,19 @@ async function requireActiveSession(
   return { subject: row.subject as Subject };
 }
 
+/** End a session cleanly as COMPLETED (e.g. the ER-09 item budget was reached). */
+async function endSessionComplete(deps: Deps, sessionId: string): Promise<void> {
+  const row = await deps.session.getTutoringSession(sessionId);
+  if (!row || row.state !== 'ACTIVE') return;
+  const completed = completeSession({
+    sessionId: row.sessionId,
+    learnerAlias: row.learnerAlias,
+    subject: row.subject as Subject,
+    state: row.state as SessionState,
+  });
+  await deps.session.saveTutoringSession({ ...row, state: completed.state });
+}
+
 /** Grade an answer, write immutable evidence (ER-03 gated) and re-derive mastery. */
 async function gradeAndRecord(
   deps: Deps,
@@ -274,8 +288,11 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     const a = authed(c);
     requireActorType(a, 'child');
     const alias = c.req.param('alias');
-    const { subject } = await requireActiveSession(deps, c.req.param('sessionId'), alias);
-    return c.json(await computeNext(deps, alias, subject));
+    const sessionId = c.req.param('sessionId');
+    const { subject } = await requireActiveSession(deps, sessionId, alias);
+    const next = await computeNext(deps, alias, subject);
+    const budget = await sessionBudget(deps, alias, sessionId);
+    return c.json({ ...next, budget });
   });
 
   // Deliver a validated task — content gate on the delivery path (AI-001).
@@ -283,11 +300,14 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     const a = authed(c);
     requireActorType(a, 'child');
     const alias = c.req.param('alias');
-    await requireActiveSession(deps, c.req.param('sessionId'), alias);
+    const { subject } = await requireActiveSession(deps, c.req.param('sessionId'), alias);
 
     const taskId = c.req.query('taskId') ?? 'frac-cmp-1';
     const task = TASK_BANK[taskId];
     if (!task) throw new DomainError('NOT_FOUND', 'task not found');
+    if (task.subject !== subject) {
+      throw new DomainError('POLICY_BLOCKED', 'task is not for this session subject');
+    }
 
     // Validate the answer key with the INDEPENDENT oracle before delivery. The
     // validator is the subject's deterministic oracle, independent of the author.
@@ -344,8 +364,22 @@ export function registerCoaching(app: Hono, deps: Deps): void {
 
     const task = TASK_BANK[b.taskId ?? ''];
     if (!task) throw new DomainError('NOT_FOUND', 'task not found');
+    if (task.subject !== subject) {
+      throw new DomainError('POLICY_BLOCKED', 'task is not for this session subject');
+    }
     if (typeof b.answer !== 'string' || !tokenValid(task, b.answer)) {
       throw new DomainError('POLICY_BLOCKED', 'answer is not valid for this task');
+    }
+
+    // Session item budget (ER-09): never grade past the item ceiling, and don't
+    // introduce a new concept beyond the per-session cap (learner-protection).
+    const preBudget = await sessionBudget(deps, alias, sessionId, task.skillId);
+    if (preBudget.itemCeilingReached) {
+      await endSessionComplete(deps, sessionId);
+      return c.json({ graded: false, action: 'SESSION_COMPLETE', budget: preBudget });
+    }
+    if (preBudget.newConceptBlocked) {
+      return c.json({ graded: false, action: 'CONCEPT_BUDGET_REACHED', budget: preBudget });
     }
 
     const graded = await gradeAndRecord(deps, {
@@ -358,6 +392,13 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       recognitionConfidence: 1,
     });
 
+    // Reaching the item ceiling with this turn ends the session cleanly (COMPLETED).
+    const postBudget = await sessionBudget(deps, alias, sessionId);
+    if (postBudget.itemCeilingReached) {
+      await endSessionComplete(deps, sessionId);
+      return c.json({ graded: true, ...graded, budget: postBudget, sessionComplete: true }, 201);
+    }
+
     // Self-driving loop: the planner recommends the next objective off the freshly
     // re-derived mastery (advancement once the prerequisite is independent).
     const next = await computeNext(deps, alias, subject);
@@ -365,7 +406,10 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     const coaching = graded.correct
       ? null
       : await assessStall(deps, alias, sessionId, task.skillId, subject);
-    return c.json({ graded: true, ...graded, next, ...(coaching ? { coaching } : {}) }, 201);
+    return c.json(
+      { graded: true, ...graded, next, budget: postBudget, ...(coaching ? { coaching } : {}) },
+      201,
+    );
   });
 
   // Multimodal answer (voice / vision). Requires the per-modality consent grant,
@@ -414,6 +458,9 @@ export function registerCoaching(app: Hono, deps: Deps): void {
 
     const task = TASK_BANK[b.taskId ?? ''];
     if (!task) throw new DomainError('NOT_FOUND', 'task not found');
+    if (task.subject !== subject) {
+      throw new DomainError('POLICY_BLOCKED', 'task is not for this session subject');
+    }
 
     // AT-28: below the trust floor, or an unreadable token, ask for clarification —
     // never grade.
@@ -426,6 +473,16 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       });
     }
 
+    // Session item budget (ER-09).
+    const preBudget = await sessionBudget(deps, alias, sessionId, task.skillId);
+    if (preBudget.itemCeilingReached) {
+      await endSessionComplete(deps, sessionId);
+      return c.json({ graded: false, action: 'SESSION_COMPLETE', budget: preBudget });
+    }
+    if (preBudget.newConceptBlocked) {
+      return c.json({ graded: false, action: 'CONCEPT_BUDGET_REACHED', budget: preBudget });
+    }
+
     const graded = await gradeAndRecord(deps, {
       alias,
       sessionId,
@@ -435,6 +492,22 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       representation: representationOf(task, undefined),
       recognitionConfidence: rec.confidence,
     });
+
+    const postBudget = await sessionBudget(deps, alias, sessionId);
+    if (postBudget.itemCeilingReached) {
+      await endSessionComplete(deps, sessionId);
+      return c.json(
+        {
+          graded: true,
+          modality: b.modality,
+          recognitionConfidence: rec.confidence,
+          ...graded,
+          budget: postBudget,
+          sessionComplete: true,
+        },
+        201,
+      );
+    }
 
     const next = await computeNext(deps, alias, subject);
     const coaching = graded.correct
@@ -447,6 +520,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
         recognitionConfidence: rec.confidence,
         ...graded,
         next,
+        budget: postBudget,
         ...(coaching ? { coaching } : {}),
       },
       201,

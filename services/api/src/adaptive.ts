@@ -8,8 +8,10 @@ import {
   selectNextObjective,
   explainReasonCode,
   stallStatus,
+  sessionBudgetStatus,
   DRAFT_PLANNER_POLICY,
   type SessionReasonCode,
+  type SessionBudgetStatus,
 } from '@potenova/planner';
 import type { Deps } from './deps';
 
@@ -56,6 +58,28 @@ const SUBJECTS: Record<Subject, SubjectPlan> = {
 /** The coachable skills for a subject (for the coaching task bank / routes). */
 export function coachableSkillsFor(subject: Subject): readonly string[] {
   return SUBJECTS[subject].coachableSkillIds;
+}
+
+/**
+ * Session item budget (ER-09): count this session's graded items and distinct
+ * skills from the immutable ledger, then evaluate against the DRAFT policy. The
+ * candidate skill (if given) is checked for the new-concept ceiling. Read-only.
+ */
+export async function sessionBudget(
+  deps: Deps,
+  alias: string,
+  sessionId: string,
+  candidateSkillId?: string,
+): Promise<SessionBudgetStatus> {
+  const prefix = `${sessionId}:`;
+  const inSession = (await deps.evidence.listEvidenceForLearner(alias)).filter((e) =>
+    e.eventId.startsWith(prefix),
+  );
+  const distinctSkillsThisSession = [...new Set(inSession.map((e) => e.skillId))];
+  return sessionBudgetStatus(
+    { itemsDelivered: inSession.length, distinctSkillsThisSession, candidateSkillId },
+    DRAFT_PLANNER_POLICY,
+  );
 }
 
 /** Re-derive a skill's mastery from the immutable ledger (never hand-set). */

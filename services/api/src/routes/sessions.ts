@@ -13,7 +13,7 @@ import { AGE_BANDS, type AgeBand } from '@potenova/identity';
 import { projectShadow, assertMasteryPolicyApproved } from '@potenova/learner-state';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import { type Deps } from '../deps';
-import { buildReportRationale, computeNext } from '../adaptive';
+import { buildReportRationale, computeNext, sessionBudget } from '../adaptive';
 
 /**
  * Child-facing tutoring sessions (the vertical slice start).
@@ -110,6 +110,8 @@ export function registerSessions(app: Hono, deps: Deps): void {
     // The first objective is PLANNER-selected (adaptive), not a fixed task — the
     // client opens the session straight onto next.defaultTaskId.
     const next = await computeNext(deps, alias, b.subject as 'math' | 'english');
+    // Session item budget (ER-09) the learner-protection ceiling for this session.
+    const budget = await sessionBudget(deps, alias, sessionId);
 
     return c.json(
       {
@@ -118,6 +120,7 @@ export function registerSessions(app: Hono, deps: Deps): void {
         breakAfterMinutes: usage.breakAfterMinutes,
         usage: { kind: usage.kind, reasonCodes: usage.reasonCodes },
         next,
+        budget,
       },
       201,
     );

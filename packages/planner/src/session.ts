@@ -98,6 +98,15 @@ export function activateSession(session: TutoringSession): TutoringSession {
   return move(session, 'ACTIVE');
 }
 
+/**
+ * Clean, non-neutral completion of a full session — e.g. the session item budget
+ * (ER-09 learner-protection) has been reached. Distinct from ENDED_EARLY (a
+ * child-initiated stop) and from the safety/incident halts.
+ */
+export function completeSession(session: TutoringSession): TutoringSession {
+  return move(session, 'COMPLETED');
+}
+
 /** AT-26: a child-initiated stop is neutral — no mastery change, no shaming. */
 export function endEarly(session: TutoringSession): {
   session: TutoringSession;
