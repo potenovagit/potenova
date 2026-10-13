@@ -38,12 +38,17 @@ export const DATA_CLASSES: readonly DataClass[] = [
 
 export type DeletionRule = 'purge' | 'tombstone' | 'anonymize';
 
+/** What `activeDays` counts from — creation of the record, or account closure. */
+export type RetentionBasis = 'from_creation' | 'from_account_closure';
+
 export interface RetentionRule {
-  /** Days kept in the active store before deletion is due. */
+  /** Days kept in the active store before deletion is due (counted from `basis`). */
   readonly activeDays: number;
   /** Days kept in backups before purge (NFR-17 restored-backup tombstone). */
   readonly backupDays: number;
   readonly deletion: DeletionRule;
+  /** When the active-retention clock starts. Defaults to 'from_creation'. */
+  readonly basis?: RetentionBasis;
 }
 
 export type RetentionPolicy = Readonly<Record<DataClass, PolicyValue<RetentionRule>>>;
