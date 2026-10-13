@@ -142,6 +142,26 @@ export async function reviewDueFor(deps: Deps, alias: string, skillId: string): 
   return Date.now() - Math.max(...times) > DRAFT_PLANNER_POLICY.retentionDecayWindowMs;
 }
 
+/** Projection states that count as "mastered" for session completion. */
+const MASTERED_STATES = new Set(['INDEPENDENT', 'RETAINED', 'TRANSFERABLE']);
+
+/**
+ * Has every coachable skill in the subject reached mastery (INDEPENDENT /
+ * RETAINED / TRANSFERABLE)? Used to complete a session cleanly when there is
+ * nothing left to coach. Read-only.
+ */
+export async function allCoachableMastered(
+  deps: Deps,
+  alias: string,
+  subject: Subject,
+): Promise<boolean> {
+  for (const skillId of SUBJECTS[subject].coachableSkillIds) {
+    const p = await projectSkill(deps, alias, skillId);
+    if (!MASTERED_STATES.has(p.state)) return false;
+  }
+  return true;
+}
+
 /**
  * A mastery snapshot of every coachable skill in a subject (for the planner),
  * including each skill's most recent trusted practice time for retention/review.

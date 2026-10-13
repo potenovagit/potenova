@@ -125,10 +125,14 @@ describe('adaptive planner + remediation', () => {
     expect(second.reasonCode).not.toBe('PREREQUISITE_REMEDIATION');
     expect(second.defaultTaskId).toBe('frac-cmp-1');
 
-    // 4. Coach comparison to independence (1/2 > 1/3 → gt).
+    // 4. Coach comparison to independence (1/2 > 1/3 → gt). With every coachable
+    // skill now mastered, the session completes cleanly with a wrap-up summary.
     const cmpResult = await coachToIndependent(app, sessionId, 'frac-cmp-1', 'gt', 'cmp');
     expect(cmpResult.skillId).toBe('SK-FR-compare');
     expect(cmpResult.projection.dimensions.independent).toBe(true);
+    expect(cmpResult.sessionComplete).toBe(true);
+    expect(cmpResult.completionReason).toBe('MASTERY_COMPLETE');
+    expect(cmpResult.summary.state).toBe('COMPLETED');
 
     // 5. The guardian report explains WHY each skill was chosen (plain language).
     const report = await (

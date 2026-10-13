@@ -92,6 +92,7 @@ describe('session item budget (ER-09)', () => {
     // session-scoped summary returned inline as a wrap-up.
     const eighth = await (await answer(app, sessionId, 't8')).json();
     expect(eighth.sessionComplete).toBe(true);
+    expect(eighth.completionReason).toBe('ITEM_BUDGET');
     expect(eighth.budget.itemsDelivered).toBe(8);
     expect(eighth.budget.itemCeilingReached).toBe(true);
     expect(eighth.summary.state).toBe('COMPLETED');

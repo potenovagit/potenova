@@ -33,6 +33,7 @@ import {
   hintFor,
   buildSessionSummary,
   reviewDueFor,
+  allCoachableMastered,
   type Subject,
 } from '../adaptive';
 
@@ -412,10 +413,15 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       assistanceBand: review ? 'A1' : 'A0',
     });
 
-    // Reaching the item ceiling with this turn ends the session cleanly (COMPLETED)
-    // and returns the session-scoped summary inline as a wrap-up.
+    // A session ends cleanly (COMPLETED) with a wrap-up summary when either the
+    // ER-09 item ceiling is reached OR every coachable skill is mastered.
     const postBudget = await sessionBudget(deps, alias, sessionId);
-    if (postBudget.itemCeilingReached) {
+    const completionReason = postBudget.itemCeilingReached
+      ? 'ITEM_BUDGET'
+      : (await allCoachableMastered(deps, alias, subject))
+        ? 'MASTERY_COMPLETE'
+        : null;
+    if (completionReason) {
       await endSessionComplete(deps, sessionId);
       const summary = await buildSessionSummary(deps, alias, sessionId);
       return c.json(
@@ -424,6 +430,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
           ...graded,
           budget: postBudget,
           sessionComplete: true,
+          completionReason,
           summary,
           ...(review ? { reviewed: true } : {}),
         },
@@ -539,7 +546,12 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     });
 
     const postBudget = await sessionBudget(deps, alias, sessionId);
-    if (postBudget.itemCeilingReached) {
+    const completionReason = postBudget.itemCeilingReached
+      ? 'ITEM_BUDGET'
+      : (await allCoachableMastered(deps, alias, subject))
+        ? 'MASTERY_COMPLETE'
+        : null;
+    if (completionReason) {
       await endSessionComplete(deps, sessionId);
       const summary = await buildSessionSummary(deps, alias, sessionId);
       return c.json(
@@ -550,6 +562,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
           ...graded,
           budget: postBudget,
           sessionComplete: true,
+          completionReason,
           summary,
           ...(review ? { reviewed: true } : {}),
         },
