@@ -17,24 +17,49 @@ export interface DashboardRow {
   readonly evidenceCount: number;
 }
 
-export interface ParentDashboard {
-  readonly learnerAlias: string;
+/** One subject's skills, so a guardian sees Math and English side by side. */
+export interface SubjectGroup {
+  readonly subject: string;
   readonly rows: readonly DashboardRow[];
 }
+
+export interface ParentDashboard {
+  readonly learnerAlias: string;
+  /** Flat view across all skills (kept for callers that don't group). */
+  readonly rows: readonly DashboardRow[];
+  /** Grouped by subject, subjects and rows in stable alphabetical order. */
+  readonly bySubject: readonly SubjectGroup[];
+}
+
+const toRow = (p: SkillProjection): DashboardRow => ({
+  skillId: p.skillId,
+  standing: classifyStanding(p),
+  confidence: p.confidence,
+  evidenceCount: p.evidenceCount,
+});
 
 export function buildDashboard(
   learnerAlias: string,
   projections: readonly SkillProjection[],
+  subjectOf: (skillId: string) => string = () => 'other',
 ): ParentDashboard {
-  const rows = projections.map(
-    (p): DashboardRow => ({
-      skillId: p.skillId,
-      standing: classifyStanding(p),
-      confidence: p.confidence,
-      evidenceCount: p.evidenceCount,
-    }),
-  );
-  return { learnerAlias, rows };
+  const rows = projections.map(toRow);
+
+  const groups = new Map<string, DashboardRow[]>();
+  for (const p of projections) {
+    const subject = subjectOf(p.skillId);
+    const bucket = groups.get(subject) ?? [];
+    bucket.push(toRow(p));
+    groups.set(subject, bucket);
+  }
+  const bySubject: SubjectGroup[] = [...groups.entries()]
+    .map(([subject, rs]) => ({
+      subject,
+      rows: [...rs].sort((a, b) => a.skillId.localeCompare(b.skillId)),
+    }))
+    .sort((a, b) => a.subject.localeCompare(b.subject));
+
+  return { learnerAlias, rows, bySubject };
 }
 
 export interface WhyThisToday {

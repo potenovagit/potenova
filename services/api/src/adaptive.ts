@@ -73,6 +73,19 @@ export function coachableSkillsFor(subject: Subject): readonly string[] {
   return SUBJECTS[subject].coachableSkillIds;
 }
 
+/** The subject a canonical skill belongs to (via its curriculum graph), or null. */
+export function subjectOfSkill(skillId: string): Subject | null {
+  for (const subject of Object.keys(SUBJECTS) as Subject[]) {
+    try {
+      SUBJECTS[subject].buildGraph().getSkill(skillId);
+      return subject;
+    } catch {
+      // not in this subject's graph — try the next
+    }
+  }
+  return null;
+}
+
 /**
  * Session item budget (ER-09): count this session's graded items and distinct
  * skills from the immutable ledger, then evaluate against the DRAFT policy. The

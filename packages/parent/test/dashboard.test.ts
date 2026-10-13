@@ -33,6 +33,21 @@ describe('parent dashboard (PAR-001/010/016)', () => {
     expect(Object.keys(d.rows[0]!)).toEqual(['skillId', 'standing', 'confidence', 'evidenceCount']);
   });
 
+  it('groups rows by subject when a resolver is given (Math and English side by side)', () => {
+    const d = buildDashboard(
+      'lnr',
+      [proj({ skillId: 'SK-FR-unit' }), proj({ skillId: 'SK-EN-plural-base' })],
+      (id) => (id.startsWith('SK-EN') ? 'english' : 'math'),
+    );
+    expect(d.bySubject.map((g) => g.subject)).toEqual(['english', 'math']);
+    expect(d.bySubject.find((g) => g.subject === 'math')!.rows[0]!.skillId).toBe('SK-FR-unit');
+    expect(d.bySubject.find((g) => g.subject === 'english')!.rows[0]!.skillId).toBe(
+      'SK-EN-plural-base',
+    );
+    // The flat view still carries every skill.
+    expect(d.rows).toHaveLength(2);
+  });
+
   it('PAR-016: "Why this today?" exposes a reason code only, no chain-of-thought', () => {
     const w = whyThisToday('PREREQUISITE_REMEDIATION');
     expect(w.reasonCode).toBe('PREREQUISITE_REMEDIATION');

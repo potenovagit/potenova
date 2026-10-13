@@ -14,6 +14,7 @@ import {
 } from '@potenova/domain-core';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import type { Deps } from '../deps';
+import { subjectOfSkill } from '../adaptive';
 
 /** Consent fence at the edge (PRIV-004; AT-01): learning processing needs an
  *  active child_learning grant for the family. */
@@ -68,13 +69,19 @@ export function registerLearning(app: Hono, deps: Deps): void {
     const a = authed(c);
     requireActorType(a, 'guardian');
     const alias = c.req.param('alias');
-    const skills = (c.req.query('skills') ?? '')
+    // An explicit skills list is honoured; otherwise show every skill the learner
+    // has worked, grouped by subject (Math and English side by side).
+    const requested = (c.req.query('skills') ?? '')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
+    const skills =
+      requested.length > 0
+        ? requested
+        : [...new Set((await deps.evidence.listEvidenceForLearner(alias)).map((e) => e.skillId))];
     const projections: SkillProjection[] = [];
     for (const skillId of skills) projections.push(await projectionFor(deps, alias, skillId));
-    return c.json(buildDashboard(alias, projections));
+    return c.json(buildDashboard(alias, projections, (id) => subjectOfSkill(id) ?? 'other'));
   });
 
   // Diagnostic next-probe selection (pure; returns a skill to probe, not content).
