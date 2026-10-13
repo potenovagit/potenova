@@ -1,7 +1,7 @@
 import type { Context, Hono } from 'hono';
 import { DomainError } from '@potenova/contracts';
 import { projectShadow, type MasteryEvidence, type SkillProjection } from '@potenova/learner-state';
-import { buildDashboard } from '@potenova/parent';
+import { buildDashboard, whyThisToday } from '@potenova/parent';
 import {
   selectNextProbe,
   DRAFT_DIAGNOSTIC_POLICY,
@@ -14,7 +14,7 @@ import {
 } from '@potenova/domain-core';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import type { Deps } from '../deps';
-import { subjectOfSkill } from '../adaptive';
+import { subjectOfSkill, computeNext, type Subject } from '../adaptive';
 
 /** Consent fence at the edge (PRIV-004; AT-01): learning processing needs an
  *  active child_learning grant for the family. */
@@ -81,7 +81,27 @@ export function registerLearning(app: Hono, deps: Deps): void {
         : [...new Set((await deps.evidence.listEvidenceForLearner(alias)).map((e) => e.skillId))];
     const projections: SkillProjection[] = [];
     for (const skillId of skills) projections.push(await projectionFor(deps, alias, skillId));
-    return c.json(buildDashboard(alias, projections, (id) => subjectOfSkill(id) ?? 'other'));
+    const base = buildDashboard(alias, projections, (id) => subjectOfSkill(id) ?? 'other');
+
+    // "Why this today?" per subject: the planner's current objective for that
+    // subject, with a plain-language reason. PAR-016 — reason code only, never
+    // raw internal chain-of-thought.
+    const bySubject = await Promise.all(
+      base.bySubject.map(async (g) => {
+        if (g.subject !== 'math' && g.subject !== 'english') return g;
+        const next = await computeNext(deps, alias, g.subject as Subject);
+        return {
+          ...g,
+          nextFocus: {
+            skillId: next.skillId,
+            reasonCode: next.reasonCode,
+            explanation: next.explanation,
+            exposesChainOfThought: whyThisToday(next.reasonCode).exposesChainOfThought,
+          },
+        };
+      }),
+    );
+    return c.json({ ...base, bySubject });
   });
 
   // Diagnostic next-probe selection (pure; returns a skill to probe, not content).

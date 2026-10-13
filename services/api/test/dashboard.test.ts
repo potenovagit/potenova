@@ -81,5 +81,14 @@ describe('parent dashboard grouped by subject', () => {
     expect(english.rows.map((r: { skillId: string }) => r.skillId)).toContain('SK-EN-plural-base');
     // Flat view still carries both skills.
     expect(dash.rows).toHaveLength(2);
+
+    // "Why this today?" per subject: the planner's current objective + reason.
+    for (const g of [math, english]) {
+      expect(g.nextFocus.skillId.length).toBeGreaterThan(0);
+      expect(g.nextFocus.reasonCode.length).toBeGreaterThan(0);
+      expect(g.nextFocus.explanation.length).toBeGreaterThan(0);
+      // PAR-016: never exposes raw internal chain-of-thought.
+      expect(g.nextFocus.exposesChainOfThought).toBe(false);
+    }
   });
 });
