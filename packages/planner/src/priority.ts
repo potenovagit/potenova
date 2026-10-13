@@ -57,6 +57,30 @@ export interface PrioritizedObjective {
   readonly suppressed: boolean;
 }
 
+/**
+ * Plain-language, parent-facing rationale for each audit reason code — so a
+ * guardian can see WHY the engine chose a skill, not an internal enum. Describes
+ * the engine's reasoning only; it never predicts a grade or diagnoses the child.
+ */
+const REASON_EXPLANATIONS: Record<SessionReasonCode, string> = {
+  SAFETY_LIMIT: 'Paused by a safety or session-time limit.',
+  PREREQUISITE_REMEDIATION:
+    'Shoring up a foundational skill this one builds on, before moving ahead.',
+  REVIEW_DUE: 'Revisiting an earlier skill to keep it fresh.',
+  LOW_CONFIDENCE_VERIFICATION:
+    'Gathering a bit more practice — there isn’t enough evidence yet to be sure of this skill.',
+  MASTERY_CHECK: 'Confirming solid, independent mastery before advancing.',
+  SCHOOL_ALIGNMENT: 'Matching a topic you flagged from class right now.',
+  TRANSFER_CHECK: 'Applying a known skill to a new kind of problem.',
+  ADVANCEMENT: 'Ready to progress to the next skill in the sequence.',
+  PARENT_PREFERENCE: 'Continuing general practice — nothing higher-priority is due.',
+};
+
+/** Parent-facing explanation for an audit reason code. */
+export function explainReasonCode(code: SessionReasonCode): string {
+  return REASON_EXPLANATIONS[code];
+}
+
 export function classifyObjective(o: ObjectiveSignal, policy: PlannerPolicy): PrioritizedObjective {
   if (o.safetyBlocked) {
     return { skillId: o.skillId, tier: 1, reasonCode: 'SAFETY_LIMIT', suppressed: true };

@@ -129,6 +129,23 @@ describe('adaptive planner + remediation', () => {
     const cmpResult = await coachToIndependent(app, sessionId, 'frac-cmp-1', 'gt', 'cmp');
     expect(cmpResult.skillId).toBe('SK-FR-compare');
     expect(cmpResult.projection.dimensions.independent).toBe(true);
+
+    // 5. The guardian report explains WHY each skill was chosen (plain language).
+    const report = await (
+      await app.request(`/learners/kid1/sessions/${sessionId}/report`, json(owner))
+    ).json();
+    const worked = report.rationale.bySkill.map((r: { skillId: string }) => r.skillId);
+    expect(worked).toContain('SK-FR-equiv');
+    expect(worked).toContain('SK-FR-compare');
+    for (const r of report.rationale.bySkill as Array<{
+      reasonCode: string;
+      explanation: string;
+    }>) {
+      expect(r.reasonCode).toBeTruthy();
+      expect(r.explanation.trim().length).toBeGreaterThan(0);
+    }
+    expect(report.rationale.nextObjective.explanation.trim().length).toBeGreaterThan(0);
+    expect(report.rationale.plannerPolicyVersion).toContain('DRAFT');
   });
 
   it('rides the next recommendation on each graded answer (self-driving loop)', async () => {

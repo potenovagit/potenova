@@ -11,18 +11,16 @@ import {
   type FractionRelation,
 } from '@potenova/content';
 import {
-  projectShadow,
   assertMasteryPolicyApproved,
   MIN_TRUSTED_RECOGNITION,
   type MasteryEvidence,
   type SkillProjection,
 } from '@potenova/learner-state';
-import { buildFractionsDraftGraph } from '@potenova/curriculum';
-import { selectNextObjective, DRAFT_PLANNER_POLICY } from '@potenova/planner';
 import { CONSENT_PURPOSES } from '@potenova/identity';
 import { decideEscalation, handleDisclosure, type EscalationInput } from '@potenova/safety';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import { now, type Deps } from '../deps';
+import { projectSkill, computeNext } from '../adaptive';
 
 /**
  * Coaching turn (the heart of the vertical slice).
@@ -47,8 +45,6 @@ import { now, type Deps } from '../deps';
 const RELEASE = 'REL-ONT-MATH-2020-draft';
 const COMPARE = 'SK-FR-compare';
 const EQUIV = 'SK-FR-equiv';
-/** The oracle-validatable skills the slice can actually coach (ordered). */
-export const COACHABLE_SKILLS = [EQUIV, COMPARE] as const;
 
 interface CompareTask {
   readonly skillId: typeof COMPARE;
@@ -85,11 +81,6 @@ const TASK_BANK: Readonly<Record<string, Task>> = {
   'frac-eq-1': eq(f(1, 2), f(2, 4)), // yes
   'frac-eq-2': eq(f(1, 2), f(1, 3)), // no
   'frac-eq-3': eq(f(2, 3), f(4, 6)), // yes
-};
-/** The task offered first when the planner selects a skill. */
-const DEFAULT_TASK: Readonly<Record<string, string>> = {
-  [COMPARE]: 'frac-cmp-1',
-  [EQUIV]: 'frac-eq-1',
 };
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
@@ -163,13 +154,6 @@ async function requireActiveSession(deps: Deps, sessionId: string, alias: string
   if (row.state !== 'ACTIVE') throw new DomainError('POLICY_BLOCKED', 'session is not active');
 }
 
-/** Re-derive a skill's mastery from the immutable ledger (never hand-set). */
-async function projectSkill(deps: Deps, alias: string, skillId: string): Promise<SkillProjection> {
-  const events = await deps.evidence.listEvidence(alias, skillId);
-  const corrections = await deps.evidence.listCorrections(events.map((e) => e.eventId));
-  return projectShadow(alias, skillId, events, corrections, deps.policies.mastery);
-}
-
 /** Grade an answer, write immutable evidence (ER-03 gated) and re-derive mastery. */
 async function gradeAndRecord(
   deps: Deps,
@@ -201,41 +185,6 @@ async function gradeAndRecord(
   await deps.evidence.appendEvidence(evidence);
   const projection = await projectSkill(deps, args.alias, args.task.skillId);
   return { correct, skillId: args.task.skillId, evidenceId: evidence.eventId, projection };
-}
-
-/** The adaptive next-objective recommendation returned to the client. */
-interface NextRecommendation {
-  skillId: string;
-  reasonCode: string;
-  blockedSkillId: string | null;
-  defaultTaskId: string | null;
-  plannerPolicyVersion: string;
-}
-
-/**
- * Ask the planner what to coach next: project each coachable skill's derived
- * mastery and run the graph-driven selector. Read-only — selection never sets
- * mastery. Shared by GET /next and the self-driving grade responses.
- */
-async function computeNext(deps: Deps, alias: string): Promise<NextRecommendation> {
-  const mastery: Record<string, { confidence: number; independent: boolean }> = {};
-  for (const skillId of COACHABLE_SKILLS) {
-    const p = await projectSkill(deps, alias, skillId);
-    mastery[skillId] = { confidence: p.confidence, independent: p.dimensions.independent };
-  }
-  const next = selectNextObjective({
-    graph: buildFractionsDraftGraph(),
-    coachableSkillIds: COACHABLE_SKILLS,
-    mastery,
-    policy: DRAFT_PLANNER_POLICY,
-  });
-  return {
-    skillId: next.targetSkillId,
-    reasonCode: next.reasonCode,
-    blockedSkillId: next.blockedSkillId,
-    defaultTaskId: DEFAULT_TASK[next.targetSkillId] ?? null,
-    plannerPolicyVersion: DRAFT_PLANNER_POLICY.policyVersion,
-  };
 }
 
 interface AnswerBody {

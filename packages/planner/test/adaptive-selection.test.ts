@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { buildFractionsDraftGraph } from '@potenova/curriculum';
-import { selectNextObjective, DRAFT_PLANNER_POLICY, type SkillMastery } from '../src';
+import {
+  selectNextObjective,
+  explainReasonCode,
+  DRAFT_PLANNER_POLICY,
+  SESSION_REASON_CODES,
+  type SkillMastery,
+} from '../src';
 
 /**
  * The adaptive selector reads derived mastery against the canonical graph and
@@ -56,6 +62,12 @@ describe('selectNextObjective', () => {
     expect(
       ranked.some((o) => o.skillId === COMPARE && o.reasonCode === 'PREREQUISITE_REMEDIATION'),
     ).toBe(true);
+  });
+
+  it('gives every reason code a distinct, non-empty parent-facing explanation', () => {
+    const texts = SESSION_REASON_CODES.map((code) => explainReasonCode(code));
+    for (const t of texts) expect(t.trim().length).toBeGreaterThan(0);
+    expect(new Set(texts).size).toBe(SESSION_REASON_CODES.length);
   });
 
   it('throws when no coachable skills are configured', () => {

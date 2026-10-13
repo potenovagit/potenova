@@ -13,6 +13,7 @@ import { AGE_BANDS, type AgeBand } from '@potenova/identity';
 import { projectShadow, assertMasteryPolicyApproved } from '@potenova/learner-state';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import { type Deps } from '../deps';
+import { buildReportRationale } from '../adaptive';
 
 /**
  * Child-facing tutoring sessions (the vertical slice start).
@@ -183,6 +184,10 @@ export function registerSessions(app: Hono, deps: Deps): void {
       });
     }
 
+    // "Why this skill": the planner's audit reason code for each worked skill,
+    // plus what it would coach next — rendered in plain language for the guardian.
+    const rationale = await buildReportRationale(deps, alias, skillIds);
+
     return c.json({
       sessionId,
       subject: row.subject,
@@ -193,7 +198,8 @@ export function registerSessions(app: Hono, deps: Deps): void {
         bySkill: observedBySkill,
       },
       mastery,
-      note: 'Observed = this session only; mastery = cumulative derived state, not a predicted grade.',
+      rationale,
+      note: 'Observed = this session only; mastery = cumulative derived state, not a predicted grade. Rationale explains the engine’s skill choices; it is not a prediction or diagnosis.',
     });
   });
 }
