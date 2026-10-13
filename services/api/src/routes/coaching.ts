@@ -123,7 +123,16 @@ const TASK_BANK: Readonly<Record<string, Task>> = {
   'eng-sib-1': plural(PLURAL_SIB, 'box'), // boxes
   'eng-sib-2': plural(PLURAL_SIB, 'baby'), // babies
   'eng-sib-3': plural(PLURAL_SIB, 'dish'), // dishes
+  // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
+  'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
+  'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
+  'eng-xfer-base': plural(PLURAL_BASE, 'pen'), // pens
+  'eng-xfer-sib': plural(PLURAL_SIB, 'wish'), // wishes
 };
+
+/** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
+ *  correct answer can lift an already-mastered skill to TRANSFERABLE (AT-12). */
+const TRANSFER_TASKS = new Set(['frac-xfer-cmp', 'frac-xfer-eq', 'eng-xfer-base', 'eng-xfer-sib']);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
 const isRelation = (v: unknown): v is FractionRelation => v === 'lt' || v === 'eq' || v === 'gt';
@@ -398,9 +407,10 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       return c.json({ graded: false, action: 'CONCEPT_BUDGET_REACHED', budget: preBudget });
     }
 
-    // A review turn (the skill is review-due) is tagged so a delayed retrieval
-    // resolves RETAINED and the skill stops resurfacing.
+    // Turn mode: a review turn resolves RETAINED; a transfer task resolves
+    // TRANSFERABLE; otherwise a normal independent check.
     const review = await reviewDueFor(deps, alias, task.skillId);
+    const isTransfer = TRANSFER_TASKS.has(b.taskId ?? '');
     const graded = await gradeAndRecord(deps, {
       alias,
       sessionId,
@@ -409,7 +419,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       answer: b.answer,
       representation: representationOf(task, b.representation),
       recognitionConfidence: 1,
-      mode: review ? 'retention_check' : 'independent_check',
+      mode: review ? 'retention_check' : isTransfer ? 'transfer_check' : 'independent_check',
       assistanceBand: review ? 'A1' : 'A0',
     });
 
@@ -533,6 +543,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     }
 
     const review = await reviewDueFor(deps, alias, task.skillId);
+    const isTransfer = TRANSFER_TASKS.has(b.taskId ?? '');
     const graded = await gradeAndRecord(deps, {
       alias,
       sessionId,
@@ -541,7 +552,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       answer: rec.text,
       representation: representationOf(task, undefined),
       recognitionConfidence: rec.confidence,
-      mode: review ? 'retention_check' : 'independent_check',
+      mode: review ? 'retention_check' : isTransfer ? 'transfer_check' : 'independent_check',
       assistanceBand: review ? 'A1' : 'A0',
     });
 

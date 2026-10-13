@@ -28,6 +28,8 @@ import type { PlannerPolicy } from './policy';
 export interface SkillMastery {
   readonly confidence: number;
   readonly independent: boolean;
+  /** Already shown in a novel context (projection TRANSFERABLE). */
+  readonly transferable?: boolean;
   /** Epoch ms of the most recent trusted practice (for retention/review-due). */
   readonly lastPracticedAt?: number;
 }
@@ -85,7 +87,8 @@ export function selectNextObjective(args: {
       masteryConfidence: m.confidence,
       unresolvedConfidence: false,
       schoolPriority: false,
-      isTransfer: false,
+      // A mastered skill not yet shown in a novel context earns a transfer check.
+      isTransfer: m.independent && !m.transferable,
       isAdvancement: allPrereqsIndependent && !m.independent,
       parentPreferred: false,
     };

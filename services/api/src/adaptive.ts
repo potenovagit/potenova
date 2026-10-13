@@ -55,6 +55,8 @@ interface SubjectPlan {
   /** Misconception KB for the hint ladder (empty when a subject has none yet). */
   readonly misconceptions: readonly MisconceptionDefinition[];
   readonly strategies: readonly InstructionalStrategy[];
+  /** The transfer (novel-context) task offered when a mastered skill earns one. */
+  readonly transferTask: Readonly<Record<string, string>>;
 }
 
 const SUBJECTS: Record<Subject, SubjectPlan> = {
@@ -65,6 +67,7 @@ const SUBJECTS: Record<Subject, SubjectPlan> = {
     remediationReps: ['area-model', 'number-line', 'set', 'symbolic'],
     misconceptions: FRACTION_MISCONCEPTIONS,
     strategies: FRACTION_STRATEGIES,
+    transferTask: { 'SK-FR-compare': 'frac-xfer-cmp', 'SK-FR-equiv': 'frac-xfer-eq' },
   },
   english: {
     buildGraph: buildEnglishDraftGraph,
@@ -73,6 +76,7 @@ const SUBJECTS: Record<Subject, SubjectPlan> = {
     remediationReps: ['spoken', 'picture', 'written'],
     misconceptions: ENGLISH_MISCONCEPTIONS,
     strategies: ENGLISH_STRATEGIES,
+    transferTask: { 'SK-EN-plural-base': 'eng-xfer-base', 'SK-EN-plural-sibilant': 'eng-xfer-sib' },
   },
 };
 
@@ -180,6 +184,7 @@ async function coachableMastery(
     mastery[skillId] = {
       confidence: p.confidence,
       independent: p.dimensions.independent,
+      transferable: p.dimensions.transferable,
       lastPracticedAt: times.length ? Math.max(...times) : undefined,
     };
   }
@@ -210,12 +215,17 @@ export async function computeNext(
     mastery,
     policy: DRAFT_PLANNER_POLICY,
   });
+  // A transfer check points at the novel-context task; otherwise the normal task.
+  const defaultTaskId =
+    next.reasonCode === 'TRANSFER_CHECK'
+      ? (plan.transferTask[next.targetSkillId] ?? plan.defaultTask[next.targetSkillId] ?? null)
+      : (plan.defaultTask[next.targetSkillId] ?? null);
   return {
     skillId: next.targetSkillId,
     reasonCode: next.reasonCode,
     explanation: explainReasonCode(next.reasonCode),
     blockedSkillId: next.blockedSkillId,
-    defaultTaskId: plan.defaultTask[next.targetSkillId] ?? null,
+    defaultTaskId,
     plannerPolicyVersion: DRAFT_PLANNER_POLICY.policyVersion,
   };
 }

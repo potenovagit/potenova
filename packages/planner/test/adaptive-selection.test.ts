@@ -112,6 +112,42 @@ describe('selectNextObjective', () => {
     expect(r.ranked.some((o) => o.reasonCode === 'REVIEW_DUE')).toBe(false);
   });
 
+  it('offers a transfer check for a mastered skill not yet shown in a novel context', () => {
+    const now = Date.now();
+    const r = selectNextObjective({
+      graph: buildFractionsDraftGraph(),
+      coachableSkillIds: COACHABLE,
+      mastery: {
+        [EQUIV]: { confidence: 0.9, independent: true, transferable: true, lastPracticedAt: now },
+        [COMPARE]: {
+          confidence: 0.9,
+          independent: true,
+          transferable: false,
+          lastPracticedAt: now,
+        },
+      },
+      policy: DRAFT_PLANNER_POLICY,
+      now,
+    });
+    expect(r.targetSkillId).toBe(COMPARE);
+    expect(r.reasonCode).toBe('TRANSFER_CHECK');
+  });
+
+  it('does not offer a transfer check once the skill is already transferable', () => {
+    const now = Date.now();
+    const r = selectNextObjective({
+      graph: buildFractionsDraftGraph(),
+      coachableSkillIds: COACHABLE,
+      mastery: {
+        [EQUIV]: { confidence: 0.9, independent: true, transferable: true, lastPracticedAt: now },
+        [COMPARE]: { confidence: 0.9, independent: true, transferable: true, lastPracticedAt: now },
+      },
+      policy: DRAFT_PLANNER_POLICY,
+      now,
+    });
+    expect(r.ranked.some((o) => o.reasonCode === 'TRANSFER_CHECK')).toBe(false);
+  });
+
   it('gives every reason code a distinct, non-empty parent-facing explanation', () => {
     const texts = SESSION_REASON_CODES.map((code) => explainReasonCode(code));
     for (const t of texts) expect(t.trim().length).toBeGreaterThan(0);
