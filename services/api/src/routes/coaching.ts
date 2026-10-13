@@ -1,5 +1,5 @@
 import type { Context, Hono } from 'hono';
-import { DomainError } from '@potenova/contracts';
+import { DomainError, isApprovedRegion } from '@potenova/contracts';
 import { decideDelivery, type CandidateContent } from '@potenova/domain-core';
 import {
   checkMathTask,
@@ -12,8 +12,10 @@ import {
 import {
   projectShadow,
   assertMasteryPolicyApproved,
+  MIN_TRUSTED_RECOGNITION,
   type MasteryEvidence,
 } from '@potenova/learner-state';
+import { CONSENT_PURPOSES } from '@potenova/identity';
 import { decideEscalation, handleDisclosure, type EscalationInput } from '@potenova/safety';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import { now, type Deps } from '../deps';
@@ -61,6 +63,52 @@ async function requireActiveSession(deps: Deps, sessionId: string, alias: string
   if (row.state !== 'ACTIVE') throw new DomainError('POLICY_BLOCKED', 'session is not active');
 }
 
+/** Grade an answer, write immutable evidence (ER-03 gated) and re-derive mastery. */
+async function gradeAndRecord(
+  deps: Deps,
+  args: {
+    alias: string;
+    sessionId: string;
+    clientSubmissionId: string;
+    task: BankTask;
+    answer: FractionRelation;
+    representation: string;
+    recognitionConfidence: number;
+  },
+): Promise<{ correct: boolean; evidenceId: string; projection: unknown }> {
+  const check = checkMathTask({
+    kind: 'fraction_comparison',
+    left: args.task.left,
+    right: args.task.right,
+    claimedAnswer: args.answer,
+  });
+  assertMasteryPolicyApproved(deps.policies.mastery, deps.policies.isProd);
+  const evidence: MasteryEvidence = {
+    eventId: `${args.sessionId}:${args.clientSubmissionId}`,
+    learnerAlias: args.alias,
+    skillId: SKILL_ID,
+    mode: 'independent_check',
+    assistanceBand: 'A0',
+    correct: check.correct,
+    representation: args.representation,
+    recognitionConfidence: args.recognitionConfidence,
+    observedAt: now(),
+    curriculumReleaseId: RELEASE,
+    schemaVersion: 'evt-0.1',
+  };
+  await deps.evidence.appendEvidence(evidence);
+  const events = await deps.evidence.listEvidence(args.alias, SKILL_ID);
+  const corrections = await deps.evidence.listCorrections(events.map((e) => e.eventId));
+  const projection = projectShadow(
+    args.alias,
+    SKILL_ID,
+    events,
+    corrections,
+    deps.policies.mastery,
+  );
+  return { correct: check.correct, evidenceId: evidence.eventId, projection };
+}
+
 interface AnswerBody {
   clientSubmissionId?: string;
   taskId?: string;
@@ -69,6 +117,13 @@ interface AnswerBody {
   representation?: string;
   /** Upstream safety-classifier output for a sensitive disclosure (SAFE-016). */
   disclosure?: EscalationInput;
+}
+
+interface MultimodalBody {
+  clientSubmissionId?: string;
+  taskId?: string;
+  modality?: string;
+  mediaRef?: string;
 }
 
 export function registerCoaching(app: Hono, deps: Deps): void {
@@ -161,37 +216,89 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       ? b.representation
       : 'symbolic';
 
-    const check = checkMathTask({
-      kind: 'fraction_comparison',
-      left: task.left,
-      right: task.right,
-      claimedAnswer: b.answer,
-    });
-
-    // ER-03: do not derive mastery from an unapproved policy in prod.
-    assertMasteryPolicyApproved(deps.policies.mastery, deps.policies.isProd);
-
-    const evidence: MasteryEvidence = {
-      eventId: `${sessionId}:${b.clientSubmissionId}`,
-      learnerAlias: alias,
-      skillId: SKILL_ID,
-      mode: 'independent_check',
-      assistanceBand: 'A0',
-      correct: check.correct,
+    const graded = await gradeAndRecord(deps, {
+      alias,
+      sessionId,
+      clientSubmissionId: b.clientSubmissionId,
+      task,
+      answer: b.answer,
       representation,
       recognitionConfidence: 1,
-      observedAt: now(),
-      curriculumReleaseId: RELEASE,
-      schemaVersion: 'evt-0.1',
-    };
-    await deps.evidence.appendEvidence(evidence);
+    });
 
-    const events = await deps.evidence.listEvidence(alias, SKILL_ID);
-    const corrections = await deps.evidence.listCorrections(events.map((e) => e.eventId));
-    const projection = projectShadow(alias, SKILL_ID, events, corrections, deps.policies.mastery);
+    return c.json({ graded: true, ...graded }, 201);
+  });
+
+  // Multimodal answer (voice / vision). Requires the per-modality consent grant,
+  // runs recognition in a Canadian region, and applies the AT-28 trust floor: a
+  // low-confidence reading is never graded — it asks for clarification.
+  app.post('/learners/:alias/sessions/:sessionId/answer/multimodal', async (c) => {
+    const a = authed(c);
+    requireActorType(a, 'child');
+    const alias = c.req.param('alias');
+    const sessionId = c.req.param('sessionId');
+    await requireActiveSession(deps, sessionId, alias);
+
+    const b = await c.req.json<MultimodalBody>().catch(() => ({}) as MultimodalBody);
+    if (!b.clientSubmissionId) {
+      throw new DomainError('POLICY_BLOCKED', 'clientSubmissionId is required');
+    }
+    if (b.modality !== 'voice' && b.modality !== 'vision') {
+      throw new DomainError('POLICY_BLOCKED', "modality must be 'voice' or 'vision'");
+    }
+
+    // Per-modality consent: the purpose that owns this modality must be GIVEN.
+    const purpose = CONSENT_PURPOSES.find((d) => d.modality === b.modality)?.id;
+    const grants = a.actor.familyAlias
+      ? await deps.identity.listConsentGrants(a.actor.familyAlias)
+      : [];
+    const consented = !!purpose && grants.some((g) => g.purpose === purpose && g.state === 'GIVEN');
+    if (!consented) {
+      throw new DomainError('CONSENT_REQUIRED', `no active ${b.modality} consent`);
+    }
+
+    const provider = deps.ai.inputProvider;
+    if (!provider) throw new DomainError('DEPENDENCY_UNAVAILABLE', 'no input provider configured');
+
+    const sub = await deps.session.recordSubmission(b.clientSubmissionId, now());
+    if (!sub.accepted) return c.json({ duplicate: true });
+
+    const rec =
+      b.modality === 'voice'
+        ? await provider.transcribe({ audioRef: b.mediaRef ?? '', synthetic: true })
+        : await provider.extractText({ imageRef: b.mediaRef ?? '', synthetic: true });
+
+    // Residency: recognition must run in an approved Canadian region.
+    if (!isApprovedRegion(rec.region)) {
+      throw new DomainError('REGION_DISALLOWED', 'recognition ran outside the Canadian region');
+    }
+
+    // AT-28: below the trust floor, ask for clarification — never grade.
+    const answer = rec.text.trim().toLowerCase();
+    if (rec.confidence < MIN_TRUSTED_RECOGNITION || !isRelation(answer)) {
+      return c.json({
+        graded: false,
+        action: 'REQUEST_CLARIFICATION',
+        modality: b.modality,
+        recognitionConfidence: rec.confidence,
+      });
+    }
+
+    const task = TASK_BANK[b.taskId ?? ''];
+    if (!task) throw new DomainError('NOT_FOUND', 'task not found');
+
+    const graded = await gradeAndRecord(deps, {
+      alias,
+      sessionId,
+      clientSubmissionId: b.clientSubmissionId,
+      task,
+      answer,
+      representation: 'symbolic',
+      recognitionConfidence: rec.confidence,
+    });
 
     return c.json(
-      { graded: true, correct: check.correct, evidenceId: evidence.eventId, projection },
+      { graded: true, modality: b.modality, recognitionConfidence: rec.confidence, ...graded },
       201,
     );
   });

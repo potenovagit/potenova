@@ -14,7 +14,9 @@ import {
   AIGateway,
   ModelRegistry,
   AzureOpenAiChatProvider,
+  StubInputProvider,
   type GenerativeProvider,
+  type InputProvider,
 } from '@potenova/ai-gateway';
 import {
   proposedRetentionPolicy,
@@ -102,6 +104,9 @@ export interface AiDeps {
   readonly provider: GenerativeProvider | null;
   /** Registry id of the candidate model (the provider id), when configured. */
   readonly candidateModelId: string | null;
+  /** Multimodal input (STT/OCR). A non-prod default stub lets the synthetic slice
+   *  run; prod is null until a real in-region provider is configured. */
+  readonly inputProvider: InputProvider | null;
 }
 
 export interface BuildDepsOptions {
@@ -110,6 +115,8 @@ export interface BuildDepsOptions {
   readonly db?: PotenovaDb;
   /** Inject a generative provider (tests pass an offline stub). */
   readonly aiProvider?: GenerativeProvider;
+  /** Inject an input provider (tests pass an offline stub to drive the trust floor). */
+  readonly inputProvider?: InputProvider;
 }
 
 /** The capability envelope the candidate is evaluated within (synthetic Math). */
@@ -117,7 +124,12 @@ const EVAL_AGE_BANDS = ['g1-3', 'g4-6', 'g7-8'];
 const EVAL_SUBJECTS = ['math'];
 const EVAL_CAPABILITIES = ['task_generation'];
 
-function buildAiDeps(env: NodeJS.ProcessEnv, injected?: GenerativeProvider): AiDeps {
+function buildAiDeps(
+  env: NodeJS.ProcessEnv,
+  isProd: boolean,
+  injected?: GenerativeProvider,
+  injectedInput?: InputProvider,
+): AiDeps {
   const registry = new ModelRegistry();
   let provider: GenerativeProvider | null = injected ?? null;
 
@@ -151,7 +163,12 @@ function buildAiDeps(env: NodeJS.ProcessEnv, injected?: GenerativeProvider): AiD
     });
   }
 
-  return { gateway: new AIGateway(registry), registry, provider, candidateModelId };
+  // Non-prod default stub (high-confidence 'gt') so the synthetic multimodal slice
+  // is runnable; prod stays null until a real in-region provider is configured.
+  const inputProvider: InputProvider | null =
+    injectedInput ?? (isProd ? null : new StubInputProvider({ text: 'gt', confidence: 0.9 }));
+
+  return { gateway: new AIGateway(registry), registry, provider, candidateModelId, inputProvider };
 }
 
 export function buildDeps(opts: BuildDepsOptions = {}): Deps {
@@ -168,7 +185,7 @@ export function buildDeps(opts: BuildDepsOptions = {}): Deps {
     safety: new SafetyRepository(db),
     operator: new OperatorRepository(db),
     session: new SessionRepository(db),
-    ai: buildAiDeps(env, opts.aiProvider),
+    ai: buildAiDeps(env, config.environment === 'prod', opts.aiProvider, opts.inputProvider),
     policies: buildPolicies(config.environment === 'prod'),
   };
 }
