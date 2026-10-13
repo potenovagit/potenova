@@ -4,6 +4,7 @@ import { decideDelivery, type CandidateContent } from '@potenova/domain-core';
 import {
   checkMathTask,
   trueRelation,
+  areEquivalent,
   validateCandidate,
   validationRecordRef,
   type Fraction,
@@ -14,7 +15,10 @@ import {
   assertMasteryPolicyApproved,
   MIN_TRUSTED_RECOGNITION,
   type MasteryEvidence,
+  type SkillProjection,
 } from '@potenova/learner-state';
+import { buildFractionsDraftGraph } from '@potenova/curriculum';
+import { selectNextObjective, DRAFT_PLANNER_POLICY } from '@potenova/planner';
 import { CONSENT_PURPOSES } from '@potenova/identity';
 import { decideEscalation, handleDisclosure, type EscalationInput } from '@potenova/safety';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
@@ -32,24 +36,63 @@ import { now, type Deps } from '../deps';
  *  - A flagged sensitive disclosure diverts to the escalation matrix (ER-08)
  *    instead of grading — fail-closed to max containment while the matrix is
  *    unconfigured.
+ *  - `/next` asks the PLANNER which skill to coach next, reading derived mastery
+ *    against the review-controlled curriculum graph (adaptive + remediation);
+ *    selection only reads mastery, it can never set it.
  *
- * Synthetic task bank only — no model generation on this path yet.
+ * Synthetic task bank only — no model generation on this path yet. Skill ids are
+ * the CANONICAL curriculum ids so evidence, the graph and the planner all agree.
  */
 
-const SKILL_ID = 'fractions-comparison';
 const RELEASE = 'REL-ONT-MATH-2020-draft';
+const COMPARE = 'SK-FR-compare';
+const EQUIV = 'SK-FR-equiv';
+/** The oracle-validatable skills the slice can actually coach (ordered). */
+export const COACHABLE_SKILLS = [EQUIV, COMPARE] as const;
 
-interface BankTask {
+interface CompareTask {
+  readonly skillId: typeof COMPARE;
+  readonly kind: 'fraction_comparison';
   readonly left: Fraction;
   readonly right: Fraction;
 }
-const TASK_BANK: Readonly<Record<string, BankTask>> = {
-  'frac-cmp-1': { left: { numerator: 1, denominator: 2 }, right: { numerator: 1, denominator: 3 } },
-  'frac-cmp-2': { left: { numerator: 2, denominator: 4 }, right: { numerator: 1, denominator: 2 } },
-  'frac-cmp-3': { left: { numerator: 1, denominator: 3 }, right: { numerator: 1, denominator: 2 } },
+interface EquivTask {
+  readonly skillId: typeof EQUIV;
+  readonly kind: 'fraction_equivalence';
+  readonly left: Fraction;
+  readonly right: Fraction;
+}
+type Task = CompareTask | EquivTask;
+
+const f = (numerator: number, denominator: number): Fraction => ({ numerator, denominator });
+const cmp = (left: Fraction, right: Fraction): CompareTask => ({
+  skillId: COMPARE,
+  kind: 'fraction_comparison',
+  left,
+  right,
+});
+const eq = (left: Fraction, right: Fraction): EquivTask => ({
+  skillId: EQUIV,
+  kind: 'fraction_equivalence',
+  left,
+  right,
+});
+
+const TASK_BANK: Readonly<Record<string, Task>> = {
+  'frac-cmp-1': cmp(f(1, 2), f(1, 3)), // gt
+  'frac-cmp-2': cmp(f(2, 4), f(1, 2)), // eq
+  'frac-cmp-3': cmp(f(1, 3), f(1, 2)), // lt
+  'frac-eq-1': eq(f(1, 2), f(2, 4)), // yes
+  'frac-eq-2': eq(f(1, 2), f(1, 3)), // no
+  'frac-eq-3': eq(f(2, 3), f(4, 6)), // yes
+};
+/** The task offered first when the planner selects a skill. */
+const DEFAULT_TASK: Readonly<Record<string, string>> = {
+  [COMPARE]: 'frac-cmp-1',
+  [EQUIV]: 'frac-eq-1',
 };
 
-const fmt = (f: Fraction): string => `${f.numerator}/${f.denominator}`;
+const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
 const isRelation = (v: unknown): v is FractionRelation => v === 'lt' || v === 'eq' || v === 'gt';
 
 const REPRESENTATIONS = ['symbolic', 'area-model', 'number-line', 'set'] as const;
@@ -57,10 +100,74 @@ type Representation = (typeof REPRESENTATIONS)[number];
 const isRepresentation = (v: unknown): v is Representation =>
   (REPRESENTATIONS as readonly unknown[]).includes(v);
 
+/** Question + answer options presented for a task, by skill kind. */
+function present(task: Task): { question: string; options: readonly string[] } {
+  if (task.kind === 'fraction_comparison') {
+    return {
+      question: `Compare ${fmt(task.left)} and ${fmt(task.right)} — is the first less than (lt), equal to (eq), or greater than (gt) the second?`,
+      options: ['lt', 'eq', 'gt'],
+    };
+  }
+  return {
+    question: `Are ${fmt(task.left)} and ${fmt(task.right)} equal in value? (yes / no)`,
+    options: ['yes', 'no'],
+  };
+}
+
+/** The reviewed answer KEY for a task — what the oracle validates before delivery. */
+function answerKeyValid(task: Task): boolean {
+  if (task.kind === 'fraction_comparison') {
+    return checkMathTask({
+      kind: 'fraction_comparison',
+      left: task.left,
+      right: task.right,
+      claimedAnswer: trueRelation(task.left, task.right),
+    }).correct;
+  }
+  return checkMathTask({
+    kind: 'fraction_equivalence',
+    left: task.left,
+    right: task.right,
+    claimedEquivalent: areEquivalent(task.left, task.right),
+  }).correct;
+}
+
+/** Is a raw learner answer a well-formed token for this task's kind? */
+function tokenValid(task: Task, raw: string): boolean {
+  const a = raw.trim().toLowerCase();
+  return task.kind === 'fraction_comparison' ? isRelation(a) : a === 'yes' || a === 'no';
+}
+
+/** Grade a well-formed answer with the independent oracle (token must be valid). */
+function judge(task: Task, raw: string): boolean {
+  const a = raw.trim().toLowerCase();
+  if (task.kind === 'fraction_comparison') {
+    return checkMathTask({
+      kind: 'fraction_comparison',
+      left: task.left,
+      right: task.right,
+      claimedAnswer: a as FractionRelation,
+    }).correct;
+  }
+  return checkMathTask({
+    kind: 'fraction_equivalence',
+    left: task.left,
+    right: task.right,
+    claimedEquivalent: a === 'yes',
+  }).correct;
+}
+
 async function requireActiveSession(deps: Deps, sessionId: string, alias: string): Promise<void> {
   const row = await deps.session.getTutoringSession(sessionId);
   if (!row || row.learnerAlias !== alias) throw new DomainError('NOT_FOUND', 'session not found');
   if (row.state !== 'ACTIVE') throw new DomainError('POLICY_BLOCKED', 'session is not active');
+}
+
+/** Re-derive a skill's mastery from the immutable ledger (never hand-set). */
+async function projectSkill(deps: Deps, alias: string, skillId: string): Promise<SkillProjection> {
+  const events = await deps.evidence.listEvidence(alias, skillId);
+  const corrections = await deps.evidence.listCorrections(events.map((e) => e.eventId));
+  return projectShadow(alias, skillId, events, corrections, deps.policies.mastery);
 }
 
 /** Grade an answer, write immutable evidence (ER-03 gated) and re-derive mastery. */
@@ -70,26 +177,21 @@ async function gradeAndRecord(
     alias: string;
     sessionId: string;
     clientSubmissionId: string;
-    task: BankTask;
-    answer: FractionRelation;
+    task: Task;
+    answer: string;
     representation: string;
     recognitionConfidence: number;
   },
-): Promise<{ correct: boolean; evidenceId: string; projection: unknown }> {
-  const check = checkMathTask({
-    kind: 'fraction_comparison',
-    left: args.task.left,
-    right: args.task.right,
-    claimedAnswer: args.answer,
-  });
+): Promise<{ correct: boolean; skillId: string; evidenceId: string; projection: SkillProjection }> {
+  const correct = judge(args.task, args.answer);
   assertMasteryPolicyApproved(deps.policies.mastery, deps.policies.isProd);
   const evidence: MasteryEvidence = {
     eventId: `${args.sessionId}:${args.clientSubmissionId}`,
     learnerAlias: args.alias,
-    skillId: SKILL_ID,
+    skillId: args.task.skillId,
     mode: 'independent_check',
     assistanceBand: 'A0',
-    correct: check.correct,
+    correct,
     representation: args.representation,
     recognitionConfidence: args.recognitionConfidence,
     observedAt: now(),
@@ -97,16 +199,8 @@ async function gradeAndRecord(
     schemaVersion: 'evt-0.1',
   };
   await deps.evidence.appendEvidence(evidence);
-  const events = await deps.evidence.listEvidence(args.alias, SKILL_ID);
-  const corrections = await deps.evidence.listCorrections(events.map((e) => e.eventId));
-  const projection = projectShadow(
-    args.alias,
-    SKILL_ID,
-    events,
-    corrections,
-    deps.policies.mastery,
-  );
-  return { correct: check.correct, evidenceId: evidence.eventId, projection };
+  const projection = await projectSkill(deps, args.alias, args.task.skillId);
+  return { correct, skillId: args.task.skillId, evidenceId: evidence.eventId, projection };
 }
 
 interface AnswerBody {
@@ -133,6 +227,36 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     return a;
   };
 
+  // Adaptive next-objective selection: the planner reads derived mastery against
+  // the canonical graph and picks the next skill (remediation vs advancement).
+  app.get('/learners/:alias/sessions/:sessionId/next', async (c) => {
+    const a = authed(c);
+    requireActorType(a, 'child');
+    const alias = c.req.param('alias');
+    await requireActiveSession(deps, c.req.param('sessionId'), alias);
+
+    const mastery: Record<string, { confidence: number; independent: boolean }> = {};
+    for (const skillId of COACHABLE_SKILLS) {
+      const p = await projectSkill(deps, alias, skillId);
+      mastery[skillId] = { confidence: p.confidence, independent: p.dimensions.independent };
+    }
+
+    const next = selectNextObjective({
+      graph: buildFractionsDraftGraph(),
+      coachableSkillIds: COACHABLE_SKILLS,
+      mastery,
+      policy: DRAFT_PLANNER_POLICY,
+    });
+
+    return c.json({
+      skillId: next.targetSkillId,
+      reasonCode: next.reasonCode,
+      blockedSkillId: next.blockedSkillId,
+      defaultTaskId: DEFAULT_TASK[next.targetSkillId] ?? null,
+      plannerPolicyVersion: DRAFT_PLANNER_POLICY.policyVersion,
+    });
+  });
+
   // Deliver a validated task — content gate on the delivery path (AI-001).
   app.post('/learners/:alias/sessions/:sessionId/task', async (c) => {
     const a = authed(c);
@@ -145,19 +269,12 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     if (!task) throw new DomainError('NOT_FOUND', 'task not found');
 
     // Validate the answer key with the INDEPENDENT oracle before delivery.
-    const truth = trueRelation(task.left, task.right);
-    const math = checkMathTask({
-      kind: 'fraction_comparison',
-      left: task.left,
-      right: task.right,
-      claimedAnswer: truth,
-    });
     const record = validateCandidate({
       candidateId: `task:${taskId}`,
       generatorId: 'content-author:fractions-bank',
       validatorId: 'math-oracle:fractions',
       validatorVersion: 'v1',
-      math: { ran: true, correct: math.correct },
+      math: { ran: true, correct: answerKeyValid(task) },
       safety: { available: true, pass: true },
       onTopic: true,
     });
@@ -171,12 +288,8 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       throw new DomainError('POLICY_BLOCKED', 'task failed validation; not delivered');
     }
 
-    return c.json({
-      taskId,
-      skillId: SKILL_ID,
-      question: `Compare ${fmt(task.left)} and ${fmt(task.right)} — is the first less than (lt), equal to (eq), or greater than (gt) the second?`,
-      options: ['lt', 'eq', 'gt'],
-    });
+    const { question, options } = present(task);
+    return c.json({ taskId, skillId: task.skillId, question, options });
   });
 
   // Submit an answer → evidence → mastery (ER-03 gated); or divert to escalation.
@@ -209,8 +322,8 @@ export function registerCoaching(app: Hono, deps: Deps): void {
 
     const task = TASK_BANK[b.taskId ?? ''];
     if (!task) throw new DomainError('NOT_FOUND', 'task not found');
-    if (!isRelation(b.answer)) {
-      throw new DomainError('POLICY_BLOCKED', "answer must be 'lt', 'eq' or 'gt'");
+    if (typeof b.answer !== 'string' || !tokenValid(task, b.answer)) {
+      throw new DomainError('POLICY_BLOCKED', 'answer is not valid for this task');
     }
     const representation: Representation = isRepresentation(b.representation)
       ? b.representation
@@ -273,9 +386,12 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       throw new DomainError('REGION_DISALLOWED', 'recognition ran outside the Canadian region');
     }
 
-    // AT-28: below the trust floor, ask for clarification — never grade.
-    const answer = rec.text.trim().toLowerCase();
-    if (rec.confidence < MIN_TRUSTED_RECOGNITION || !isRelation(answer)) {
+    const task = TASK_BANK[b.taskId ?? ''];
+    if (!task) throw new DomainError('NOT_FOUND', 'task not found');
+
+    // AT-28: below the trust floor, or an unreadable token, ask for clarification —
+    // never grade.
+    if (rec.confidence < MIN_TRUSTED_RECOGNITION || !tokenValid(task, rec.text)) {
       return c.json({
         graded: false,
         action: 'REQUEST_CLARIFICATION',
@@ -284,15 +400,12 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       });
     }
 
-    const task = TASK_BANK[b.taskId ?? ''];
-    if (!task) throw new DomainError('NOT_FOUND', 'task not found');
-
     const graded = await gradeAndRecord(deps, {
       alias,
       sessionId,
       clientSubmissionId: b.clientSubmissionId,
       task,
-      answer,
+      answer: rec.text,
       representation: 'symbolic',
       recognitionConfidence: rec.confidence,
     });

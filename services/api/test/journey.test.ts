@@ -64,7 +64,7 @@ describe('G1 journey (capstone)', () => {
         learnerGrade: 5,
         candidates: [
           {
-            skillId: 'fractions-comparison',
+            skillId: 'SK-FR-compare',
             grade: 5,
             priorConfidence: 0.1,
             priorState: 'UNASSESSED',
@@ -85,7 +85,7 @@ describe('G1 journey (capstone)', () => {
       }),
     );
     const { probe } = await probeRes.json();
-    expect(probe.skillId).toBe('fractions-comparison');
+    expect(probe.skillId).toBe('SK-FR-compare');
 
     // Start a session — the full guard stack must pass.
     const startRes = await app.request(
@@ -134,12 +134,9 @@ describe('G1 journey (capstone)', () => {
     expect(proj.dimensions.independent).toBe(true);
 
     // Parent dashboard reflects the derived mastery (never hand-set).
-    const dashRes = await app.request(
-      '/learners/kid1/dashboard?skills=fractions-comparison',
-      json(owner),
-    );
+    const dashRes = await app.request('/learners/kid1/dashboard?skills=SK-FR-compare', json(owner));
     expect(dashRes.status).toBe(200);
-    expect(JSON.stringify(await dashRes.json())).toContain('fractions-comparison');
+    expect(JSON.stringify(await dashRes.json())).toContain('SK-FR-compare');
 
     // Session-scoped parent report: observed this session + derived mastery.
     const reportRes = await app.request(`/learners/kid1/sessions/${sessionId}/report`, json(owner));
@@ -147,7 +144,7 @@ describe('G1 journey (capstone)', () => {
     const report = await reportRes.json();
     expect(report.observed.attempts).toBe(3);
     expect(report.observed.correct).toBe(3);
-    expect(report.observed.bySkill[0].skillId).toBe('fractions-comparison');
+    expect(report.observed.bySkill[0].skillId).toBe('SK-FR-compare');
     expect(report.mastery[0].projection.dimensions.independent).toBe(true);
   });
 });

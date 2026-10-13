@@ -159,8 +159,8 @@ describe('session report', () => {
     const body = await res.json();
     expect(body.observed.attempts).toBe(1);
     expect(body.observed.correct).toBe(1);
-    expect(body.observed.bySkill[0].skillId).toBe('fractions-comparison');
-    expect(body.mastery[0].skillId).toBe('fractions-comparison');
+    expect(body.observed.bySkill[0].skillId).toBe('SK-FR-compare');
+    expect(body.mastery[0].skillId).toBe('SK-FR-compare');
   });
 
   it('403s for a non-guardian actor', async () => {
