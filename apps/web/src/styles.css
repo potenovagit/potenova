@@ -227,6 +227,27 @@ code {
   background: var(--low-bg);
   color: var(--err);
 }
+.subject {
+  margin: 18px 0;
+}
+.subject h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+.whytoday {
+  background: var(--mid-bg, #f3f4f6);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.whytoday .wt-label {
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+}
 .dash table {
   width: 100%;
   border-collapse: collapse;

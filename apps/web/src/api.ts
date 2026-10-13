@@ -83,9 +83,21 @@ export interface DashboardRow {
   confidence: number;
   evidenceCount: number;
 }
+export interface NextFocus {
+  skillId: string;
+  reasonCode: string;
+  explanation: string;
+  exposesChainOfThought: boolean;
+}
+export interface SubjectGroup {
+  subject: string;
+  rows: DashboardRow[];
+  nextFocus?: NextFocus;
+}
 export interface Dashboard {
   learnerAlias: string;
   rows: DashboardRow[];
+  bySubject: SubjectGroup[];
 }
 export interface Projection {
   learnerAlias: string;
@@ -136,10 +148,12 @@ export const getDashboard = (
   familyId: string,
   guardianId: string,
   learnerId: string,
-  skills: string[],
+  skills?: string[],
 ) =>
   call<Dashboard>(
-    `/learners/${learnerId}/dashboard?skills=${encodeURIComponent(skills.join(','))}`,
+    `/learners/${learnerId}/dashboard${
+      skills && skills.length ? `?skills=${encodeURIComponent(skills.join(','))}` : ''
+    }`,
     { headers: guardianHeaders(familyId, guardianId) },
   );
 

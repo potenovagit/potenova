@@ -9,6 +9,21 @@ const DEMO_SKILLS = [
   { id: 'SK-FR-equiv', label: 'Equivalent fractions' },
 ];
 
+/** Parent-friendly labels for every skill the dashboard may surface. */
+const SKILL_LABELS: Record<string, string> = {
+  'SK-FR-compare': 'Comparing fractions',
+  'SK-FR-equiv': 'Equivalent fractions',
+  'SK-EN-plural-base': 'Plurals: adding -s',
+  'SK-EN-plural-sibilant': 'Plurals: -es and -ies',
+};
+const skillLabel = (id: string): string => SKILL_LABELS[id] ?? id;
+const SUBJECT_LABELS: Record<string, string> = {
+  math: 'Math',
+  english: 'English',
+  other: 'Other',
+};
+const subjectLabel = (s: string): string => SUBJECT_LABELS[s] ?? s;
+
 interface Family {
   familyId: string;
   guardianId: string;
@@ -104,7 +119,7 @@ function ParentView({
   const [learnerId, setLearnerId] = useState('lnr-ava');
   const [nickname, setNickname] = useState('Ava');
   const [grade, setGrade] = useState(4);
-  const [rows, setRows] = useState<api.DashboardRow[] | null>(null);
+  const [dash, setDash] = useState<api.Dashboard | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote, fail] = useNote();
 
@@ -239,9 +254,8 @@ function ParentView({
                   family.familyId,
                   family.guardianId,
                   learner.learnerId,
-                  DEMO_SKILLS.map((s) => s.id),
                 );
-                setRows(d.rows);
+                setDash(d);
                 setNote({ kind: 'ok', text: 'Dashboard loaded from derived evidence.' });
               })
             }
@@ -253,39 +267,53 @@ function ParentView({
 
       <NoteBar note={note} />
 
-      {rows && (
+      {dash && (
         <div className="dash">
-          <h2>{learner?.nickname}&rsquo;s skills</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Skill</th>
-                <th>Standing</th>
-                <th>Confidence</th>
-                <th>Evidence</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => {
-                const meta = DEMO_SKILLS.find((s) => s.id === r.skillId);
-                return (
-                  <tr key={r.skillId}>
-                    <td>{meta?.label ?? r.skillId}</td>
-                    <td>
-                      <span className={`pill ${standingTone(r.standing)}`}>
-                        {standingLabel(r.standing)}
-                      </span>
-                    </td>
-                    <td>{confidencePct(r.confidence)}</td>
-                    <td>{r.evidenceCount}</td>
+          <h2>{learner?.nickname}&rsquo;s progress</h2>
+          {dash.bySubject.length === 0 && (
+            <p className="hint">
+              No evidence yet — have {learner?.nickname} practise on the Child tab.
+            </p>
+          )}
+          {dash.bySubject.map((g) => (
+            <div key={g.subject} className="subject">
+              <h3>{subjectLabel(g.subject)}</h3>
+              {g.nextFocus && (
+                <div className="whytoday">
+                  <span className="wt-label">Why this today?</span>{' '}
+                  <strong>{skillLabel(g.nextFocus.skillId)}</strong> — {g.nextFocus.explanation}
+                </div>
+              )}
+              <table>
+                <thead>
+                  <tr>
+                    <th>Skill</th>
+                    <th>Standing</th>
+                    <th>Confidence</th>
+                    <th>Evidence</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {g.rows.map((r) => (
+                    <tr key={r.skillId}>
+                      <td>{skillLabel(r.skillId)}</td>
+                      <td>
+                        <span className={`pill ${standingTone(r.standing)}`}>
+                          {standingLabel(r.standing)}
+                        </span>
+                      </td>
+                      <td>{confidencePct(r.confidence)}</td>
+                      <td>{r.evidenceCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
           <p className="hint">
             No predicted report-card grade is shown — standings come only from observed evidence
-            (PAR-001).
+            (PAR-001), and &ldquo;why this today?&rdquo; gives the engine&rsquo;s reason, never its
+            internal reasoning (PAR-016).
           </p>
         </div>
       )}
