@@ -17,6 +17,8 @@ import {
   MIN_TRUSTED_RECOGNITION,
   type MasteryEvidence,
   type SkillProjection,
+  type EvidenceMode,
+  type AssistanceBand,
 } from '@potenova/learner-state';
 import { CONSENT_PURPOSES } from '@potenova/identity';
 import { decideEscalation, handleDisclosure, type EscalationInput } from '@potenova/safety';
@@ -30,6 +32,7 @@ import {
   sessionBudget,
   hintFor,
   buildSessionSummary,
+  reviewDueFor,
   type Subject,
 } from '../adaptive';
 
@@ -244,6 +247,10 @@ async function gradeAndRecord(
     answer: string;
     representation: string;
     recognitionConfidence: number;
+    /** Review turns are tagged retention_check / A1 so a delayed retrieval
+     *  resolves RETAINED; normal turns are independent_check / A0. */
+    mode?: EvidenceMode;
+    assistanceBand?: AssistanceBand;
   },
 ): Promise<{ correct: boolean; skillId: string; evidenceId: string; projection: SkillProjection }> {
   const correct = judge(args.task, args.answer);
@@ -252,8 +259,8 @@ async function gradeAndRecord(
     eventId: `${args.sessionId}:${args.clientSubmissionId}`,
     learnerAlias: args.alias,
     skillId: args.task.skillId,
-    mode: 'independent_check',
-    assistanceBand: 'A0',
+    mode: args.mode ?? 'independent_check',
+    assistanceBand: args.assistanceBand ?? 'A0',
     correct,
     representation: args.representation,
     recognitionConfidence: args.recognitionConfidence,
@@ -390,6 +397,9 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       return c.json({ graded: false, action: 'CONCEPT_BUDGET_REACHED', budget: preBudget });
     }
 
+    // A review turn (the skill is review-due) is tagged so a delayed retrieval
+    // resolves RETAINED and the skill stops resurfacing.
+    const review = await reviewDueFor(deps, alias, task.skillId);
     const graded = await gradeAndRecord(deps, {
       alias,
       sessionId,
@@ -398,6 +408,8 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       answer: b.answer,
       representation: representationOf(task, b.representation),
       recognitionConfidence: 1,
+      mode: review ? 'retention_check' : 'independent_check',
+      assistanceBand: review ? 'A1' : 'A0',
     });
 
     // Reaching the item ceiling with this turn ends the session cleanly (COMPLETED)
@@ -407,7 +419,14 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       await endSessionComplete(deps, sessionId);
       const summary = await buildSessionSummary(deps, alias, sessionId);
       return c.json(
-        { graded: true, ...graded, budget: postBudget, sessionComplete: true, summary },
+        {
+          graded: true,
+          ...graded,
+          budget: postBudget,
+          sessionComplete: true,
+          summary,
+          ...(review ? { reviewed: true } : {}),
+        },
         201,
       );
     }
@@ -427,6 +446,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
         ...graded,
         next,
         budget: postBudget,
+        ...(review ? { reviewed: true } : {}),
         ...(coaching ? { coaching } : {}),
         ...(hint ? { hint } : {}),
       },
@@ -505,6 +525,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       return c.json({ graded: false, action: 'CONCEPT_BUDGET_REACHED', budget: preBudget });
     }
 
+    const review = await reviewDueFor(deps, alias, task.skillId);
     const graded = await gradeAndRecord(deps, {
       alias,
       sessionId,
@@ -513,6 +534,8 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       answer: rec.text,
       representation: representationOf(task, undefined),
       recognitionConfidence: rec.confidence,
+      mode: review ? 'retention_check' : 'independent_check',
+      assistanceBand: review ? 'A1' : 'A0',
     });
 
     const postBudget = await sessionBudget(deps, alias, sessionId);
@@ -528,6 +551,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
           budget: postBudget,
           sessionComplete: true,
           summary,
+          ...(review ? { reviewed: true } : {}),
         },
         201,
       );
@@ -546,6 +570,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
         ...graded,
         next,
         budget: postBudget,
+        ...(review ? { reviewed: true } : {}),
         ...(coaching ? { coaching } : {}),
         ...(hint ? { hint } : {}),
       },

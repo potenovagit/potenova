@@ -128,6 +128,21 @@ export async function projectSkill(
 }
 
 /**
+ * Is this skill currently review-due for the learner? (Independent, but last
+ * practised longer ago than the planner's decay window.) Used to tag a review
+ * turn so a delayed retrieval resolves RETAINED. Read-only.
+ */
+export async function reviewDueFor(deps: Deps, alias: string, skillId: string): Promise<boolean> {
+  const events = await deps.evidence.listEvidence(alias, skillId);
+  const corrections = await deps.evidence.listCorrections(events.map((e) => e.eventId));
+  const p = projectShadow(alias, skillId, events, corrections, deps.policies.mastery);
+  if (!p.dimensions.independent) return false;
+  const times = events.map((e) => Date.parse(e.observedAt)).filter((t) => !Number.isNaN(t));
+  if (times.length === 0) return false;
+  return Date.now() - Math.max(...times) > DRAFT_PLANNER_POLICY.retentionDecayWindowMs;
+}
+
+/**
  * A mastery snapshot of every coachable skill in a subject (for the planner),
  * including each skill's most recent trusted practice time for retention/review.
  */
