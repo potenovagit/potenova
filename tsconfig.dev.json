@@ -24,6 +24,7 @@
       "@potenova/safety": ["packages/safety/src/index.ts"],
       "@potenova/billing": ["packages/billing/src/index.ts"],
       "@potenova/operator": ["packages/operator/src/index.ts"],
+      "@potenova/policy": ["packages/policy/src/index.ts"],
       "@potenova/persistence": ["packages/persistence/src/index.ts"]
     }
   }
