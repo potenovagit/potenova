@@ -50,6 +50,11 @@ const TASK_BANK: Readonly<Record<string, BankTask>> = {
 const fmt = (f: Fraction): string => `${f.numerator}/${f.denominator}`;
 const isRelation = (v: unknown): v is FractionRelation => v === 'lt' || v === 'eq' || v === 'gt';
 
+const REPRESENTATIONS = ['symbolic', 'area-model', 'number-line', 'set'] as const;
+type Representation = (typeof REPRESENTATIONS)[number];
+const isRepresentation = (v: unknown): v is Representation =>
+  (REPRESENTATIONS as readonly unknown[]).includes(v);
+
 async function requireActiveSession(deps: Deps, sessionId: string, alias: string): Promise<void> {
   const row = await deps.session.getTutoringSession(sessionId);
   if (!row || row.learnerAlias !== alias) throw new DomainError('NOT_FOUND', 'session not found');
@@ -60,6 +65,8 @@ interface AnswerBody {
   clientSubmissionId?: string;
   taskId?: string;
   answer?: string;
+  /** Representation the learner worked in (AT-10). Defaults to 'symbolic'. */
+  representation?: string;
   /** Upstream safety-classifier output for a sensitive disclosure (SAFE-016). */
   disclosure?: EscalationInput;
 }
@@ -150,6 +157,9 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     if (!isRelation(b.answer)) {
       throw new DomainError('POLICY_BLOCKED', "answer must be 'lt', 'eq' or 'gt'");
     }
+    const representation: Representation = isRepresentation(b.representation)
+      ? b.representation
+      : 'symbolic';
 
     const check = checkMathTask({
       kind: 'fraction_comparison',
@@ -168,7 +178,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       mode: 'independent_check',
       assistanceBand: 'A0',
       correct: check.correct,
-      representation: 'symbolic',
+      representation,
       recognitionConfidence: 1,
       observedAt: now(),
       curriculumReleaseId: RELEASE,
