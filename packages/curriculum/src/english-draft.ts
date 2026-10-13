@@ -1,5 +1,10 @@
 import { CurriculumGraph } from './graph';
-import type { CanonicalSkill, SkillDependency } from './entities';
+import type {
+  CanonicalSkill,
+  SkillDependency,
+  MisconceptionDefinition,
+  InstructionalStrategy,
+} from './entities';
 
 /**
  * ============================================================================
@@ -52,6 +57,34 @@ const edge = (
 
 export const ENGLISH_DEPENDENCIES: readonly SkillDependency[] = [
   edge('D-en-1', 'SK-EN-plural-base', 'SK-EN-plural-sibilant', 'hardPrerequisite', 1.0),
+];
+
+export const ENGLISH_STRATEGIES: readonly InstructionalStrategy[] = [
+  {
+    strategyId: 'ST-en-say-aloud',
+    intent: 'Say the word aloud — if the ending hisses (s, x, z, ch, sh), add -es, not just -s.',
+    approvedBands: ['primary', 'junior'],
+    representations: ['spoken'],
+    version: V,
+  },
+  {
+    strategyId: 'ST-en-ending-pattern',
+    intent: 'Check the last letters: -es after s/x/z/ch/sh, and consonant + y becomes -ies.',
+    approvedBands: ['junior'],
+    representations: ['written'],
+    version: V,
+  },
+];
+
+export const ENGLISH_MISCONCEPTIONS: readonly MisconceptionDefinition[] = [
+  {
+    misconceptionId: 'MC-EN-sibilant-bare-s',
+    skillId: 'SK-EN-plural-sibilant',
+    pattern: 'Adds a bare -s after a sibilant (writes "boxs" instead of "boxes").',
+    probeIds: ['PR-EN-sibilant'],
+    remediationStrategyIds: ['ST-en-say-aloud', 'ST-en-ending-pattern'],
+    version: V,
+  },
 ];
 
 export function buildEnglishDraftGraph(): CurriculumGraph {

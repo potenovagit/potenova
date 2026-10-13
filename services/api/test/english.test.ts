@@ -144,6 +144,22 @@ describe('English coaching slice', () => {
     expect(body.correct).toBe(false);
   });
 
+  it('gives an English hint on the first wrong sibilant-plural answer', async () => {
+    const { app, started } = await startEnglishSession();
+    const sessionId = started.session.sessionId as string;
+    const body = await (
+      await app.request(
+        `/learners/kid1/sessions/${sessionId}/answer`,
+        json(child, { clientSubmissionId: 'h1', taskId: 'eng-sib-1', answer: 'boxs' }),
+      )
+    ).json();
+    expect(body.correct).toBe(false);
+    expect(body.coaching).toBeUndefined(); // first wrong — hint, not yet a strategy change
+    expect(body.hint.misconceptionId).toBe('MC-EN-sibilant-bare-s');
+    expect(body.hint.strategyId).toBe('ST-en-say-aloud');
+    expect(body.hint.message.length).toBeGreaterThan(0);
+  });
+
   it('stalls to the prerequisite after repeated wrong answers on the sibilant plural', async () => {
     const { app, started } = await startEnglishSession();
     const sessionId = started.session.sessionId as string;

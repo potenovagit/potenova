@@ -10,6 +10,8 @@ import {
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
+  ENGLISH_MISCONCEPTIONS,
+  ENGLISH_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -68,8 +70,8 @@ const SUBJECTS: Record<Subject, SubjectPlan> = {
     coachableSkillIds: ['SK-EN-plural-base', 'SK-EN-plural-sibilant'],
     defaultTask: { 'SK-EN-plural-base': 'eng-base-1', 'SK-EN-plural-sibilant': 'eng-sib-1' },
     remediationReps: ['spoken', 'picture', 'written'],
-    misconceptions: [], // no misconception KB authored for English yet
-    strategies: [],
+    misconceptions: ENGLISH_MISCONCEPTIONS,
+    strategies: ENGLISH_STRATEGIES,
   },
 };
 
