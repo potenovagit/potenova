@@ -1,5 +1,6 @@
 export * from './policy';
 export * from './safety-case';
+export * from './escalation-matrix';
 export * from './safety-response';
 export * from './barriers';
 export * from './data-request';
