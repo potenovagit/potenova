@@ -186,8 +186,12 @@ function ParentView({
               run(async () => {
                 if (!family) return;
                 await api.grantConsent(family.familyId, family.guardianId);
+                await api.grantMultimodalConsent(family.familyId, family.guardianId);
                 setFamily({ ...family, consentGiven: true });
-                setNote({ kind: 'ok', text: 'child_learning consent granted.' });
+                setNote({
+                  kind: 'ok',
+                  text: 'Consent granted: text, voice and vision.',
+                });
               })
             }
           >
@@ -346,6 +350,9 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
   const [summary, setSummary] = useState<api.SessionSummary | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [freeText, setFreeText] = useState('');
+  const [inputMode, setInputMode] = useState<'type' | 'voice' | 'vision'>('type');
+  const [clarity, setClarity] = useState<'clear' | 'mumbled'>('clear');
+  const [clarify, setClarify] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote, fail] = useNote();
 
@@ -367,6 +374,7 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
   const loadTask = async (sid: string, taskId: string | null, next: api.SessionNext | null) => {
     setNextRec(next);
     setFreeText('');
+    setClarify(null);
     if (!taskId) {
       setTask(null);
       return;
@@ -397,15 +405,35 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
     if (!task) return;
     setBusy(true);
     setNote(null);
+    setClarify(null);
+    const cid = `${sessionId}-a${attempt}`;
     try {
-      const rep = REPS[subject][attempt % REPS[subject].length];
-      const r = await api.submitAnswer(fam.familyId, lnr.learnerId, sessionId, {
-        clientSubmissionId: `${sessionId}-a${attempt}`,
-        taskId: task.taskId,
-        answer: value,
-        representation: rep,
-      });
+      let r: api.AnswerResult;
+      if (inputMode === 'type') {
+        const rep = REPS[subject][attempt % REPS[subject].length];
+        r = await api.submitAnswer(fam.familyId, lnr.learnerId, sessionId, {
+          clientSubmissionId: cid,
+          taskId: task.taskId,
+          answer: value,
+          representation: rep,
+        });
+      } else {
+        // The demo encodes the spoken/photographed answer + a confidence the
+        // recogniser "hears". A mumbled reading lands below the AT-28 floor.
+        const conf = clarity === 'clear' ? 0.9 : 0.4;
+        r = await api.submitMultimodalAnswer(fam.familyId, lnr.learnerId, sessionId, {
+          clientSubmissionId: cid,
+          taskId: task.taskId,
+          modality: inputMode,
+          mediaRef: `demo:${value}:${conf}`,
+        });
+      }
       setAttempt(attempt + 1);
+      // AT-28: a low-confidence reading is never graded — ask for a do-over.
+      if (!r.graded && r.action === 'REQUEST_CLARIFICATION') {
+        setClarify('Hmm, I didn’t quite catch that — try again a bit more clearly.');
+        return;
+      }
       setResult(r);
       if (r.sessionComplete && r.summary) {
         setSummary(r.summary);
@@ -454,7 +482,46 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
               <span className="wt-label">Up next</span> {nextRec.explanation}
             </div>
           )}
+
+          <div className="modepick">
+            {(
+              [
+                ['type', '⌨️ Type'],
+                ['voice', '🎤 Voice'],
+                ['vision', '📷 Photo'],
+              ] as const
+            ).map(([m, label]) => (
+              <button
+                key={m}
+                className={m === inputMode ? 'on' : ''}
+                disabled={busy}
+                onClick={() => {
+                  setInputMode(m);
+                  setClarify(null);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {inputMode !== 'type' && (
+            <div className="clarity">
+              <span className="muted">Recording quality:</span>
+              {(['clear', 'mumbled'] as const).map((cl) => (
+                <button
+                  key={cl}
+                  className={cl === clarity ? 'on' : ''}
+                  disabled={busy}
+                  onClick={() => setClarity(cl)}
+                >
+                  {cl === 'clear' ? 'Clear' : 'Mumbled'}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="q">{task.question}</div>
+          {clarify && <div className="hintbar">🔁 {clarify}</div>}
           {task.options.length > 0 ? (
             <div className="choices">
               {task.options.map((o) => (

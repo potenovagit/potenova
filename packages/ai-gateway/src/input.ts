@@ -60,13 +60,25 @@ export class StubInputProvider implements InputProvider {
     this.region = opts.region ?? 'ca-central';
   }
 
+  /**
+   * Synthetic ref convention `demo:<text>:<confidence>` lets a caller script one
+   * recognition (used by the demo UI to exercise the AT-28 trust floor). Any other
+   * ref falls back to the constructor's scripted text/confidence.
+   */
+  #result(ref: string): RecognitionResult {
+    const m = /^demo:([^:]+):(\d*\.?\d+)$/.exec(ref);
+    const text = m ? m[1] : this.#text;
+    const confidence = m ? Number(m[2]) : this.#confidence;
+    return { text, confidence, model: this.id, region: this.region };
+  }
+
   async transcribe(req: TranscribeRequest): Promise<RecognitionResult> {
     assertSynthetic(req.synthetic);
-    return { text: this.#text, confidence: this.#confidence, model: this.id, region: this.region };
+    return this.#result(req.audioRef);
   }
 
   async extractText(req: ExtractTextRequest): Promise<RecognitionResult> {
     assertSynthetic(req.synthetic);
-    return { text: this.#text, confidence: this.#confidence, model: this.id, region: this.region };
+    return this.#result(req.imageRef);
   }
 }

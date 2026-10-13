@@ -323,3 +323,45 @@ export const submitAnswer = (
     headers: childHeaders(familyId, learnerId),
     body,
   });
+
+/** Grant the per-modality consents the multimodal answer path requires. */
+export const grantMultimodalConsent = (familyId: string, guardianId: string) =>
+  Promise.all([
+    call(`/families/${familyId}/consent`, {
+      method: 'POST',
+      headers: guardianHeaders(familyId, guardianId),
+      body: {
+        grantId: `cg-v-${Date.now()}`,
+        purpose: 'voice_interaction',
+        modality: 'voice',
+        version: 'v1',
+      },
+    }),
+    call(`/families/${familyId}/consent`, {
+      method: 'POST',
+      headers: guardianHeaders(familyId, guardianId),
+      body: {
+        grantId: `cg-i-${Date.now()}`,
+        purpose: 'vision_upload',
+        modality: 'vision',
+        version: 'v1',
+      },
+    }),
+  ]);
+
+export const submitMultimodalAnswer = (
+  familyId: string,
+  learnerId: string,
+  sessionId: string,
+  body: {
+    clientSubmissionId: string;
+    taskId: string;
+    modality: 'voice' | 'vision';
+    mediaRef: string;
+  },
+) =>
+  call<AnswerResult>(`/learners/${learnerId}/sessions/${sessionId}/answer/multimodal`, {
+    method: 'POST',
+    headers: childHeaders(familyId, learnerId),
+    body,
+  });

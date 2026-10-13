@@ -13,6 +13,16 @@ describe('StubInputProvider', () => {
     expect(o.text).toBe('gt');
   });
 
+  it('honors the demo ref convention for scripted recognition', async () => {
+    const p = new StubInputProvider({ text: 'gt', confidence: 0.9 });
+    const r = await p.transcribe({ audioRef: 'demo:lt:0.4', synthetic: true });
+    expect(r.text).toBe('lt');
+    expect(r.confidence).toBe(0.4);
+    const o = await p.extractText({ imageRef: 'demo:boxes:0.95', synthetic: true });
+    expect(o.text).toBe('boxes');
+    expect(o.confidence).toBe(0.95);
+  });
+
   it('fails closed on non-synthetic media', async () => {
     const p = new StubInputProvider({ text: 'gt', confidence: 0.9 });
     try {

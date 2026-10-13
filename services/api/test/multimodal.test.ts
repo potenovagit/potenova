@@ -127,6 +127,38 @@ describe('multimodal answer', () => {
     expect(body.modality).toBe('vision');
   });
 
+  it('demo ref drives the AT-28 floor: a mumbled reading asks for clarification', async () => {
+    const { app, sessionId } = await setup({ text: 'gt', confidence: 0.9 });
+    const res = await app.request(
+      `/learners/kid1/sessions/${sessionId}/answer/multimodal`,
+      mm({
+        clientSubmissionId: 'd1',
+        taskId: 'frac-cmp-1',
+        modality: 'voice',
+        mediaRef: 'demo:gt:0.4',
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).action).toBe('REQUEST_CLARIFICATION');
+  });
+
+  it('demo ref with high confidence grades the answer', async () => {
+    const { app, sessionId } = await setup({ text: 'gt', confidence: 0.9 });
+    const body = await (
+      await app.request(
+        `/learners/kid1/sessions/${sessionId}/answer/multimodal`,
+        mm({
+          clientSubmissionId: 'd2',
+          taskId: 'frac-cmp-1',
+          modality: 'vision',
+          mediaRef: 'demo:gt:0.95',
+        }),
+      )
+    ).json();
+    expect(body.graded).toBe(true);
+    expect(body.correct).toBe(true);
+  });
+
   it('403s CONSENT_REQUIRED without the voice consent grant', async () => {
     const { app, sessionId } = await setup({
       text: 'gt',
