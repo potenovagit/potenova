@@ -203,6 +203,41 @@ async function gradeAndRecord(
   return { correct, skillId: args.task.skillId, evidenceId: evidence.eventId, projection };
 }
 
+/** The adaptive next-objective recommendation returned to the client. */
+interface NextRecommendation {
+  skillId: string;
+  reasonCode: string;
+  blockedSkillId: string | null;
+  defaultTaskId: string | null;
+  plannerPolicyVersion: string;
+}
+
+/**
+ * Ask the planner what to coach next: project each coachable skill's derived
+ * mastery and run the graph-driven selector. Read-only — selection never sets
+ * mastery. Shared by GET /next and the self-driving grade responses.
+ */
+async function computeNext(deps: Deps, alias: string): Promise<NextRecommendation> {
+  const mastery: Record<string, { confidence: number; independent: boolean }> = {};
+  for (const skillId of COACHABLE_SKILLS) {
+    const p = await projectSkill(deps, alias, skillId);
+    mastery[skillId] = { confidence: p.confidence, independent: p.dimensions.independent };
+  }
+  const next = selectNextObjective({
+    graph: buildFractionsDraftGraph(),
+    coachableSkillIds: COACHABLE_SKILLS,
+    mastery,
+    policy: DRAFT_PLANNER_POLICY,
+  });
+  return {
+    skillId: next.targetSkillId,
+    reasonCode: next.reasonCode,
+    blockedSkillId: next.blockedSkillId,
+    defaultTaskId: DEFAULT_TASK[next.targetSkillId] ?? null,
+    plannerPolicyVersion: DRAFT_PLANNER_POLICY.policyVersion,
+  };
+}
+
 interface AnswerBody {
   clientSubmissionId?: string;
   taskId?: string;
@@ -234,27 +269,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     requireActorType(a, 'child');
     const alias = c.req.param('alias');
     await requireActiveSession(deps, c.req.param('sessionId'), alias);
-
-    const mastery: Record<string, { confidence: number; independent: boolean }> = {};
-    for (const skillId of COACHABLE_SKILLS) {
-      const p = await projectSkill(deps, alias, skillId);
-      mastery[skillId] = { confidence: p.confidence, independent: p.dimensions.independent };
-    }
-
-    const next = selectNextObjective({
-      graph: buildFractionsDraftGraph(),
-      coachableSkillIds: COACHABLE_SKILLS,
-      mastery,
-      policy: DRAFT_PLANNER_POLICY,
-    });
-
-    return c.json({
-      skillId: next.targetSkillId,
-      reasonCode: next.reasonCode,
-      blockedSkillId: next.blockedSkillId,
-      defaultTaskId: DEFAULT_TASK[next.targetSkillId] ?? null,
-      plannerPolicyVersion: DRAFT_PLANNER_POLICY.policyVersion,
-    });
+    return c.json(await computeNext(deps, alias));
   });
 
   // Deliver a validated task — content gate on the delivery path (AI-001).
@@ -339,7 +354,10 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       recognitionConfidence: 1,
     });
 
-    return c.json({ graded: true, ...graded }, 201);
+    // Self-driving loop: the planner recommends the next objective off the freshly
+    // re-derived mastery (advancement once the prerequisite is independent).
+    const next = await computeNext(deps, alias);
+    return c.json({ graded: true, ...graded, next }, 201);
   });
 
   // Multimodal answer (voice / vision). Requires the per-modality consent grant,
@@ -410,8 +428,15 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       recognitionConfidence: rec.confidence,
     });
 
+    const next = await computeNext(deps, alias);
     return c.json(
-      { graded: true, modality: b.modality, recognitionConfidence: rec.confidence, ...graded },
+      {
+        graded: true,
+        modality: b.modality,
+        recognitionConfidence: rec.confidence,
+        ...graded,
+        next,
+      },
       201,
     );
   });

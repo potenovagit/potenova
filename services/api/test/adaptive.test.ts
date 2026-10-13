@@ -131,6 +131,43 @@ describe('adaptive planner + remediation', () => {
     expect(cmpResult.projection.dimensions.independent).toBe(true);
   });
 
+  it('rides the next recommendation on each graded answer (self-driving loop)', async () => {
+    const { app, sessionId } = await startSession();
+
+    // First two equivalence turns: prerequisite not yet independent → keep coaching it.
+    for (let i = 0; i < 2; i++) {
+      const body = await (
+        await app.request(
+          `/learners/kid1/sessions/${sessionId}/answer`,
+          json(child, {
+            clientSubmissionId: `eq-${i}`,
+            taskId: 'frac-eq-1',
+            answer: 'yes',
+            representation: REPS[i],
+          }),
+        )
+      ).json();
+      expect(body.next.skillId).toBe('SK-FR-equiv');
+    }
+
+    // Third correct turn across a 3rd representation makes equivalence independent;
+    // the answer response now recommends advancing to comparison.
+    const last = await (
+      await app.request(
+        `/learners/kid1/sessions/${sessionId}/answer`,
+        json(child, {
+          clientSubmissionId: 'eq-2',
+          taskId: 'frac-eq-1',
+          answer: 'yes',
+          representation: REPS[2],
+        }),
+      )
+    ).json();
+    expect(last.projection.dimensions.independent).toBe(true);
+    expect(last.next.skillId).toBe('SK-FR-compare');
+    expect(last.next.defaultTaskId).toBe('frac-cmp-1');
+  });
+
   it('grades an equivalence answer with the independent oracle (wrong answer = incorrect)', async () => {
     const { app, sessionId } = await startSession();
     // frac-eq-2 is 1/2 vs 1/3 → NOT equivalent; answering 'yes' must be graded wrong.
