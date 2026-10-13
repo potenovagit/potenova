@@ -35,10 +35,11 @@ async function hasChildLearningConsent(deps: Deps, familyAlias: string | null): 
 interface StartBody {
   subject?: string;
   requestedMinutes?: number;
-  /** Age band — derived from the learner record in production; accepted here for
-   *  the synthetic slice. */
-  ageBand?: string;
-  usedTodayMinutes?: number;
+}
+
+/** UTC day key (YYYY-MM-DD) for the usage ledger. */
+function utcDay(iso: string): string {
+  return iso.slice(0, 10);
 }
 
 export function registerSessions(app: Hono, deps: Deps): void {
@@ -57,10 +58,15 @@ export function registerSessions(app: Hono, deps: Deps): void {
     if (b.subject !== 'math' && b.subject !== 'english') {
       throw new DomainError('POLICY_BLOCKED', "subject must be 'math' or 'english'");
     }
-    if (!b.ageBand || !(AGE_BANDS as readonly string[]).includes(b.ageBand)) {
-      throw new DomainError('POLICY_BLOCKED', 'a valid ageBand is required');
-    }
     const requestedMinutes = b.requestedMinutes ?? 0;
+
+    // Age band is derived from the learner's registered grade — never self-declared.
+    const learner = await deps.identity.getLearner(alias);
+    if (!learner) throw new DomainError('NOT_FOUND', 'learner not found');
+    if (!(AGE_BANDS as readonly string[]).includes(learner.ageBand)) {
+      throw new DomainError('POLICY_BLOCKED', 'learner has no valid age band');
+    }
+    const band = learner.ageBand as AgeBand;
 
     // Consent fence.
     const consentOk = await hasChildLearningConsent(deps, a.actor.familyAlias);
@@ -69,12 +75,14 @@ export function registerSessions(app: Hono, deps: Deps): void {
     const ent = a.actor.familyAlias ? await deps.billing.getEntitlement(a.actor.familyAlias) : null;
     const entitlementActive = ent ? learningActive(ent.state as EntitlementState) : false;
 
-    // Usage caps (ER-09). In prod the cap must be approved; in non-prod the
-    // illustrative staging caps apply.
+    // Usage caps (ER-09) over the day's usage from the ledger. In prod the cap
+    // must be approved; in non-prod the illustrative staging caps apply.
+    const day = utcDay(new Date().toISOString());
+    const usedTodayMinutes = await deps.session.getUsageMinutes(alias, day);
     const usage = decideUsage(deps.policies.usageCaps, {
-      band: b.ageBand as AgeBand,
+      band,
       requestedSessionMinutes: requestedMinutes,
-      usedTodayMinutes: b.usedTodayMinutes ?? 0,
+      usedTodayMinutes,
       requireApproved: deps.policies.isProd,
     });
     const withinAgeCap = usage.kind === 'ALLOW' || usage.kind === 'SHORTEN';
@@ -92,6 +100,10 @@ export function registerSessions(app: Hono, deps: Deps): void {
       subject: b.subject,
       state: session.state,
     });
+
+    // Reserve the allotment against today's usage so the cap holds across
+    // sessions (conservative; early-end reconciliation is a later refinement).
+    await deps.session.addUsageMinutes(alias, day, usage.allowedMinutes);
 
     return c.json(
       {

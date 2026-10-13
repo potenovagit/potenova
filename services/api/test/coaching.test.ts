@@ -36,6 +36,10 @@ async function activeSession() {
     json(owner, { familyId: 'fam1', marketRegion: 'ca-on', legalOwnerGuardianId: 'g1' }),
   );
   await app.request(
+    '/families/fam1/learners',
+    json(owner, { learnerId: 'kid1', nickname: 'Kid', grade: 5 }),
+  );
+  await app.request(
     '/families/fam1/consent',
     json(owner, { grantId: 'cg1', purpose: 'child_learning', modality: 'text', version: 'v1' }),
   );
@@ -48,7 +52,7 @@ async function activeSession() {
   const started = await (
     await app.request(
       '/learners/kid1/sessions',
-      json(child, { subject: 'math', requestedMinutes: 15, ageBand: 'junior' }),
+      json(child, { subject: 'math', requestedMinutes: 15 }),
     )
   ).json();
   return { app, sessionId: started.session.sessionId as string };

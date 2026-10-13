@@ -167,6 +167,12 @@ export const submission = pgTable('submission', {
   clientSubmissionId: text('client_submission_id').primaryKey(),
   at: text('at').notNull(),
 });
+export const usageLedger = pgTable('usage_ledger', {
+  id: text('id').primaryKey(), // `${learnerAlias}:${day}`
+  learnerAlias: text('learner_alias').notNull(),
+  day: text('day').notNull(),
+  minutesUsed: integer('minutes_used').notNull(),
+});
 
 /* ---- curriculum reference (WP-02) ---- */
 export const skill = pgTable('skill', {
@@ -246,6 +252,8 @@ CREATE TABLE IF NOT EXISTS tutoring_session (
   session_id text PRIMARY KEY, learner_alias text NOT NULL, subject text NOT NULL, state text NOT NULL);
 CREATE TABLE IF NOT EXISTS submission (
   client_submission_id text PRIMARY KEY, at text NOT NULL);
+CREATE TABLE IF NOT EXISTS usage_ledger (
+  id text PRIMARY KEY, learner_alias text NOT NULL, day text NOT NULL, minutes_used integer NOT NULL);
 
 CREATE TABLE IF NOT EXISTS skill (
   skill_id text PRIMARY KEY, domain text NOT NULL, competency text NOT NULL, skill text NOT NULL,

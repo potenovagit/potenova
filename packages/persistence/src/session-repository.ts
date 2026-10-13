@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { PotenovaDb } from './database';
-import { diagnosticRun, tutoringSession, submission } from './schema';
+import { diagnosticRun, tutoringSession, submission, usageLedger } from './schema';
 
 /** Session persistence (WP-06/07/08). Diagnostic runs and tutoring sessions are
  *  resumable, so their state is durable (AT-04/06). The submission ledger is
@@ -66,5 +66,26 @@ export class SessionRepository {
       .onConflictDoNothing()
       .returning({ id: submission.clientSubmissionId });
     return { accepted: res.length > 0 };
+  }
+
+  /** Minutes a learner has used on a given UTC day (0 if none). */
+  async getUsageMinutes(learnerAlias: string, day: string): Promise<number> {
+    const db = await this.h.ready();
+    const [r] = await db
+      .select()
+      .from(usageLedger)
+      .where(eq(usageLedger.id, `${learnerAlias}:${day}`));
+    return r?.minutesUsed ?? 0;
+  }
+
+  /** Add to a learner's usage for a day (ER-09 enforcement across sessions). */
+  async addUsageMinutes(learnerAlias: string, day: string, minutes: number): Promise<void> {
+    const db = await this.h.ready();
+    const id = `${learnerAlias}:${day}`;
+    const next = (await this.getUsageMinutes(learnerAlias, day)) + minutes;
+    await db
+      .insert(usageLedger)
+      .values({ id, learnerAlias, day, minutesUsed: next })
+      .onConflictDoUpdate({ target: usageLedger.id, set: { minutesUsed: next } });
   }
 }
