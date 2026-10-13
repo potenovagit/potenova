@@ -227,6 +227,23 @@ code {
   background: var(--low-bg);
   color: var(--err);
 }
+.hintbar {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--mid-bg, #f3f4f6);
+  font-size: 14px;
+}
+.freeans {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.freeans input {
+  flex: 1;
+  padding: 10px;
+  font-size: 16px;
+}
 .subject {
   margin: 18px 0;
 }

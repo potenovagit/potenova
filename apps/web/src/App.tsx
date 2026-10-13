@@ -321,9 +321,31 @@ function ParentView({
   );
 }
 
+/** Representations cycled through so mastery builds across ≥2 (needed for INDEPENDENT). */
+const REPS: Record<'math' | 'english', string[]> = {
+  math: ['symbolic', 'area-model', 'number-line'],
+  english: ['written', 'spoken', 'picture'],
+};
+/** Friendly labels for answer tokens. */
+const OPTION_LABELS: Record<string, string> = {
+  lt: 'Less (<)',
+  eq: 'Equal (=)',
+  gt: 'Greater (>)',
+  yes: 'Yes',
+  no: 'No',
+};
+const optionLabel = (o: string): string => OPTION_LABELS[o] ?? o;
+
 function ChildView({ family, learner }: { family: Family | null; learner: Learner | null }) {
-  const [skill, setSkill] = useState(DEMO_SKILLS[0]);
-  const [projection, setProjection] = useState<api.Projection | null>(null);
+  const [subject, setSubject] = useState<'math' | 'english'>('math');
+  const [phase, setPhase] = useState<'idle' | 'active' | 'done'>('idle');
+  const [sessionId, setSessionId] = useState('');
+  const [task, setTask] = useState<api.DeliveredTask | null>(null);
+  const [nextRec, setNextRec] = useState<api.SessionNext | null>(null);
+  const [result, setResult] = useState<api.AnswerResult | null>(null);
+  const [summary, setSummary] = useState<api.SessionSummary | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [freeText, setFreeText] = useState('');
   const [busy, setBusy] = useState(false);
   const [note, setNote, fail] = useNote();
 
@@ -338,20 +360,60 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
       </section>
     );
   }
+  const fam = family;
+  const lnr = learner;
+  const band = bandForGrade(lnr.grade);
 
-  const band = bandForGrade(learner.grade);
+  const loadTask = async (sid: string, taskId: string | null, next: api.SessionNext | null) => {
+    setNextRec(next);
+    setFreeText('');
+    if (!taskId) {
+      setTask(null);
+      return;
+    }
+    setTask(await api.getTask(fam.familyId, lnr.learnerId, sid, taskId));
+  };
 
-  const answer = async (correct: boolean) => {
+  const start = async () => {
     setBusy(true);
     setNote(null);
     try {
-      await api.submitEvidence(family.familyId, learner.learnerId, skill.id, correct);
-      const p = await api.getProjection(family.familyId, learner.learnerId, skill.id);
-      setProjection(p.projection);
-      setNote({
-        kind: 'ok',
-        text: correct ? 'Nice — that’s recorded.' : 'Got it — we’ll keep practising this.',
+      await api.activateEntitlement(fam.familyId); // demo stands in for the payment provider
+      const s = await api.startSession(fam.familyId, lnr.learnerId, subject);
+      setSessionId(s.session.sessionId);
+      setPhase('active');
+      setResult(null);
+      setSummary(null);
+      setAttempt(0);
+      await loadTask(s.session.sessionId, s.next.defaultTaskId, s.next);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const answer = async (value: string) => {
+    if (!task) return;
+    setBusy(true);
+    setNote(null);
+    try {
+      const rep = REPS[subject][attempt % REPS[subject].length];
+      const r = await api.submitAnswer(fam.familyId, lnr.learnerId, sessionId, {
+        clientSubmissionId: `${sessionId}-a${attempt}`,
+        taskId: task.taskId,
+        answer: value,
+        representation: rep,
       });
+      setAttempt(attempt + 1);
+      setResult(r);
+      if (r.sessionComplete && r.summary) {
+        setSummary(r.summary);
+        setPhase('done');
+        setTask(null);
+      } else {
+        await loadTask(sessionId, r.next?.defaultTaskId ?? null, r.next ?? null);
+      }
     } catch (e) {
       fail(e);
     } finally {
@@ -361,68 +423,123 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
 
   return (
     <section className={`col child band-${band}`}>
-      <h1>Hi {learner.nickname} 👋</h1>
-      <p className="lede">Let’s practise. Pick the bigger fraction.</p>
+      <h1>Hi {lnr.nickname} 👋</h1>
 
       <div className="skillpick">
-        {DEMO_SKILLS.map((s) => (
+        {(['math', 'english'] as const).map((s) => (
           <button
-            key={s.id}
-            className={s.id === skill.id ? 'on' : ''}
-            onClick={() => {
-              setSkill(s);
-              setProjection(null);
-            }}
+            key={s}
+            className={s === subject ? 'on' : ''}
+            disabled={phase === 'active' || busy}
+            onClick={() => setSubject(s)}
           >
-            {s.label}
+            {subjectLabel(s)}
           </button>
         ))}
       </div>
 
-      <div className="task">
-        <div className="q">Which is larger?</div>
-        <div className="choices">
-          <button className="choice" disabled={busy} onClick={() => answer(true)}>
-            <span className="frac">
-              <span>1</span>
-              <span className="bar" />
-              <span>2</span>
-            </span>
-          </button>
-          <button className="choice" disabled={busy} onClick={() => answer(false)}>
-            <span className="frac">
-              <span>1</span>
-              <span className="bar" />
-              <span>3</span>
-            </span>
+      {phase === 'idle' && (
+        <div className="task">
+          <p className="lede">Ready to practise {subjectLabel(subject)}?</p>
+          <button disabled={busy} onClick={start}>
+            Start session
           </button>
         </div>
-      </div>
+      )}
+
+      {phase === 'active' && task && (
+        <div className="task">
+          {nextRec && (
+            <div className="whytoday">
+              <span className="wt-label">Up next</span> {nextRec.explanation}
+            </div>
+          )}
+          <div className="q">{task.question}</div>
+          {task.options.length > 0 ? (
+            <div className="choices">
+              {task.options.map((o) => (
+                <button key={o} className="choice" disabled={busy} onClick={() => answer(o)}>
+                  {optionLabel(o)}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <form
+              className="freeans"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (freeText.trim()) void answer(freeText.trim());
+              }}
+            >
+              <input
+                value={freeText}
+                onChange={(e) => setFreeText(e.target.value)}
+                placeholder="type the word"
+                disabled={busy}
+              />
+              <button disabled={busy || !freeText.trim()}>Submit</button>
+            </form>
+          )}
+        </div>
+      )}
 
       <NoteBar note={note} />
 
-      {projection && (
+      {result && phase === 'active' && (
         <div className="progress">
           <div className="pline">
-            <span className={`pill ${standingTone(deriveStanding(projection))}`}>
-              {standingLabel(deriveStanding(projection))}
+            <span className={`pill ${result.correct ? 'good' : 'low'}`}>
+              {result.correct ? 'Correct' : 'Not quite'}
             </span>
-            <span className="muted">
-              {projection.evidenceCount} attempt{projection.evidenceCount === 1 ? '' : 's'} ·{' '}
-              {confidencePct(projection.confidence)} confidence
-            </span>
+            {result.reviewed && <span className="muted">review ·</span>}
+            {result.projection && (
+              <span className="muted">
+                {confidencePct(result.projection.confidence)} confidence
+              </span>
+            )}
           </div>
+          {result.hint && <div className="hintbar">💡 {result.hint.message}</div>}
+          {result.coaching && <div className="hintbar">🔁 {result.coaching.message}</div>}
+        </div>
+      )}
+
+      {phase === 'done' && summary && (
+        <div className="dash">
+          <h2>Session complete 🎉</h2>
+          <p className="muted">
+            {summary.observed.correct}/{summary.observed.attempts} correct this session.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Skill</th>
+                <th>Standing</th>
+                <th>Confidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summary.mastery.map((m) => (
+                <tr key={m.skillId}>
+                  <td>{skillLabel(m.skillId)}</td>
+                  <td>{m.projection.state ?? '—'}</td>
+                  <td>{confidencePct(m.projection.confidence)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="hint">{summary.note}</p>
+          <button
+            disabled={busy}
+            onClick={() => {
+              setPhase('idle');
+              setResult(null);
+              setSummary(null);
+            }}
+          >
+            Start again
+          </button>
         </div>
       )}
     </section>
   );
-}
-
-/** The child screen shows an encouraging standing; the authoritative classification
- *  still lives in the domain — this is a light local read of the same projection. */
-function deriveStanding(p: api.Projection): string {
-  if (p.evidenceCount === 0) return 'unknown';
-  if (p.confidence >= 0.8) return 'demonstrated';
-  if (p.confidence >= 0.5) return 'developing';
-  return 'emerging';
 }

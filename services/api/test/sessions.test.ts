@@ -176,6 +176,31 @@ describe('POST /learners/:alias/sessions', () => {
   });
 });
 
+describe('entitlement activation via billing callback (web-demo path)', () => {
+  it('a billing-service grant activates entitlement so a child session can start', async () => {
+    const { app } = freshApp();
+    await onboard(app, { consent: true });
+    // No entitlement seeded — the billing callback (as the payment provider) grants it.
+    const cb = await app.request(
+      '/billing/callbacks',
+      json(
+        { 'x-actor-type': 'billing_service', 'x-actor-alias': 'bill', 'x-family-alias': 'fam1' },
+        { channel: 'web-demo', transactionId: 'tx-1', familyId: 'fam1', kind: 'grant' },
+      ),
+    );
+    expect(cb.status).toBe(200);
+
+    const res = await app.request(
+      '/learners/kid1/sessions',
+      json(child, { subject: 'math', requestedMinutes: 15 }),
+    );
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.session.state).toBe('ACTIVE');
+    expect(body.next.defaultTaskId).toBeTruthy();
+  });
+});
+
 describe('POST /learners/:alias/sessions/:id/end', () => {
   it('ending early is neutral — no mastery change', async () => {
     const { app, db } = freshApp();

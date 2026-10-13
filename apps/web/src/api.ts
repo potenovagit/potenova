@@ -186,3 +186,140 @@ export const getProjection = (familyId: string, learnerId: string, skillId: stri
   call<{ projection: Projection }>(`/learners/${learnerId}/skills/${skillId}/projection`, {
     headers: producerHeaders(familyId, learnerId),
   });
+
+// ---- Child session flow ------------------------------------------------------
+
+/** Child-actor headers — the learner working their own session. */
+export function childHeaders(familyId: string, learnerId: string): Record<string, string> {
+  return {
+    'x-actor-type': 'child',
+    'x-actor-alias': learnerId,
+    'x-family-alias': familyId,
+  };
+}
+
+/** Billing-service headers — the demo stands in for the payment provider so a
+ *  session's entitlement precondition can be satisfied over HTTP. */
+export function billingHeaders(familyId: string): Record<string, string> {
+  return {
+    'x-actor-type': 'billing_service',
+    'x-actor-alias': 'web-demo-billing',
+    'x-family-alias': familyId,
+  };
+}
+
+export interface SessionNext {
+  skillId: string;
+  reasonCode: string;
+  explanation: string;
+  blockedSkillId: string | null;
+  defaultTaskId: string | null;
+  plannerPolicyVersion: string;
+}
+export interface SessionBudget {
+  maxItems: number;
+  itemsDelivered: number;
+  itemsRemaining: number;
+  itemCeilingReached: boolean;
+  maxNewConcepts: number;
+  conceptsIntroduced: number;
+  conceptsRemaining: number;
+  reason: string;
+  policyVersion: string;
+}
+export interface StartedSession {
+  session: { sessionId: string; state: string; subject: string };
+  next: SessionNext;
+  budget: SessionBudget;
+  allowedMinutes: number;
+}
+export interface DeliveredTask {
+  taskId: string;
+  skillId: string;
+  question: string;
+  options: string[];
+}
+export interface Hint {
+  skillId: string;
+  level: number;
+  misconceptionId: string;
+  strategyId: string;
+  message: string;
+}
+export interface StallCoaching {
+  stalled: boolean;
+  strategy: string;
+  suggestedSkillId?: string;
+  suggestedTaskId?: string;
+  suggestedRepresentation?: string;
+  message: string;
+}
+export interface SessionSummary {
+  sessionId: string;
+  subject: string;
+  state: string;
+  observed: {
+    attempts: number;
+    correct: number;
+    bySkill: { skillId: string; attempts: number; correct: number; representations: string[] }[];
+  };
+  mastery: {
+    skillId: string;
+    projection: { state?: string; confidence: number; dimensions?: { independent: boolean } };
+  }[];
+  rationale: { nextObjective: { skillId: string; reasonCode: string; explanation: string } };
+  note: string;
+}
+export interface AnswerResult {
+  graded: boolean;
+  correct?: boolean;
+  skillId?: string;
+  projection?: Projection;
+  next?: SessionNext;
+  budget?: SessionBudget;
+  sessionComplete?: boolean;
+  completionReason?: string;
+  summary?: SessionSummary;
+  reviewed?: boolean;
+  coaching?: StallCoaching;
+  hint?: Hint;
+  action?: string;
+}
+
+/** Demo-activate the family's entitlement via the billing callback (idempotent). */
+export const activateEntitlement = (familyId: string) =>
+  call<{ applied: boolean }>('/billing/callbacks', {
+    method: 'POST',
+    headers: billingHeaders(familyId),
+    body: {
+      channel: 'web-demo',
+      transactionId: `demo-${Date.now()}`,
+      familyId,
+      kind: 'grant',
+    },
+  });
+
+export const startSession = (familyId: string, learnerId: string, subject: 'math' | 'english') =>
+  call<StartedSession>(`/learners/${learnerId}/sessions`, {
+    method: 'POST',
+    headers: childHeaders(familyId, learnerId),
+    body: { subject, requestedMinutes: 15 },
+  });
+
+export const getTask = (familyId: string, learnerId: string, sessionId: string, taskId: string) =>
+  call<DeliveredTask>(
+    `/learners/${learnerId}/sessions/${sessionId}/task?taskId=${encodeURIComponent(taskId)}`,
+    { method: 'POST', headers: childHeaders(familyId, learnerId), body: {} },
+  );
+
+export const submitAnswer = (
+  familyId: string,
+  learnerId: string,
+  sessionId: string,
+  body: { clientSubmissionId: string; taskId: string; answer: string; representation: string },
+) =>
+  call<AnswerResult>(`/learners/${learnerId}/sessions/${sessionId}/answer`, {
+    method: 'POST',
+    headers: childHeaders(familyId, learnerId),
+    body,
+  });
