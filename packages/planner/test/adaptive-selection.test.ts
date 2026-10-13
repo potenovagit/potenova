@@ -64,6 +64,54 @@ describe('selectNextObjective', () => {
     ).toBe(true);
   });
 
+  it('surfaces a mastered-but-decayed skill as REVIEW_DUE', () => {
+    const now = Date.now();
+    const DAY = 24 * 60 * 60 * 1000;
+    const r = selectNextObjective({
+      graph: buildFractionsDraftGraph(),
+      coachableSkillIds: COACHABLE,
+      mastery: {
+        [EQUIV]: { confidence: 0.9, independent: true, lastPracticedAt: now },
+        [COMPARE]: { confidence: 0.9, independent: true, lastPracticedAt: now - 22 * DAY },
+      },
+      policy: DRAFT_PLANNER_POLICY,
+      now,
+    });
+    expect(r.targetSkillId).toBe(COMPARE);
+    expect(r.reasonCode).toBe('REVIEW_DUE');
+  });
+
+  it('does not flag review for a recently-practised mastered skill', () => {
+    const now = Date.now();
+    const r = selectNextObjective({
+      graph: buildFractionsDraftGraph(),
+      coachableSkillIds: COACHABLE,
+      mastery: {
+        [EQUIV]: { confidence: 0.9, independent: true, lastPracticedAt: now },
+        [COMPARE]: { confidence: 0.9, independent: true, lastPracticedAt: now },
+      },
+      policy: DRAFT_PLANNER_POLICY,
+      now,
+    });
+    expect(r.ranked.some((o) => o.reasonCode === 'REVIEW_DUE')).toBe(false);
+  });
+
+  it('only a mastered skill decays — a weak old skill is not REVIEW_DUE', () => {
+    const now = Date.now();
+    const DAY = 24 * 60 * 60 * 1000;
+    const r = selectNextObjective({
+      graph: buildFractionsDraftGraph(),
+      coachableSkillIds: COACHABLE,
+      mastery: {
+        [EQUIV]: { confidence: 0.3, independent: false, lastPracticedAt: now - 99 * DAY },
+        [COMPARE]: { confidence: 0.3, independent: false, lastPracticedAt: now - 99 * DAY },
+      },
+      policy: DRAFT_PLANNER_POLICY,
+      now,
+    });
+    expect(r.ranked.some((o) => o.reasonCode === 'REVIEW_DUE')).toBe(false);
+  });
+
   it('gives every reason code a distinct, non-empty parent-facing explanation', () => {
     const texts = SESSION_REASON_CODES.map((code) => explainReasonCode(code));
     for (const t of texts) expect(t.trim().length).toBeGreaterThan(0);

@@ -25,6 +25,7 @@ import {
   DRAFT_PLANNER_POLICY,
   type SessionReasonCode,
   type SessionBudgetStatus,
+  type SkillMastery,
 } from '@potenova/planner';
 import type { Deps } from './deps';
 
@@ -126,16 +127,26 @@ export async function projectSkill(
   return projectShadow(alias, skillId, events, corrections, deps.policies.mastery);
 }
 
-/** A mastery snapshot of every coachable skill in a subject (for the planner). */
+/**
+ * A mastery snapshot of every coachable skill in a subject (for the planner),
+ * including each skill's most recent trusted practice time for retention/review.
+ */
 async function coachableMastery(
   deps: Deps,
   alias: string,
   subject: Subject,
-): Promise<Record<string, { confidence: number; independent: boolean }>> {
-  const mastery: Record<string, { confidence: number; independent: boolean }> = {};
+): Promise<Record<string, SkillMastery>> {
+  const mastery: Record<string, SkillMastery> = {};
   for (const skillId of SUBJECTS[subject].coachableSkillIds) {
-    const p = await projectSkill(deps, alias, skillId);
-    mastery[skillId] = { confidence: p.confidence, independent: p.dimensions.independent };
+    const events = await deps.evidence.listEvidence(alias, skillId);
+    const corrections = await deps.evidence.listCorrections(events.map((e) => e.eventId));
+    const p = projectShadow(alias, skillId, events, corrections, deps.policies.mastery);
+    const times = events.map((e) => Date.parse(e.observedAt)).filter((t) => !Number.isNaN(t));
+    mastery[skillId] = {
+      confidence: p.confidence,
+      independent: p.dimensions.independent,
+      lastPracticedAt: times.length ? Math.max(...times) : undefined,
+    };
   }
   return mastery;
 }

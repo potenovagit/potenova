@@ -28,6 +28,8 @@ import type { PlannerPolicy } from './policy';
 export interface SkillMastery {
   readonly confidence: number;
   readonly independent: boolean;
+  /** Epoch ms of the most recent trusted practice (for retention/review-due). */
+  readonly lastPracticedAt?: number;
 }
 
 export interface NextObjective {
@@ -47,8 +49,11 @@ export function selectNextObjective(args: {
   readonly coachableSkillIds: readonly string[];
   readonly mastery: Readonly<Record<string, SkillMastery>>;
   readonly policy: PlannerPolicy;
+  /** Clock for retention/review-due (epoch ms); defaults to now. */
+  readonly now?: number;
 }): NextObjective {
   const { graph, coachableSkillIds, mastery, policy } = args;
+  const now = args.now ?? Date.now();
   if (coachableSkillIds.length === 0) {
     throw new DomainError('NOT_FOUND', 'no coachable skills configured');
   }
@@ -65,12 +70,18 @@ export function selectNextObjective(args: {
     const prereqs = coachablePrereqs(skillId);
     const prerequisiteGap = prereqs.some((p) => !masteryOf(p).independent);
     const allPrereqsIndependent = prereqs.every((p) => masteryOf(p).independent);
+    // Review-due (AT-57): a mastered skill not practised within the decay window
+    // resurfaces for review before the learner advances.
+    const retentionRisk =
+      m.independent &&
+      m.lastPracticedAt !== undefined &&
+      now - m.lastPracticedAt > policy.retentionDecayWindowMs;
     return {
       skillId,
       safetyBlocked: false,
       prerequisiteGap,
       highDependency: false,
-      retentionRisk: false,
+      retentionRisk,
       masteryConfidence: m.confidence,
       unresolvedConfidence: false,
       schoolPriority: false,
