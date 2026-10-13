@@ -3,6 +3,7 @@ import { buildFractionsDraftGraph } from '@potenova/curriculum';
 import {
   selectNextObjective,
   explainReasonCode,
+  stallStatus,
   DRAFT_PLANNER_POLICY,
   type SessionReasonCode,
 } from '@potenova/planner';
@@ -136,5 +137,83 @@ export async function buildReportRationale(
       plannerPolicyVersion: DRAFT_PLANNER_POLICY.policyVersion,
     },
     plannerPolicyVersion: DRAFT_PLANNER_POLICY.policyVersion,
+  };
+}
+
+/** Concrete-first remediation representation ladder (AT-08 strategy change). */
+const REMEDIATION_REPS = ['area-model', 'number-line', 'set', 'symbolic'] as const;
+
+export type StallStrategy = 'REMEDIATE_PREREQUISITE' | 'SWITCH_REPRESENTATION';
+
+export interface StallCoaching {
+  stalled: true;
+  consecutiveWrong: number;
+  strategy: StallStrategy;
+  /** For REMEDIATE_PREREQUISITE: the prerequisite skill + a task to drop to. */
+  suggestedSkillId?: string;
+  suggestedTaskId?: string;
+  /** For SWITCH_REPRESENTATION: a concrete model not yet tried this session. */
+  suggestedRepresentation?: string;
+  message: string;
+  plannerPolicyVersion: string;
+}
+
+/**
+ * On repeated wrong answers (>= policy.stallAttempts consecutive, in-session),
+ * the strategy MUST change (AT-08) — never re-serve the same task. Prefer
+ * dropping to a weak coachable prerequisite (the likely real gap); otherwise
+ * switch to a concrete representation the learner hasn't worked in yet.
+ *
+ * Pure over the immutable ledger — it recommends, it never sets mastery.
+ */
+export async function assessStall(
+  deps: Deps,
+  alias: string,
+  sessionId: string,
+  skillId: string,
+): Promise<StallCoaching | null> {
+  const prefix = `${sessionId}:`;
+  const inSession = (await deps.evidence.listEvidence(alias, skillId))
+    .filter((e) => e.eventId.startsWith(prefix))
+    .sort((a, b) => a.observedAt.localeCompare(b.observedAt) || a.eventId.localeCompare(b.eventId));
+
+  const status = stallStatus(
+    inSession.map((e) => e.correct),
+    DRAFT_PLANNER_POLICY,
+  );
+  if (!status.stalled) return null;
+
+  const base = {
+    stalled: true as const,
+    consecutiveWrong: status.consecutiveWrong,
+    plannerPolicyVersion: DRAFT_PLANNER_POLICY.policyVersion,
+  };
+
+  // A coachable prerequisite that is not yet independent = the likely real gap.
+  const graph = buildFractionsDraftGraph();
+  const coachable = new Set<string>(COACHABLE_SKILLS);
+  const prereqs = graph.directPrerequisites(skillId).filter((p) => coachable.has(p));
+  for (const p of prereqs) {
+    const proj = await projectSkill(deps, alias, p);
+    if (!proj.dimensions.independent) {
+      return {
+        ...base,
+        strategy: 'REMEDIATE_PREREQUISITE',
+        suggestedSkillId: p,
+        suggestedTaskId: DEFAULT_TASK[p],
+        message: 'Stuck here — stepping back to a foundational skill this one builds on.',
+      };
+    }
+  }
+
+  // Otherwise change the representation: a concrete model not yet tried.
+  const tried = new Set(inSession.map((e) => e.representation));
+  const suggestedRepresentation =
+    REMEDIATION_REPS.find((r) => !tried.has(r)) ?? REMEDIATION_REPS[0];
+  return {
+    ...base,
+    strategy: 'SWITCH_REPRESENTATION',
+    suggestedRepresentation,
+    message: `Stuck here — let's try it with a ${suggestedRepresentation} instead.`,
   };
 }

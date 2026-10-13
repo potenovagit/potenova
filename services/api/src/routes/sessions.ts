@@ -13,7 +13,7 @@ import { AGE_BANDS, type AgeBand } from '@potenova/identity';
 import { projectShadow, assertMasteryPolicyApproved } from '@potenova/learner-state';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import { type Deps } from '../deps';
-import { buildReportRationale } from '../adaptive';
+import { buildReportRationale, computeNext } from '../adaptive';
 
 /**
  * Child-facing tutoring sessions (the vertical slice start).
@@ -107,12 +107,17 @@ export function registerSessions(app: Hono, deps: Deps): void {
     // sessions (conservative; early-end reconciliation is a later refinement).
     await deps.session.addUsageMinutes(alias, day, usage.allowedMinutes);
 
+    // The first objective is PLANNER-selected (adaptive), not a fixed task — the
+    // client opens the session straight onto next.defaultTaskId.
+    const next = await computeNext(deps, alias);
+
     return c.json(
       {
         session,
         allowedMinutes: usage.allowedMinutes,
         breakAfterMinutes: usage.breakAfterMinutes,
         usage: { kind: usage.kind, reasonCodes: usage.reasonCodes },
+        next,
       },
       201,
     );

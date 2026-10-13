@@ -93,45 +93,60 @@ describe('G1 journey (capstone)', () => {
       json(child, { subject: 'math', requestedMinutes: 20 }),
     );
     expect(startRes.status).toBe(201);
-    const { session } = await startRes.json();
-    expect(session.state).toBe('ACTIVE');
-    const sessionId = session.sessionId as string;
+    const start = await startRes.json();
+    expect(start.session.state).toBe('ACTIVE');
+    const sessionId = start.session.sessionId as string;
 
-    // Deliver a validated task.
-    const taskRes = await app.request(
-      `/learners/kid1/sessions/${sessionId}/task?taskId=frac-cmp-1`,
-      json(child, {}),
-    );
-    expect(taskRes.status).toBe(200);
+    // The FIRST objective is planner-selected end-to-end — not a hardcoded task.
+    // A fresh learner is remediated to the prerequisite (equivalence) before the
+    // diagnostic's target skill (comparison).
+    expect(start.next.skillId).toBe('SK-FR-equiv');
+    expect(start.next.reasonCode).toBe('PREREQUISITE_REMEDIATION');
 
-    // Three correct answers across THREE representations → INDEPENDENT (DRAFT
-    // policy: 3 unaided correct across ≥2 representations).
+    // Drive the WHOLE session off the planner's recommendation — each graded
+    // answer returns the next objective, no fixed task ids anywhere.
     const reps = ['symbolic', 'area-model', 'number-line'];
-    let lastProjection: unknown;
-    for (let i = 0; i < reps.length; i++) {
-      const res = await app.request(
-        `/learners/kid1/sessions/${sessionId}/answer`,
-        json(child, {
-          clientSubmissionId: `turn-${i}`,
-          taskId: 'frac-cmp-1',
-          answer: 'gt', // 1/2 > 1/3
-          representation: reps[i],
-        }),
-      );
-      expect(res.status).toBe(201);
-      const body = await res.json();
-      expect(body.correct).toBe(true);
-      lastProjection = body.projection;
-    }
+    const answerFor: Record<string, string> = { 'SK-FR-equiv': 'yes', 'SK-FR-compare': 'gt' };
+    const coached: string[] = [];
+    let rec = start.next as { skillId: string; defaultTaskId: string } | null;
 
-    const proj = lastProjection as {
-      evidenceCount: number;
-      dimensions: { independent: boolean; representationsCovered: number; unaidedCorrect: number };
-    };
-    expect(proj.evidenceCount).toBe(3);
-    expect(proj.dimensions.unaidedCorrect).toBe(3);
-    expect(proj.dimensions.representationsCovered).toBe(3);
-    expect(proj.dimensions.independent).toBe(true);
+    while (rec && !coached.includes('SK-FR-compare')) {
+      const { skillId, defaultTaskId: taskId } = rec;
+
+      const taskRes = await app.request(
+        `/learners/kid1/sessions/${sessionId}/task?taskId=${taskId}`,
+        json(child, {}),
+      );
+      expect(taskRes.status).toBe(200);
+      expect((await taskRes.json()).skillId).toBe(skillId);
+
+      let last:
+        | {
+            correct: boolean;
+            projection: { dimensions: { independent: boolean } };
+            next: typeof rec;
+          }
+        | undefined;
+      for (let i = 0; i < reps.length; i++) {
+        const res = await app.request(
+          `/learners/kid1/sessions/${sessionId}/answer`,
+          json(child, {
+            clientSubmissionId: `${skillId}-${i}`,
+            taskId,
+            answer: answerFor[skillId],
+            representation: reps[i],
+          }),
+        );
+        expect(res.status).toBe(201);
+        last = await res.json();
+        expect(last!.correct).toBe(true);
+      }
+      expect(last!.projection.dimensions.independent).toBe(true);
+      coached.push(skillId);
+      rec = last!.next;
+    }
+    // The planner walked the learner prerequisite-first, then advanced.
+    expect(coached).toEqual(['SK-FR-equiv', 'SK-FR-compare']);
 
     // Parent dashboard reflects the derived mastery (never hand-set).
     const dashRes = await app.request('/learners/kid1/dashboard?skills=SK-FR-compare', json(owner));
@@ -142,9 +157,9 @@ describe('G1 journey (capstone)', () => {
     const reportRes = await app.request(`/learners/kid1/sessions/${sessionId}/report`, json(owner));
     expect(reportRes.status).toBe(200);
     const report = await reportRes.json();
-    expect(report.observed.attempts).toBe(3);
-    expect(report.observed.correct).toBe(3);
-    expect(report.observed.bySkill[0].skillId).toBe('SK-FR-compare');
-    expect(report.mastery[0].projection.dimensions.independent).toBe(true);
+    expect(report.observed.attempts).toBe(6); // 3 equivalence + 3 comparison
+    expect(report.observed.correct).toBe(6);
+    const compare = report.mastery.find((m: { skillId: string }) => m.skillId === 'SK-FR-compare');
+    expect(compare.projection.dimensions.independent).toBe(true);
   });
 });

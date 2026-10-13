@@ -20,7 +20,7 @@ import { CONSENT_PURPOSES } from '@potenova/identity';
 import { decideEscalation, handleDisclosure, type EscalationInput } from '@potenova/safety';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import { now, type Deps } from '../deps';
-import { projectSkill, computeNext } from '../adaptive';
+import { projectSkill, computeNext, assessStall } from '../adaptive';
 
 /**
  * Coaching turn (the heart of the vertical slice).
@@ -306,7 +306,11 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     // Self-driving loop: the planner recommends the next objective off the freshly
     // re-derived mastery (advancement once the prerequisite is independent).
     const next = await computeNext(deps, alias);
-    return c.json({ graded: true, ...graded, next }, 201);
+    // On repeated wrong answers, change strategy (AT-08) instead of re-serving.
+    const coaching = graded.correct
+      ? null
+      : await assessStall(deps, alias, sessionId, task.skillId);
+    return c.json({ graded: true, ...graded, next, ...(coaching ? { coaching } : {}) }, 201);
   });
 
   // Multimodal answer (voice / vision). Requires the per-modality consent grant,
@@ -378,6 +382,9 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     });
 
     const next = await computeNext(deps, alias);
+    const coaching = graded.correct
+      ? null
+      : await assessStall(deps, alias, sessionId, task.skillId);
     return c.json(
       {
         graded: true,
@@ -385,6 +392,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
         recognitionConfidence: rec.confidence,
         ...graded,
         next,
+        ...(coaching ? { coaching } : {}),
       },
       201,
     );
