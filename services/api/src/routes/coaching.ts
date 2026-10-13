@@ -3,6 +3,8 @@ import { DomainError, isApprovedRegion } from '@potenova/contracts';
 import { decideDelivery, type CandidateContent } from '@potenova/domain-core';
 import {
   checkMathTask,
+  checkEnglishTask,
+  pluralize,
   trueRelation,
   areEquivalent,
   validateCandidate,
@@ -20,7 +22,7 @@ import { CONSENT_PURPOSES } from '@potenova/identity';
 import { decideEscalation, handleDisclosure, type EscalationInput } from '@potenova/safety';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import { now, type Deps } from '../deps';
-import { projectSkill, computeNext, assessStall } from '../adaptive';
+import { projectSkill, computeNext, assessStall, type Subject } from '../adaptive';
 
 /**
  * Coaching turn (the heart of the vertical slice).
@@ -42,36 +44,57 @@ import { projectSkill, computeNext, assessStall } from '../adaptive';
  * the CANONICAL curriculum ids so evidence, the graph and the planner all agree.
  */
 
-const RELEASE = 'REL-ONT-MATH-2020-draft';
+const RELEASE_BY_SUBJECT: Record<Subject, string> = {
+  math: 'REL-ONT-MATH-2020-draft',
+  english: 'REL-ONT-LANG-2023-draft',
+};
 const COMPARE = 'SK-FR-compare';
 const EQUIV = 'SK-FR-equiv';
+const PLURAL_BASE = 'SK-EN-plural-base';
+const PLURAL_SIB = 'SK-EN-plural-sibilant';
 
 interface CompareTask {
+  readonly subject: 'math';
   readonly skillId: typeof COMPARE;
   readonly kind: 'fraction_comparison';
   readonly left: Fraction;
   readonly right: Fraction;
 }
 interface EquivTask {
+  readonly subject: 'math';
   readonly skillId: typeof EQUIV;
   readonly kind: 'fraction_equivalence';
   readonly left: Fraction;
   readonly right: Fraction;
 }
-type Task = CompareTask | EquivTask;
+interface PluralTask {
+  readonly subject: 'english';
+  readonly skillId: typeof PLURAL_BASE | typeof PLURAL_SIB;
+  readonly kind: 'noun_plural';
+  readonly word: string;
+}
+type Task = CompareTask | EquivTask | PluralTask;
 
 const f = (numerator: number, denominator: number): Fraction => ({ numerator, denominator });
 const cmp = (left: Fraction, right: Fraction): CompareTask => ({
+  subject: 'math',
   skillId: COMPARE,
   kind: 'fraction_comparison',
   left,
   right,
 });
 const eq = (left: Fraction, right: Fraction): EquivTask => ({
+  subject: 'math',
   skillId: EQUIV,
   kind: 'fraction_equivalence',
   left,
   right,
+});
+const plural = (skillId: PluralTask['skillId'], word: string): PluralTask => ({
+  subject: 'english',
+  skillId,
+  kind: 'noun_plural',
+  word,
 });
 
 const TASK_BANK: Readonly<Record<string, Task>> = {
@@ -81,15 +104,26 @@ const TASK_BANK: Readonly<Record<string, Task>> = {
   'frac-eq-1': eq(f(1, 2), f(2, 4)), // yes
   'frac-eq-2': eq(f(1, 2), f(1, 3)), // no
   'frac-eq-3': eq(f(2, 3), f(4, 6)), // yes
+  'eng-base-1': plural(PLURAL_BASE, 'dog'), // dogs
+  'eng-base-2': plural(PLURAL_BASE, 'book'), // books
+  'eng-base-3': plural(PLURAL_BASE, 'cat'), // cats
+  'eng-sib-1': plural(PLURAL_SIB, 'box'), // boxes
+  'eng-sib-2': plural(PLURAL_SIB, 'baby'), // babies
+  'eng-sib-3': plural(PLURAL_SIB, 'dish'), // dishes
 };
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
 const isRelation = (v: unknown): v is FractionRelation => v === 'lt' || v === 'eq' || v === 'gt';
 
-const REPRESENTATIONS = ['symbolic', 'area-model', 'number-line', 'set'] as const;
-type Representation = (typeof REPRESENTATIONS)[number];
-const isRepresentation = (v: unknown): v is Representation =>
-  (REPRESENTATIONS as readonly unknown[]).includes(v);
+/** Representations are per-subject working modes; the projection counts their diversity. */
+const REPRESENTATIONS: Record<Subject, readonly string[]> = {
+  math: ['symbolic', 'area-model', 'number-line', 'set'],
+  english: ['written', 'spoken', 'picture'],
+};
+const representationOf = (task: Task, raw: unknown): string => {
+  const allowed = REPRESENTATIONS[task.subject];
+  return typeof raw === 'string' && allowed.includes(raw) ? raw : allowed[0];
+};
 
 /** Question + answer options presented for a task, by skill kind. */
 function present(task: Task): { question: string; options: readonly string[] } {
@@ -99,9 +133,15 @@ function present(task: Task): { question: string; options: readonly string[] } {
       options: ['lt', 'eq', 'gt'],
     };
   }
+  if (task.kind === 'fraction_equivalence') {
+    return {
+      question: `Are ${fmt(task.left)} and ${fmt(task.right)} equal in value? (yes / no)`,
+      options: ['yes', 'no'],
+    };
+  }
   return {
-    question: `Are ${fmt(task.left)} and ${fmt(task.right)} equal in value? (yes / no)`,
-    options: ['yes', 'no'],
+    question: `What is the plural of "${task.word}"? Type the word.`,
+    options: [], // free text
   };
 }
 
@@ -115,18 +155,27 @@ function answerKeyValid(task: Task): boolean {
       claimedAnswer: trueRelation(task.left, task.right),
     }).correct;
   }
-  return checkMathTask({
-    kind: 'fraction_equivalence',
-    left: task.left,
-    right: task.right,
-    claimedEquivalent: areEquivalent(task.left, task.right),
+  if (task.kind === 'fraction_equivalence') {
+    return checkMathTask({
+      kind: 'fraction_equivalence',
+      left: task.left,
+      right: task.right,
+      claimedEquivalent: areEquivalent(task.left, task.right),
+    }).correct;
+  }
+  return checkEnglishTask({
+    kind: 'noun_plural',
+    word: task.word,
+    claimedPlural: pluralize(task.word),
   }).correct;
 }
 
 /** Is a raw learner answer a well-formed token for this task's kind? */
 function tokenValid(task: Task, raw: string): boolean {
   const a = raw.trim().toLowerCase();
-  return task.kind === 'fraction_comparison' ? isRelation(a) : a === 'yes' || a === 'no';
+  if (task.kind === 'fraction_comparison') return isRelation(a);
+  if (task.kind === 'fraction_equivalence') return a === 'yes' || a === 'no';
+  return /^[a-z]+$/.test(a); // a single word
 }
 
 /** Grade a well-formed answer with the independent oracle (token must be valid). */
@@ -140,18 +189,26 @@ function judge(task: Task, raw: string): boolean {
       claimedAnswer: a as FractionRelation,
     }).correct;
   }
-  return checkMathTask({
-    kind: 'fraction_equivalence',
-    left: task.left,
-    right: task.right,
-    claimedEquivalent: a === 'yes',
-  }).correct;
+  if (task.kind === 'fraction_equivalence') {
+    return checkMathTask({
+      kind: 'fraction_equivalence',
+      left: task.left,
+      right: task.right,
+      claimedEquivalent: a === 'yes',
+    }).correct;
+  }
+  return checkEnglishTask({ kind: 'noun_plural', word: task.word, claimedPlural: a }).correct;
 }
 
-async function requireActiveSession(deps: Deps, sessionId: string, alias: string): Promise<void> {
+async function requireActiveSession(
+  deps: Deps,
+  sessionId: string,
+  alias: string,
+): Promise<{ subject: Subject }> {
   const row = await deps.session.getTutoringSession(sessionId);
   if (!row || row.learnerAlias !== alias) throw new DomainError('NOT_FOUND', 'session not found');
   if (row.state !== 'ACTIVE') throw new DomainError('POLICY_BLOCKED', 'session is not active');
+  return { subject: row.subject as Subject };
 }
 
 /** Grade an answer, write immutable evidence (ER-03 gated) and re-derive mastery. */
@@ -179,7 +236,7 @@ async function gradeAndRecord(
     representation: args.representation,
     recognitionConfidence: args.recognitionConfidence,
     observedAt: now(),
-    curriculumReleaseId: RELEASE,
+    curriculumReleaseId: RELEASE_BY_SUBJECT[args.task.subject],
     schemaVersion: 'evt-0.1',
   };
   await deps.evidence.appendEvidence(evidence);
@@ -217,8 +274,8 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     const a = authed(c);
     requireActorType(a, 'child');
     const alias = c.req.param('alias');
-    await requireActiveSession(deps, c.req.param('sessionId'), alias);
-    return c.json(await computeNext(deps, alias));
+    const { subject } = await requireActiveSession(deps, c.req.param('sessionId'), alias);
+    return c.json(await computeNext(deps, alias, subject));
   });
 
   // Deliver a validated task — content gate on the delivery path (AI-001).
@@ -232,11 +289,12 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     const task = TASK_BANK[taskId];
     if (!task) throw new DomainError('NOT_FOUND', 'task not found');
 
-    // Validate the answer key with the INDEPENDENT oracle before delivery.
+    // Validate the answer key with the INDEPENDENT oracle before delivery. The
+    // validator is the subject's deterministic oracle, independent of the author.
     const record = validateCandidate({
       candidateId: `task:${taskId}`,
-      generatorId: 'content-author:fractions-bank',
-      validatorId: 'math-oracle:fractions',
+      generatorId: `content-author:${task.subject}-bank`,
+      validatorId: `oracle:${task.subject}`,
       validatorVersion: 'v1',
       math: { ran: true, correct: answerKeyValid(task) },
       safety: { available: true, pass: true },
@@ -262,7 +320,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     requireActorType(a, 'child');
     const alias = c.req.param('alias');
     const sessionId = c.req.param('sessionId');
-    await requireActiveSession(deps, sessionId, alias);
+    const { subject } = await requireActiveSession(deps, sessionId, alias);
 
     const b = await c.req.json<AnswerBody>().catch(() => ({}) as AnswerBody);
     if (!b.clientSubmissionId) {
@@ -289,9 +347,6 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     if (typeof b.answer !== 'string' || !tokenValid(task, b.answer)) {
       throw new DomainError('POLICY_BLOCKED', 'answer is not valid for this task');
     }
-    const representation: Representation = isRepresentation(b.representation)
-      ? b.representation
-      : 'symbolic';
 
     const graded = await gradeAndRecord(deps, {
       alias,
@@ -299,17 +354,17 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       clientSubmissionId: b.clientSubmissionId,
       task,
       answer: b.answer,
-      representation,
+      representation: representationOf(task, b.representation),
       recognitionConfidence: 1,
     });
 
     // Self-driving loop: the planner recommends the next objective off the freshly
     // re-derived mastery (advancement once the prerequisite is independent).
-    const next = await computeNext(deps, alias);
+    const next = await computeNext(deps, alias, subject);
     // On repeated wrong answers, change strategy (AT-08) instead of re-serving.
     const coaching = graded.correct
       ? null
-      : await assessStall(deps, alias, sessionId, task.skillId);
+      : await assessStall(deps, alias, sessionId, task.skillId, subject);
     return c.json({ graded: true, ...graded, next, ...(coaching ? { coaching } : {}) }, 201);
   });
 
@@ -321,7 +376,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     requireActorType(a, 'child');
     const alias = c.req.param('alias');
     const sessionId = c.req.param('sessionId');
-    await requireActiveSession(deps, sessionId, alias);
+    const { subject } = await requireActiveSession(deps, sessionId, alias);
 
     const b = await c.req.json<MultimodalBody>().catch(() => ({}) as MultimodalBody);
     if (!b.clientSubmissionId) {
@@ -377,14 +432,14 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       clientSubmissionId: b.clientSubmissionId,
       task,
       answer: rec.text,
-      representation: 'symbolic',
+      representation: representationOf(task, undefined),
       recognitionConfidence: rec.confidence,
     });
 
-    const next = await computeNext(deps, alias);
+    const next = await computeNext(deps, alias, subject);
     const coaching = graded.correct
       ? null
-      : await assessStall(deps, alias, sessionId, task.skillId);
+      : await assessStall(deps, alias, sessionId, task.skillId, subject);
     return c.json(
       {
         graded: true,

@@ -1,5 +1,9 @@
 import { projectShadow, type SkillProjection } from '@potenova/learner-state';
-import { buildFractionsDraftGraph } from '@potenova/curriculum';
+import {
+  buildFractionsDraftGraph,
+  buildEnglishDraftGraph,
+  CurriculumGraph,
+} from '@potenova/curriculum';
 import {
   selectNextObjective,
   explainReasonCode,
@@ -10,24 +14,49 @@ import {
 import type { Deps } from './deps';
 
 /**
- * Adaptive-planner orchestration shared by coaching (what to coach next) and the
- * guardian session report (why a skill was chosen). The planner reads derived
- * mastery against the review-controlled curriculum graph; selection is READ-ONLY
- * and can never set mastery (the mastery authority stays the single source).
+ * Adaptive-planner orchestration shared by coaching (what to coach next), the
+ * guardian report (why) and stall handling (when to change strategy). The
+ * planner reads derived mastery against the review-controlled curriculum graph;
+ * selection is READ-ONLY and can never set mastery (the mastery authority stays
+ * the single source).
  *
- * Skill ids are CANONICAL curriculum ids. The coachable set is the
- * oracle-validatable subset for the synthetic slice.
+ * SUBJECT-AGNOSTIC: each subject supplies its own graph, oracle-validatable
+ * coachable skills, default tasks and remediation-representation ladder. The
+ * planner/stall/selection code is identical across subjects — that is what shows
+ * the engine is not Math-only. Skill ids are CANONICAL curriculum ids.
  */
 
-export const EQUIV = 'SK-FR-equiv';
-export const COMPARE = 'SK-FR-compare';
-/** Oracle-validatable skills the slice can coach, in canonical order. */
-export const COACHABLE_SKILLS = [EQUIV, COMPARE] as const;
-/** The task offered first when the planner selects a skill. */
-export const DEFAULT_TASK: Readonly<Record<string, string>> = {
-  [COMPARE]: 'frac-cmp-1',
-  [EQUIV]: 'frac-eq-1',
+export type Subject = 'math' | 'english';
+
+interface SubjectPlan {
+  readonly buildGraph: () => CurriculumGraph;
+  /** Oracle-validatable skills the slice can coach, in canonical order. */
+  readonly coachableSkillIds: readonly string[];
+  /** The task offered first when the planner selects a skill. */
+  readonly defaultTask: Readonly<Record<string, string>>;
+  /** Strategy-change representation ladder (first = most concrete). */
+  readonly remediationReps: readonly string[];
+}
+
+const SUBJECTS: Record<Subject, SubjectPlan> = {
+  math: {
+    buildGraph: buildFractionsDraftGraph,
+    coachableSkillIds: ['SK-FR-equiv', 'SK-FR-compare'],
+    defaultTask: { 'SK-FR-compare': 'frac-cmp-1', 'SK-FR-equiv': 'frac-eq-1' },
+    remediationReps: ['area-model', 'number-line', 'set', 'symbolic'],
+  },
+  english: {
+    buildGraph: buildEnglishDraftGraph,
+    coachableSkillIds: ['SK-EN-plural-base', 'SK-EN-plural-sibilant'],
+    defaultTask: { 'SK-EN-plural-base': 'eng-base-1', 'SK-EN-plural-sibilant': 'eng-sib-1' },
+    remediationReps: ['spoken', 'picture', 'written'],
+  },
 };
+
+/** The coachable skills for a subject (for the coaching task bank / routes). */
+export function coachableSkillsFor(subject: Subject): readonly string[] {
+  return SUBJECTS[subject].coachableSkillIds;
+}
 
 /** Re-derive a skill's mastery from the immutable ledger (never hand-set). */
 export async function projectSkill(
@@ -40,13 +69,14 @@ export async function projectSkill(
   return projectShadow(alias, skillId, events, corrections, deps.policies.mastery);
 }
 
-/** A mastery snapshot of every coachable skill (for the planner). */
+/** A mastery snapshot of every coachable skill in a subject (for the planner). */
 async function coachableMastery(
   deps: Deps,
   alias: string,
+  subject: Subject,
 ): Promise<Record<string, { confidence: number; independent: boolean }>> {
   const mastery: Record<string, { confidence: number; independent: boolean }> = {};
-  for (const skillId of COACHABLE_SKILLS) {
+  for (const skillId of SUBJECTS[subject].coachableSkillIds) {
     const p = await projectSkill(deps, alias, skillId);
     mastery[skillId] = { confidence: p.confidence, independent: p.dimensions.independent };
   }
@@ -64,11 +94,16 @@ export interface NextRecommendation {
 }
 
 /** Ask the planner what to coach next off the current derived mastery. */
-export async function computeNext(deps: Deps, alias: string): Promise<NextRecommendation> {
-  const mastery = await coachableMastery(deps, alias);
+export async function computeNext(
+  deps: Deps,
+  alias: string,
+  subject: Subject,
+): Promise<NextRecommendation> {
+  const plan = SUBJECTS[subject];
+  const mastery = await coachableMastery(deps, alias, subject);
   const next = selectNextObjective({
-    graph: buildFractionsDraftGraph(),
-    coachableSkillIds: COACHABLE_SKILLS,
+    graph: plan.buildGraph(),
+    coachableSkillIds: plan.coachableSkillIds,
     mastery,
     policy: DRAFT_PLANNER_POLICY,
   });
@@ -77,7 +112,7 @@ export async function computeNext(deps: Deps, alias: string): Promise<NextRecomm
     reasonCode: next.reasonCode,
     explanation: explainReasonCode(next.reasonCode),
     blockedSkillId: next.blockedSkillId,
-    defaultTaskId: DEFAULT_TASK[next.targetSkillId] ?? null,
+    defaultTaskId: plan.defaultTask[next.targetSkillId] ?? null,
     plannerPolicyVersion: DRAFT_PLANNER_POLICY.policyVersion,
   };
 }
@@ -105,11 +140,13 @@ export async function buildReportRationale(
   deps: Deps,
   alias: string,
   workedSkillIds: readonly string[],
+  subject: Subject,
 ): Promise<ReportRationale> {
-  const mastery = await coachableMastery(deps, alias);
+  const plan = SUBJECTS[subject];
+  const mastery = await coachableMastery(deps, alias, subject);
   const selection = selectNextObjective({
-    graph: buildFractionsDraftGraph(),
-    coachableSkillIds: COACHABLE_SKILLS,
+    graph: plan.buildGraph(),
+    coachableSkillIds: plan.coachableSkillIds,
     mastery,
     policy: DRAFT_PLANNER_POLICY,
   });
@@ -133,15 +170,12 @@ export async function buildReportRationale(
       reasonCode: selection.reasonCode,
       explanation: explainReasonCode(selection.reasonCode),
       blockedSkillId: selection.blockedSkillId,
-      defaultTaskId: DEFAULT_TASK[selection.targetSkillId] ?? null,
+      defaultTaskId: plan.defaultTask[selection.targetSkillId] ?? null,
       plannerPolicyVersion: DRAFT_PLANNER_POLICY.policyVersion,
     },
     plannerPolicyVersion: DRAFT_PLANNER_POLICY.policyVersion,
   };
 }
-
-/** Concrete-first remediation representation ladder (AT-08 strategy change). */
-const REMEDIATION_REPS = ['area-model', 'number-line', 'set', 'symbolic'] as const;
 
 export type StallStrategy = 'REMEDIATE_PREREQUISITE' | 'SWITCH_REPRESENTATION';
 
@@ -162,7 +196,7 @@ export interface StallCoaching {
  * On repeated wrong answers (>= policy.stallAttempts consecutive, in-session),
  * the strategy MUST change (AT-08) — never re-serve the same task. Prefer
  * dropping to a weak coachable prerequisite (the likely real gap); otherwise
- * switch to a concrete representation the learner hasn't worked in yet.
+ * switch to a concrete representation (subject's ladder) not yet tried.
  *
  * Pure over the immutable ledger — it recommends, it never sets mastery.
  */
@@ -171,6 +205,7 @@ export async function assessStall(
   alias: string,
   sessionId: string,
   skillId: string,
+  subject: Subject,
 ): Promise<StallCoaching | null> {
   const prefix = `${sessionId}:`;
   const inSession = (await deps.evidence.listEvidence(alias, skillId))
@@ -183,6 +218,7 @@ export async function assessStall(
   );
   if (!status.stalled) return null;
 
+  const plan = SUBJECTS[subject];
   const base = {
     stalled: true as const,
     consecutiveWrong: status.consecutiveWrong,
@@ -190,8 +226,8 @@ export async function assessStall(
   };
 
   // A coachable prerequisite that is not yet independent = the likely real gap.
-  const graph = buildFractionsDraftGraph();
-  const coachable = new Set<string>(COACHABLE_SKILLS);
+  const graph = plan.buildGraph();
+  const coachable = new Set<string>(plan.coachableSkillIds);
   const prereqs = graph.directPrerequisites(skillId).filter((p) => coachable.has(p));
   for (const p of prereqs) {
     const proj = await projectSkill(deps, alias, p);
@@ -200,16 +236,16 @@ export async function assessStall(
         ...base,
         strategy: 'REMEDIATE_PREREQUISITE',
         suggestedSkillId: p,
-        suggestedTaskId: DEFAULT_TASK[p],
+        suggestedTaskId: plan.defaultTask[p],
         message: 'Stuck here — stepping back to a foundational skill this one builds on.',
       };
     }
   }
 
-  // Otherwise change the representation: a concrete model not yet tried.
+  // Otherwise change the representation: one from the subject's ladder not yet tried.
   const tried = new Set(inSession.map((e) => e.representation));
   const suggestedRepresentation =
-    REMEDIATION_REPS.find((r) => !tried.has(r)) ?? REMEDIATION_REPS[0];
+    plan.remediationReps.find((r) => !tried.has(r)) ?? plan.remediationReps[0];
   return {
     ...base,
     strategy: 'SWITCH_REPRESENTATION',

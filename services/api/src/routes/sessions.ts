@@ -109,7 +109,7 @@ export function registerSessions(app: Hono, deps: Deps): void {
 
     // The first objective is PLANNER-selected (adaptive), not a fixed task — the
     // client opens the session straight onto next.defaultTaskId.
-    const next = await computeNext(deps, alias);
+    const next = await computeNext(deps, alias, b.subject as 'math' | 'english');
 
     return c.json(
       {
@@ -191,7 +191,12 @@ export function registerSessions(app: Hono, deps: Deps): void {
 
     // "Why this skill": the planner's audit reason code for each worked skill,
     // plus what it would coach next — rendered in plain language for the guardian.
-    const rationale = await buildReportRationale(deps, alias, skillIds);
+    const rationale = await buildReportRationale(
+      deps,
+      alias,
+      skillIds,
+      row.subject as 'math' | 'english',
+    );
 
     return c.json({
       sessionId,
