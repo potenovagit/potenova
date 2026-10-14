@@ -23,6 +23,11 @@ const SUBJECT_LABELS: Record<string, string> = {
   other: 'Other',
 };
 const subjectLabel = (s: string): string => SUBJECT_LABELS[s] ?? s;
+/** Per-skill cue badges. */
+const CUE_LABELS: Record<string, string> = {
+  REVIEW_DUE: 'Due for review',
+  TRANSFER_READY: 'Ready for a challenge',
+};
 
 interface Family {
   familyId: string;
@@ -300,7 +305,12 @@ function ParentView({
                 <tbody>
                   {g.rows.map((r) => (
                     <tr key={r.skillId}>
-                      <td>{skillLabel(r.skillId)}</td>
+                      <td>
+                        {skillLabel(r.skillId)}
+                        {r.cue && (
+                          <span className={`cue cue-${r.cue}`}>{CUE_LABELS[r.cue] ?? r.cue}</span>
+                        )}
+                      </td>
                       <td>
                         <span className={`pill ${standingTone(r.standing)}`}>
                           {standingLabel(r.standing)}

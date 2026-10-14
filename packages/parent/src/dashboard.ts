@@ -15,6 +15,8 @@ export interface DashboardRow {
   readonly standing: SkillStanding;
   readonly confidence: number;
   readonly evidenceCount: number;
+  /** Optional per-skill cue (e.g. 'REVIEW_DUE', 'TRANSFER_READY'); omitted when none. */
+  readonly cue?: string;
 }
 
 /** One subject's skills, so a guardian sees Math and English side by side. */
@@ -31,18 +33,22 @@ export interface ParentDashboard {
   readonly bySubject: readonly SubjectGroup[];
 }
 
-const toRow = (p: SkillProjection): DashboardRow => ({
-  skillId: p.skillId,
-  standing: classifyStanding(p),
-  confidence: p.confidence,
-  evidenceCount: p.evidenceCount,
-});
-
 export function buildDashboard(
   learnerAlias: string,
   projections: readonly SkillProjection[],
   subjectOf: (skillId: string) => string = () => 'other',
+  cueOf: (skillId: string) => string | undefined = () => undefined,
 ): ParentDashboard {
+  const toRow = (p: SkillProjection): DashboardRow => {
+    const cue = cueOf(p.skillId);
+    return {
+      skillId: p.skillId,
+      standing: classifyStanding(p),
+      confidence: p.confidence,
+      evidenceCount: p.evidenceCount,
+      ...(cue ? { cue } : {}),
+    };
+  };
   const rows = projections.map(toRow);
 
   const groups = new Map<string, DashboardRow[]>();

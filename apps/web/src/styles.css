@@ -227,6 +227,23 @@ code {
   background: var(--low-bg);
   color: var(--err);
 }
+.cue {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+.cue-REVIEW_DUE {
+  background: var(--mid-bg, #fef3c7);
+  color: var(--mid, #92400e);
+}
+.cue-TRANSFER_READY {
+  background: var(--good-bg, #dcfce7);
+  color: var(--good, #166534);
+}
 .modepick,
 .clarity {
   display: flex;

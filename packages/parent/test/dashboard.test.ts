@@ -48,6 +48,19 @@ describe('parent dashboard (PAR-001/010/016)', () => {
     expect(d.rows).toHaveLength(2);
   });
 
+  it('attaches a per-skill cue only when a resolver supplies one', () => {
+    const d = buildDashboard(
+      'lnr',
+      [proj({ skillId: 'SK-FR-compare' }), proj({ skillId: 'SK-FR-equiv' })],
+      () => 'math',
+      (id) => (id === 'SK-FR-compare' ? 'TRANSFER_READY' : undefined),
+    );
+    const compare = d.rows.find((r) => r.skillId === 'SK-FR-compare')!;
+    const equiv = d.rows.find((r) => r.skillId === 'SK-FR-equiv')!;
+    expect(compare.cue).toBe('TRANSFER_READY');
+    expect(equiv.cue).toBeUndefined();
+  });
+
   it('PAR-016: "Why this today?" exposes a reason code only, no chain-of-thought', () => {
     const w = whyThisToday('PREREQUISITE_REMEDIATION');
     expect(w.reasonCode).toBe('PREREQUISITE_REMEDIATION');

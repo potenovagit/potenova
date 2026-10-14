@@ -82,6 +82,7 @@ export interface DashboardRow {
   standing: string;
   confidence: number;
   evidenceCount: number;
+  cue?: string;
 }
 export interface NextFocus {
   skillId: string;

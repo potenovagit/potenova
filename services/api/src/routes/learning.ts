@@ -14,7 +14,7 @@ import {
 } from '@potenova/domain-core';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import type { Deps } from '../deps';
-import { subjectOfSkill, computeNext, type Subject } from '../adaptive';
+import { subjectOfSkill, computeNext, reviewDueFor, type Subject } from '../adaptive';
 
 /** Consent fence at the edge (PRIV-004; AT-01): learning processing needs an
  *  active child_learning grant for the family. */
@@ -81,7 +81,22 @@ export function registerLearning(app: Hono, deps: Deps): void {
         : [...new Set((await deps.evidence.listEvidenceForLearner(alias)).map((e) => e.skillId))];
     const projections: SkillProjection[] = [];
     for (const skillId of skills) projections.push(await projectionFor(deps, alias, skillId));
-    const base = buildDashboard(alias, projections, (id) => subjectOfSkill(id) ?? 'other');
+
+    // Per-skill cue: a mastered skill not practised in a while is due for review;
+    // a mastered skill not yet shown in a novel context is ready for a challenge.
+    const cueBy: Record<string, string> = {};
+    for (const p of projections) {
+      if (!p.dimensions.independent) continue;
+      if (await reviewDueFor(deps, alias, p.skillId)) cueBy[p.skillId] = 'REVIEW_DUE';
+      else if (!p.dimensions.transferable) cueBy[p.skillId] = 'TRANSFER_READY';
+    }
+
+    const base = buildDashboard(
+      alias,
+      projections,
+      (id) => subjectOfSkill(id) ?? 'other',
+      (id) => cueBy[id],
+    );
 
     // "Why this today?" per subject: the planner's current objective for that
     // subject, with a plain-language reason. PAR-016 — reason code only, never
