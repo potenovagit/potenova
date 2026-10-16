@@ -152,6 +152,42 @@ describe('adaptive diagnostic run', () => {
     expect(resp.stop.unresolvedSkillIds).toContain('SK-FR-equiv');
   });
 
+  it('resumes an active run to the current probe (read-only)', async () => {
+    const app = await onboard();
+    const start = await (
+      await app.request('/learners/kid1/diagnostic/runs', json(child, { subject: 'math' }))
+    ).json();
+    const runId = start.runId as string;
+
+    // Reconnecting returns the current probe without advancing the run.
+    const r1 = await (
+      await app.request(`/learners/kid1/diagnostic/runs/${runId}`, json(child))
+    ).json();
+    expect(r1.state).toBe('ACTIVE');
+    expect(r1.probesUsed).toBe(0);
+    expect(r1.next.skillId).toBe('SK-FR-equiv');
+    // A second resume is identical — no evidence recorded, no advance.
+    const r2 = await (
+      await app.request(`/learners/kid1/diagnostic/runs/${runId}`, json(child))
+    ).json();
+    expect(r2.probesUsed).toBe(0);
+    expect(r2.next.taskId).toBe(r1.next.taskId);
+
+    // After an answer, resume reflects the advanced state.
+    await app.request(
+      `/learners/kid1/diagnostic/runs/${runId}/answer`,
+      json(child, {
+        clientSubmissionId: 'a0',
+        taskId: r1.next.taskId,
+        answer: CORRECT[r1.next.taskId],
+      }),
+    );
+    const r3 = await (
+      await app.request(`/learners/kid1/diagnostic/runs/${runId}`, json(child))
+    ).json();
+    expect(r3.probesUsed).toBe(1);
+  });
+
   it('is consent-fenced and course-guarded', async () => {
     const db = openDatabase();
     dbs.push(db);

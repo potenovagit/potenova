@@ -415,4 +415,55 @@ export function registerDiagnostic(app: Hono, deps: Deps): void {
       201,
     );
   });
+
+  // Resume a run (reconnect after an interruption): returns the current probe to
+  // answer, or completion + placement for a finished run. Read-only — it never
+  // records evidence or advances the run; the next answer does that.
+  app.get('/learners/:alias/diagnostic/runs/:runId', async (c) => {
+    const a = authed(c);
+    requireActorType(a, 'child');
+    const alias = c.req.param('alias');
+    const runId = c.req.param('runId');
+    if (!(await hasChildLearningConsent(deps, a.actor.familyAlias))) {
+      throw new DomainError('CONSENT_REQUIRED', 'no active child_learning consent for this family');
+    }
+
+    const row = await deps.session.getDiagnosticRun(runId);
+    if (!row || row.learnerAlias !== alias) throw new DomainError('NOT_FOUND', 'run not found');
+    const subject = row.subject as Subject;
+    const course = courseFor(subject, row.strand);
+
+    // A finished run resumes to its placement, not a probe.
+    if (row.state !== 'ACTIVE') {
+      return c.json({
+        runId,
+        state: row.state,
+        probesUsed: row.probesUsed,
+        complete: true,
+        placement: await buildPlacement(deps, alias, course),
+      });
+    }
+
+    const grade = (await deps.identity.getLearner(alias))?.grade ?? 0;
+    const candidates = await buildCandidates(deps, alias, course, grade);
+    const decision = decideStop({
+      candidates,
+      learnerGrade: grade,
+      probesUsed: row.probesUsed,
+      ageCeilingReached: false,
+      policy: DRAFT_DIAGNOSTIC_POLICY,
+    });
+    if (decision.kind === 'CONTINUE') {
+      const next = await deliverProbe(deps, alias, runId, course, decision.nextSkillId);
+      return c.json({ runId, state: 'ACTIVE', probesUsed: row.probesUsed, next });
+    }
+    return c.json({
+      runId,
+      state: row.state,
+      probesUsed: row.probesUsed,
+      complete: true,
+      stop: decision,
+      placement: await buildPlacement(deps, alias, course),
+    });
+  });
 }

@@ -515,6 +515,12 @@ export const answerDiagnosticProbe = (
     body,
   });
 
+/** Resume an interrupted run — returns the current probe or completion. */
+export const resumeDiagnosticRun = (familyId: string, learnerId: string, runId: string) =>
+  call<DiagnosticRunStep>(`/learners/${learnerId}/diagnostic/runs/${runId}`, {
+    headers: childHeaders(familyId, learnerId),
+  });
+
 // ---- Operator / QA status ---------------------------------------------------
 
 export function operatorHeaders(): Record<string, string> {
