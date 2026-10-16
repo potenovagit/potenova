@@ -113,7 +113,7 @@ export function registerSessions(app: Hono, deps: Deps): void {
 
     // The first objective is PLANNER-selected (adaptive), not a fixed task — the
     // client opens the session straight onto next.defaultTaskId.
-    const next = await computeNext(deps, alias, course);
+    const next = await computeNext(deps, alias, course, { sessionId });
     // Session item budget (ER-09) the learner-protection ceiling for this session.
     const budget = await sessionBudget(deps, alias, sessionId);
 

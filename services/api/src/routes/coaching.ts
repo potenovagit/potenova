@@ -144,18 +144,24 @@ const TASK_BANK: Readonly<Record<string, Task>> = {
   'frac-eq-1': eq(f(1, 2), f(2, 4)), // yes
   'frac-eq-2': eq(f(1, 2), f(1, 3)), // no
   'frac-eq-3': eq(f(2, 3), f(4, 6)), // yes
+  'frac-cmp-4': cmp(f(2, 5), f(3, 5)), // lt
+  'frac-eq-4': eq(f(2, 5), f(1, 2)), // no
   'eng-base-1': plural(PLURAL_BASE, 'dog'), // dogs
   'eng-base-2': plural(PLURAL_BASE, 'book'), // books
   'eng-base-3': plural(PLURAL_BASE, 'cat'), // cats
+  'eng-base-4': plural(PLURAL_BASE, 'map'), // maps
   'eng-sib-1': plural(PLURAL_SIB, 'box'), // boxes
   'eng-sib-2': plural(PLURAL_SIB, 'baby'), // babies
   'eng-sib-3': plural(PLURAL_SIB, 'dish'), // dishes
+  'eng-sib-4': plural(PLURAL_SIB, 'bus'), // buses
   'add-10-1': add(ADD_10, 3, 4), // 7
   'add-10-2': add(ADD_10, 2, 5), // 7
   'add-10-3': add(ADD_10, 6, 1), // 7
+  'add-10-4': add(ADD_10, 4, 3), // 7
   'add-20-1': add(ADD_20, 8, 5), // 13
   'add-20-2': add(ADD_20, 7, 6), // 13
   'add-20-3': add(ADD_20, 9, 4), // 13
+  'add-20-4': add(ADD_20, 6, 8), // 14
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -379,7 +385,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     const alias = c.req.param('alias');
     const sessionId = c.req.param('sessionId');
     const { course } = await requireActiveSession(deps, sessionId, alias);
-    const next = await computeNext(deps, alias, course);
+    const next = await computeNext(deps, alias, course, { sessionId });
     const budget = await sessionBudget(deps, alias, sessionId);
     return c.json({ ...next, budget });
   });
@@ -513,8 +519,9 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     }
 
     // Self-driving loop: the planner recommends the next objective off the freshly
-    // re-derived mastery (advancement once the prerequisite is independent).
-    const next = await computeNext(deps, alias, course);
+    // re-derived mastery (advancement once the prerequisite is independent); the
+    // served practice item rotates with prior in-session attempts.
+    const next = await computeNext(deps, alias, course, { sessionId });
     // Coaching ladder on a wrong answer: a targeted HINT first (early wrong), then
     // a stall-driven strategy change (AT-08) once the learner keeps missing.
     const coaching = graded.correct
@@ -645,7 +652,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       );
     }
 
-    const next = await computeNext(deps, alias, course);
+    const next = await computeNext(deps, alias, course, { sessionId });
     const coaching = graded.correct
       ? null
       : await assessStall(deps, alias, sessionId, task.skillId, course);

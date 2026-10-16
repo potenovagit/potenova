@@ -58,6 +58,11 @@ interface CoursePlan {
   readonly coachableSkillIds: readonly string[];
   /** The task offered first when the planner selects a skill. */
   readonly defaultTask: Readonly<Record<string, string>>;
+  /** Varied practice items per skill (first === defaultTask). The served item
+   *  rotates by how many items the learner has already worked for that skill in
+   *  the session, so repeat coaching shows fresh problems (presentational only —
+   *  mastery stays representation-driven, never item-count driven). */
+  readonly practiceTasks: Readonly<Record<string, readonly string[]>>;
   /** Strategy-change representation ladder (first = most concrete). */
   readonly remediationReps: readonly string[];
   /** Misconception KB for the hint ladder (empty when a course has none yet). */
@@ -73,6 +78,10 @@ const COURSES: Record<CourseId, CoursePlan> = {
     buildGraph: buildFractionsDraftGraph,
     coachableSkillIds: ['SK-FR-equiv', 'SK-FR-compare'],
     defaultTask: { 'SK-FR-compare': 'frac-cmp-1', 'SK-FR-equiv': 'frac-eq-1' },
+    practiceTasks: {
+      'SK-FR-equiv': ['frac-eq-1', 'frac-eq-2', 'frac-eq-3', 'frac-eq-4'],
+      'SK-FR-compare': ['frac-cmp-1', 'frac-cmp-2', 'frac-cmp-3', 'frac-cmp-4'],
+    },
     remediationReps: ['area-model', 'number-line', 'set', 'symbolic'],
     misconceptions: FRACTION_MISCONCEPTIONS,
     strategies: FRACTION_STRATEGIES,
@@ -83,6 +92,10 @@ const COURSES: Record<CourseId, CoursePlan> = {
     buildGraph: buildAdditionDraftGraph,
     coachableSkillIds: ['SK-NS-add-within10', 'SK-NS-add-within20'],
     defaultTask: { 'SK-NS-add-within10': 'add-10-1', 'SK-NS-add-within20': 'add-20-1' },
+    practiceTasks: {
+      'SK-NS-add-within10': ['add-10-1', 'add-10-2', 'add-10-3', 'add-10-4'],
+      'SK-NS-add-within20': ['add-20-1', 'add-20-2', 'add-20-3', 'add-20-4'],
+    },
     remediationReps: ['counters', 'number-line', 'symbolic'],
     misconceptions: ADDITION_MISCONCEPTIONS,
     strategies: ADDITION_STRATEGIES,
@@ -93,6 +106,10 @@ const COURSES: Record<CourseId, CoursePlan> = {
     buildGraph: buildEnglishDraftGraph,
     coachableSkillIds: ['SK-EN-plural-base', 'SK-EN-plural-sibilant'],
     defaultTask: { 'SK-EN-plural-base': 'eng-base-1', 'SK-EN-plural-sibilant': 'eng-sib-1' },
+    practiceTasks: {
+      'SK-EN-plural-base': ['eng-base-1', 'eng-base-2', 'eng-base-3', 'eng-base-4'],
+      'SK-EN-plural-sibilant': ['eng-sib-1', 'eng-sib-2', 'eng-sib-3', 'eng-sib-4'],
+    },
     remediationReps: ['spoken', 'picture', 'written'],
     misconceptions: ENGLISH_MISCONCEPTIONS,
     strategies: ENGLISH_STRATEGIES,
@@ -238,11 +255,28 @@ export interface NextRecommendation {
   plannerPolicyVersion: string;
 }
 
-/** Ask the planner what to coach next off the current derived mastery. */
+/** How many items the learner has already worked for a skill IN THIS session
+ *  (evidence event ids are `${sessionId}:${clientSubmissionId}`). Used to rotate
+ *  the served practice item so repeat coaching shows fresh problems. */
+async function sessionItemsForSkill(
+  deps: Deps,
+  alias: string,
+  skillId: string,
+  sessionId: string,
+): Promise<number> {
+  const events = await deps.evidence.listEvidence(alias, skillId);
+  const prefix = `${sessionId}:`;
+  return events.filter((e) => e.eventId.startsWith(prefix)).length;
+}
+
+/** Ask the planner what to coach next off the current derived mastery. When a
+ *  sessionId is given, the served practice item rotates with prior in-session
+ *  attempts for the chosen skill (richer content); without one it is item 0. */
 export async function computeNext(
   deps: Deps,
   alias: string,
   course: CourseId,
+  opts?: { sessionId?: string },
 ): Promise<NextRecommendation> {
   const plan = COURSES[course];
   const mastery = await coachableMastery(deps, alias, course);
@@ -252,11 +286,21 @@ export async function computeNext(
     mastery,
     policy: DRAFT_PLANNER_POLICY,
   });
-  // A transfer check points at the novel-context task; otherwise the normal task.
-  const defaultTaskId =
-    next.reasonCode === 'TRANSFER_CHECK'
-      ? (plan.transferTask[next.targetSkillId] ?? plan.defaultTask[next.targetSkillId] ?? null)
-      : (plan.defaultTask[next.targetSkillId] ?? null);
+  // A transfer check points at the novel-context task; otherwise a practice item
+  // from the skill's pool, rotated by prior in-session attempts.
+  let defaultTaskId: string | null;
+  if (next.reasonCode === 'TRANSFER_CHECK') {
+    defaultTaskId =
+      plan.transferTask[next.targetSkillId] ?? plan.defaultTask[next.targetSkillId] ?? null;
+  } else {
+    const pool = plan.practiceTasks[next.targetSkillId] ?? [];
+    const idx =
+      opts?.sessionId && pool.length > 0
+        ? (await sessionItemsForSkill(deps, alias, next.targetSkillId, opts.sessionId)) %
+          pool.length
+        : 0;
+    defaultTaskId = pool[idx] ?? plan.defaultTask[next.targetSkillId] ?? null;
+  }
   return {
     skillId: next.targetSkillId,
     reasonCode: next.reasonCode,
