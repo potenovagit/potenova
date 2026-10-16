@@ -125,7 +125,13 @@ export const securityAudit = pgTable('security_audit', {
 export const dataSubjectRequest = pgTable('data_subject_request', {
   requestId: text('request_id').primaryKey(),
   kind: text('kind').notNull(),
+  /** 'learner' | 'family' — who the erasure is for. */
+  subjectType: text('subject_type'),
+  subjectId: text('subject_id'),
+  reason: text('reason'),
   state: text('state').notNull(),
+  /** The serialized ErasureRecord (per-target outcomes), for accountability. */
+  outcomesJson: text('outcomes_json'),
   updatedAt: text('updated_at').notNull(),
 });
 
@@ -267,7 +273,8 @@ CREATE TABLE IF NOT EXISTS security_audit (
   id bigserial PRIMARY KEY, approver text NOT NULL, reason text NOT NULL, object text NOT NULL,
   action text NOT NULL, outcome text NOT NULL, expiry text, at text NOT NULL);
 CREATE TABLE IF NOT EXISTS data_subject_request (
-  request_id text PRIMARY KEY, kind text NOT NULL, state text NOT NULL, updated_at text NOT NULL);
+  request_id text PRIMARY KEY, kind text NOT NULL, subject_type text, subject_id text, reason text,
+  state text NOT NULL, outcomes_json text, updated_at text NOT NULL);
 
 CREATE TABLE IF NOT EXISTS kill_switch (
   capability text PRIMARY KEY, disabled boolean NOT NULL, actor text NOT NULL, reason text NOT NULL, at text NOT NULL);

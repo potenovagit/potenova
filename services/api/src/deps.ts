@@ -8,6 +8,7 @@ import {
   ContentRepository,
   SafetyRepository,
   OperatorRepository,
+  ErasureRepository,
   SessionRepository,
 } from '@potenova/persistence';
 import {
@@ -46,6 +47,7 @@ export interface Deps {
   readonly content: ContentRepository;
   readonly safety: SafetyRepository;
   readonly operator: OperatorRepository;
+  readonly erasure: ErasureRepository;
   readonly session: SessionRepository;
   /** AI candidate-evaluation plumbing (synthetic data only; AI-003). */
   readonly ai: AiDeps;
@@ -201,6 +203,7 @@ export function buildDeps(opts: BuildDepsOptions = {}): Deps {
     content: new ContentRepository(db),
     safety: new SafetyRepository(db),
     operator: new OperatorRepository(db),
+    erasure: new ErasureRepository(db),
     session: new SessionRepository(db),
     ai: buildAiDeps(env, config.environment === 'prod', opts.aiProvider, opts.inputProvider),
     policies: buildPolicies(config.environment === 'prod', opts.approvals ?? parseApprovals(env)),
