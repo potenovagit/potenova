@@ -4,9 +4,12 @@ import {
   planErasure,
   recordTargetOutcome,
   verifyErasure,
+  evaluateRetention,
+  DATA_CLASSES,
   type ErasureRecord,
   type ErasureReason,
   type DeletionStatus,
+  type DataClass,
 } from '@potenova/policy';
 import { readAuth, requireActorType, type AuthCtx } from '../auth';
 import { now, type Deps } from '../deps';
@@ -181,6 +184,143 @@ export function registerPrivacy(app: Hono, deps: Deps): void {
       state,
       record,
       verification: verifyErasure(record),
+    });
+  });
+
+  // Retention-expiry sweep (ER-07): apply the approved schedule to actually
+  // age-out first-party records. Each data class is evaluated against its rule;
+  // records past the active window in an age-able (from-creation) store are
+  // purged (or flagged in dryRun). Fail-closed: a class whose rule is not
+  // configured/approved (in prod) is BLOCKED and nothing is deleted for it —
+  // from-account-closure stores are reported but aged by the erasure flow (§PRIV-005),
+  // not here. The approved schedule arrives via the approval-flip (POTENOVA_APPROVALS).
+  app.post('/privacy/retention/sweep', async (c) => {
+    const a = operator(c);
+    const b = await c.req
+      .json<{ dryRun?: boolean; asOf?: string }>()
+      .catch(() => ({}) as { dryRun?: boolean; asOf?: string });
+    const dryRun = b.dryRun === true;
+    const asOf = b.asOf && !Number.isNaN(Date.parse(b.asOf)) ? b.asOf : now();
+    const nowMs = Date.parse(asOf);
+    const requireApproved = deps.policies.isProd;
+    const policy = deps.policies.retention;
+
+    const scan = await deps.retentionStore.scanAgeable();
+    const counts = await deps.retentionStore.storeCounts();
+    const buckets: Record<string, { id: string; ts: string }[]> = {
+      usage: scan.usage,
+      securityAudit: scan.securityAudit,
+      billing: scan.billing,
+    };
+
+    // Each data class → how its first-party records are handled.
+    const AGEABLE: Partial<Record<DataClass, 'usage' | 'securityAudit' | 'billing'>> = {
+      analytics: 'usage',
+      security_audit: 'securityAudit',
+      billing: 'billing',
+    };
+    const CLOSURE: Partial<Record<DataClass, number>> = {
+      learner_evidence: counts.evidence,
+      diagnostic_responses: counts.diagnosticRuns,
+    };
+
+    const ageDaysOf = (ts: string): number => {
+      const iso = ts.length === 10 ? `${ts}T00:00:00Z` : ts;
+      return Math.floor((nowMs - Date.parse(iso)) / 86_400_000);
+    };
+
+    const report: Array<Record<string, unknown>> = [];
+    let totalDue = 0;
+    let totalActioned = 0;
+
+    for (const dc of DATA_CLASSES) {
+      const v = policy[dc];
+      const rule = v?.status === 'configured' ? v.value : null;
+      const base = {
+        dataClass: dc,
+        activeDays: rule?.activeDays ?? null,
+        deletion: rule?.deletion ?? null,
+        basis: rule?.basis ?? null,
+      };
+
+      // Fail-closed: unconfigured / (in prod) unapproved → BLOCKED, nothing deleted.
+      if (evaluateRetention(policy, dc, 0, { requireApproved }).action === 'blocked_unconfigured') {
+        report.push({ ...base, store: null, scanned: 0, due: 0, actioned: 0, status: 'blocked' });
+        continue;
+      }
+
+      const bucket = AGEABLE[dc];
+      if (bucket) {
+        const rows = buckets[bucket];
+        const dueIds: string[] = [];
+        for (const r of rows) {
+          if (
+            evaluateRetention(policy, dc, ageDaysOf(r.ts), { requireApproved }).action ===
+            'due_for_deletion'
+          ) {
+            dueIds.push(r.id);
+          }
+        }
+        let actioned = 0;
+        if (!dryRun && dueIds.length > 0) {
+          actioned =
+            bucket === 'usage'
+              ? await deps.retentionStore.deleteUsage(dueIds)
+              : bucket === 'securityAudit'
+                ? await deps.retentionStore.deleteSecurityAudit(dueIds)
+                : await deps.retentionStore.deleteBilling(dueIds);
+        }
+        totalDue += dueIds.length;
+        totalActioned += actioned;
+        report.push({
+          ...base,
+          store: bucket,
+          scanned: rows.length,
+          due: dueIds.length,
+          actioned,
+          status: dryRun ? 'dry_run' : 'swept',
+        });
+        continue;
+      }
+
+      if (dc in CLOSURE) {
+        report.push({
+          ...base,
+          store: dc === 'learner_evidence' ? 'mastery_evidence' : 'diagnostic_run',
+          scanned: CLOSURE[dc],
+          due: 0,
+          actioned: 0,
+          status: 'closure_basis', // aged on account closure via erasure (PRIV-005)
+        });
+        continue;
+      }
+
+      report.push({
+        ...base,
+        store: null,
+        scanned: 0,
+        due: 0,
+        actioned: 0,
+        status: 'no_first_party_store',
+      });
+    }
+
+    await deps.safety.recordAudit({
+      approver: a.actor.actorAlias,
+      reason: dryRun ? 'retention_sweep_dry_run' : 'retention_sweep',
+      object: 'retention:all_classes',
+      action: 'retention_sweep',
+      outcome: 'EXECUTED',
+      expiry: null,
+      at: now(),
+    });
+
+    return c.json({
+      asOf,
+      dryRun,
+      requireApproved,
+      summary: { classes: DATA_CLASSES.length, totalDue, totalActioned },
+      report,
     });
   });
 }
