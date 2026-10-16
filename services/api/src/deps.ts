@@ -26,7 +26,13 @@ import {
   type UsageCapsPolicy,
 } from '@potenova/policy';
 import { emptyEscalationMatrix, type EscalationMatrix } from '@potenova/safety';
-import { DRAFT_MASTERY_POLICY, type MasteryPolicy } from '@potenova/learner-state';
+import { type MasteryPolicy } from '@potenova/learner-state';
+import {
+  parseApprovals,
+  masteryPolicyFrom,
+  usageCapsFrom,
+  type ApprovalsConfig,
+} from './approvals';
 
 /** Everything the routes need: config + the shared database and its repositories. */
 export interface Deps {
@@ -81,13 +87,19 @@ function stagingUsageCaps(): UsageCapsPolicy {
   });
 }
 
-function buildPolicies(isProd: boolean): PolicyDeps {
+/**
+ * The fail-closed policy bundle, with any signed approvals applied. An approval
+ * flips its policy to an approved value (unblocking prod for that gate); absent
+ * one, the policy stays DRAFT in non-prod and empty/fail-closed in prod.
+ */
+export function buildPolicies(isProd: boolean, approvals?: ApprovalsConfig): PolicyDeps {
+  const approvedCaps = usageCapsFrom(approvals?.usageCaps);
   return {
     isProd,
     retention: proposedRetentionPolicy(),
-    usageCaps: isProd ? emptyUsageCapsPolicy() : stagingUsageCaps(),
+    usageCaps: approvedCaps ?? (isProd ? emptyUsageCapsPolicy() : stagingUsageCaps()),
     escalation: emptyEscalationMatrix(),
-    mastery: DRAFT_MASTERY_POLICY,
+    mastery: masteryPolicyFrom(approvals?.mastery),
   };
 }
 
@@ -117,6 +129,9 @@ export interface BuildDepsOptions {
   readonly aiProvider?: GenerativeProvider;
   /** Inject an input provider (tests pass an offline stub to drive the trust floor). */
   readonly inputProvider?: InputProvider;
+  /** Signed policy approvals (else read from env POTENOVA_APPROVALS). Flips a
+   *  policy to an approved value, unblocking prod for that gate. */
+  readonly approvals?: ApprovalsConfig;
 }
 
 /** The capability envelope the candidate is evaluated within (synthetic Math). */
@@ -186,7 +201,7 @@ export function buildDeps(opts: BuildDepsOptions = {}): Deps {
     operator: new OperatorRepository(db),
     session: new SessionRepository(db),
     ai: buildAiDeps(env, config.environment === 'prod', opts.aiProvider, opts.inputProvider),
-    policies: buildPolicies(config.environment === 'prod'),
+    policies: buildPolicies(config.environment === 'prod', opts.approvals ?? parseApprovals(env)),
   };
 }
 
