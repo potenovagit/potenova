@@ -230,9 +230,13 @@ export interface SessionBudget {
 }
 export interface StartedSession {
   session: { sessionId: string; state: string; subject: string };
+  subject?: string;
+  strand?: string;
   next: SessionNext;
   budget: SessionBudget;
   allowedMinutes: number;
+  breakAfterMinutes?: number;
+  usage?: { kind: string; reasonCodes: string[] };
 }
 export interface DeliveredTask {
   taskId: string;
@@ -366,3 +370,150 @@ export const submitMultimodalAnswer = (
     headers: childHeaders(familyId, learnerId),
     body,
   });
+
+export const startSessionStrand = (
+  familyId: string,
+  learnerId: string,
+  subject: 'math' | 'english',
+  strand?: string,
+) =>
+  call<StartedSession>(`/learners/${learnerId}/sessions`, {
+    method: 'POST',
+    headers: childHeaders(familyId, learnerId),
+    body: { subject, strand, requestedMinutes: 15 },
+  });
+
+// ---- Guardian controls (parent preferences) ---------------------------------
+
+export interface GuardianPreference {
+  learnerAlias: string;
+  focusSubject?: string | null;
+  focusStrand?: string | null;
+  focusSkillId?: string | null;
+  maxDailyMinutes?: number | null;
+  maxContinuousMinutes?: number | null;
+}
+
+export const getPreferences = (familyId: string, guardianId: string, learnerId: string) =>
+  call<{ preference: GuardianPreference }>(`/learners/${learnerId}/preferences`, {
+    headers: guardianHeaders(familyId, guardianId),
+  });
+
+export const setPreferences = (
+  familyId: string,
+  guardianId: string,
+  learnerId: string,
+  body: {
+    focus?: { subject: string; strand: string } | null;
+    focusSkillId?: string | null;
+    caps?: { maxDailyMinutes?: number | null; maxContinuousMinutes?: number | null } | null;
+  },
+) =>
+  call<{ preference: GuardianPreference }>(`/learners/${learnerId}/preferences`, {
+    method: 'PUT',
+    headers: guardianHeaders(familyId, guardianId),
+    body,
+  });
+
+// ---- Diagnostic → placement -------------------------------------------------
+
+export interface PlacementSkill {
+  skillId: string;
+  state: string;
+  standing: string;
+  confidence: number;
+  unknownDimensions: string[];
+}
+export interface PlacementPlanItem {
+  skillId: string;
+  reasonCode: string;
+  confidenceLimited: boolean;
+}
+export interface Placement {
+  subject: string;
+  course: string;
+  profile: { learnerAlias: string; skills: PlacementSkill[]; policyVersion: string };
+  plan: { runId: string; planVersion: string; items: PlacementPlanItem[]; hasUnknowns: boolean };
+  entry: SessionNext;
+}
+
+export interface DiagnosticProbe {
+  clientSubmissionId: string;
+  taskId: string;
+  answer: string;
+  representation?: string;
+}
+
+export const runDiagnosticProbes = (
+  familyId: string,
+  learnerId: string,
+  runId: string,
+  probes: DiagnosticProbe[],
+) =>
+  call<{ runId: string; results: { skillId: string; correct: boolean; recorded: boolean }[] }>(
+    `/learners/${learnerId}/diagnostic/probes`,
+    { method: 'POST', headers: childHeaders(familyId, learnerId), body: { runId, probes } },
+  );
+
+export const getPlacement = (
+  familyId: string,
+  guardianId: string,
+  learnerId: string,
+  subject: 'math' | 'english',
+  strand?: string,
+) =>
+  call<Placement>(
+    `/learners/${learnerId}/placement?subject=${subject}${strand ? `&strand=${strand}` : ''}`,
+    { headers: guardianHeaders(familyId, guardianId) },
+  );
+
+// ---- Operator / QA status ---------------------------------------------------
+
+export function operatorHeaders(): Record<string, string> {
+  return { 'x-actor-type': 'operator', 'x-actor-alias': 'web-operator' };
+}
+
+export interface OperatorStatus {
+  environment: string;
+  primaryRegion: string;
+  drRegion: string;
+  isProd: boolean;
+  prodReady: boolean;
+  policies: {
+    mastery: { decisionId: string; version: string; approved: boolean };
+    usageCaps: {
+      decisionId: string;
+      allApproved: boolean;
+      bands: { band: string; status: string; approved: boolean; decisionId: string }[];
+    };
+    escalation: { decisionId: string; approved: boolean; configuredCells: number };
+    retention: {
+      decisionId: string;
+      ready: boolean;
+      unconfiguredCount: number;
+      unapprovedCount: number;
+    };
+  };
+  ai: {
+    providerConfigured: boolean;
+    inputProviderConfigured: boolean;
+    candidateModel: {
+      modelId: string;
+      status: string;
+      allowedRegions: string[];
+      trainingDisabled: boolean;
+    } | null;
+    anyModelApprovedForProduction: boolean;
+  };
+  modelEval: {
+    endpoint: string;
+    runnable: boolean;
+    envelope: { ageBands: string[]; subjects: string[]; capabilities: string[] } | null;
+    latency: { sloMs: number | null; decisionId: string; approved: boolean; recordedRuns: number };
+  };
+  killSwitches: { capability: string; active: boolean }[];
+  contentGate: { active: boolean; positive: boolean; negativeBlocked: boolean };
+}
+
+export const operatorStatus = () =>
+  call<OperatorStatus>('/operator/status', { headers: operatorHeaders() });

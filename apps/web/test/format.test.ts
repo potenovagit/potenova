@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { bandForGrade, confidencePct, standingLabel, standingTone } from '../src/format';
+import {
+  bandForGrade,
+  confidencePct,
+  standingLabel,
+  standingTone,
+  reasonCodeLabel,
+  usageDecisionLabel,
+  minutesLabel,
+  policyState,
+  modelStatusTone,
+} from '../src/format';
 
 describe('web presentation helpers', () => {
   it('labels every known standing in parent/child-friendly words', () => {
@@ -38,5 +48,35 @@ describe('web presentation helpers', () => {
     expect(bandForGrade(6)).toBe('junior');
     expect(bandForGrade(7)).toBe('intermediate');
     expect(bandForGrade(8)).toBe('intermediate');
+  });
+
+  it('labels planner reason codes in plain language', () => {
+    expect(reasonCodeLabel('PREREQUISITE_REMEDIATION')).toBe('Building a foundation first');
+    expect(reasonCodeLabel('LOW_CONFIDENCE_VERIFICATION')).toBe('Checking this is solid');
+    expect(reasonCodeLabel('TRANSFER_CHECK')).toBe('Ready for a challenge');
+    expect(reasonCodeLabel('PARENT_PREFERENCE')).toBe('Following your focus');
+    expect(reasonCodeLabel('WHATEVER_NEW')).toBe('whatever new');
+  });
+
+  it('labels usage-cap decisions and minutes', () => {
+    expect(usageDecisionLabel('ALLOW')).toBe('Full time allowed');
+    expect(usageDecisionLabel('SHORTEN')).toBe('Shortened to fit the limit');
+    expect(usageDecisionLabel('STOP')).toBe('Daily limit reached');
+    expect(minutesLabel(15)).toBe('15 min');
+    expect(minutesLabel(null)).toBe('—');
+    expect(minutesLabel(undefined)).toBe('—');
+  });
+
+  it('maps a fail-closed policy to a reviewer status + tone', () => {
+    expect(policyState(false)).toEqual({ label: 'Draft — pending approval', tone: 'mid' });
+    expect(policyState(true)).toEqual({ label: 'Approved', tone: 'good' });
+    expect(policyState(false, false)).toEqual({ label: 'Not configured', tone: 'low' });
+  });
+
+  it('maps a model status to a label + tone without implying production use', () => {
+    expect(modelStatusTone('SYNTHETIC_TESTING').label).toBe('Synthetic testing only');
+    expect(modelStatusTone('SYNTHETIC_TESTING').tone).toBe('mid');
+    expect(modelStatusTone(null).label).toBe('None wired');
+    expect(modelStatusTone('APPROVED').tone).toBe('good');
   });
 });

@@ -1,29 +1,41 @@
 import { useEffect, useState } from 'react';
 import * as api from './api';
 import { isApiError } from './api';
-import { bandForGrade, confidencePct, standingLabel, standingTone } from './format';
+import {
+  bandForGrade,
+  confidencePct,
+  standingLabel,
+  standingTone,
+  reasonCodeLabel,
+  usageDecisionLabel,
+  minutesLabel,
+  policyState,
+  modelStatusTone,
+} from './format';
 
-/** The two demo skills we exercise end-to-end (synthetic — no real curriculum yet). */
-const DEMO_SKILLS = [
-  { id: 'SK-FR-compare', label: 'Comparing fractions' },
-  { id: 'SK-FR-equiv', label: 'Equivalent fractions' },
-];
-
-/** Parent-friendly labels for every skill the dashboard may surface. */
+/** Parent-friendly labels for every skill the UI may surface. */
 const SKILL_LABELS: Record<string, string> = {
   'SK-FR-compare': 'Comparing fractions',
   'SK-FR-equiv': 'Equivalent fractions',
   'SK-EN-plural-base': 'Plurals: adding -s',
   'SK-EN-plural-sibilant': 'Plurals: -es and -ies',
+  'SK-NS-add-within10': 'Adding within 10',
+  'SK-NS-add-within20': 'Adding within 20',
 };
 const skillLabel = (id: string): string => SKILL_LABELS[id] ?? id;
-const SUBJECT_LABELS: Record<string, string> = {
-  math: 'Math',
-  english: 'English',
-  other: 'Other',
-};
+const SUBJECT_LABELS: Record<string, string> = { math: 'Math', english: 'English', other: 'Other' };
 const subjectLabel = (s: string): string => SUBJECT_LABELS[s] ?? s;
-/** Per-skill cue badges. */
+const STRAND_LABELS: Record<string, string> = {
+  fractions: 'Fractions',
+  addition: 'Addition (number sense)',
+  plurals: 'Plurals',
+};
+const strandLabel = (s: string): string => STRAND_LABELS[s] ?? s;
+/** Strands available per subject (mirrors the API's COURSES_BY_SUBJECT). */
+const STRANDS: Record<'math' | 'english', string[]> = {
+  math: ['fractions', 'addition'],
+  english: ['plurals'],
+};
 const CUE_LABELS: Record<string, string> = {
   REVIEW_DUE: 'Due for review',
   TRANSFER_READY: 'Ready for a challenge',
@@ -41,10 +53,14 @@ interface Learner {
 }
 
 type Note = { kind: 'ok' | 'err'; text: string };
+type Tab = 'parent' | 'child' | 'operator';
 
 export function App() {
-  const [tab, setTab] = useState<'parent' | 'child'>('parent');
-  const [ready, setReady] = useState<string>('checking…');
+  const [tab, setTab] = useState<Tab>('parent');
+  const [ready, setReady] = useState<{ text: string; ok: boolean | null }>({
+    text: 'Connecting to the API…',
+    ok: null,
+  });
   const [family, setFamily] = useState<Family | null>(null);
   const [learner, setLearner] = useState<Learner | null>(null);
 
@@ -52,10 +68,21 @@ export function App() {
     api
       .readiness()
       .then((r) =>
-        setReady(`API ready · ${r.environment} · ${r.primaryRegion} · ${r.modules} modules`),
+        setReady({
+          text: `API ready · ${r.environment} · ${r.primaryRegion} · ${r.modules} modules`,
+          ok: true,
+        }),
       )
-      .catch(() => setReady('API not reachable — start it on :8080 (see README)'));
+      .catch(() =>
+        setReady({ text: 'API not reachable — start it on :8080 (see README)', ok: false }),
+      );
   }, []);
+
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'parent', label: 'Parent' },
+    { id: 'child', label: 'Child' },
+    { id: 'operator', label: 'Operator' },
+  ];
 
   return (
     <div className="shell">
@@ -70,38 +97,38 @@ export function App() {
           Potenova
         </div>
         <nav className="tabs" aria-label="Views">
-          <button
-            className={tab === 'parent' ? 'on' : ''}
-            aria-pressed={tab === 'parent'}
-            onClick={() => setTab('parent')}
-          >
-            Parent
-          </button>
-          <button
-            className={tab === 'child' ? 'on' : ''}
-            aria-pressed={tab === 'child'}
-            onClick={() => setTab('child')}
-          >
-            Child
-          </button>
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              className={tab === t.id ? 'on' : ''}
+              aria-pressed={tab === t.id}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
         </nav>
       </header>
 
-      <div className="status" role="status">
-        {ready}
+      <div
+        className={`status status-${ready.ok === null ? 'pending' : ready.ok ? 'ok' : 'err'}`}
+        role="status"
+      >
+        <span className="status-dot" aria-hidden="true" />
+        {ready.text}
       </div>
 
       <main className="page" id="main" tabIndex={-1}>
-        {tab === 'parent' ? (
+        {tab === 'parent' && (
           <ParentView
             family={family}
             learner={learner}
             setFamily={setFamily}
             setLearner={setLearner}
           />
-        ) : (
-          <ChildView family={family} learner={learner} />
         )}
+        {tab === 'child' && <ChildView family={family} learner={learner} />}
+        {tab === 'operator' && <OperatorView />}
       </main>
 
       <footer className="foot">
@@ -115,21 +142,94 @@ export function App() {
 function useNote(): [Note | null, (n: Note | null) => void, (e: unknown) => void] {
   const [note, setNote] = useState<Note | null>(null);
   const fail = (e: unknown) =>
-    setNote({ kind: 'err', text: isApiError(e) ? `${e.code}: ${e.message}` : String(e) });
+    setNote({ kind: 'err', text: isApiError(e) ? friendlyError(e) : String(e) });
   return [note, setNote, fail];
+}
+
+/** Turn an API error code into a parent-facing sentence (error identification). */
+function friendlyError(e: api.ApiError): string {
+  switch (e.code) {
+    case 'NETWORK':
+      return 'Could not reach the API. Is it running on :8080?';
+    case 'CONSENT_REQUIRED':
+      return 'Consent is required before anything is processed for this learner.';
+    case 'ENTITLEMENT_INACTIVE':
+      return 'No active subscription for this family yet.';
+    case 'FORBIDDEN_ROLE':
+      return 'This action is not allowed for the current role.';
+    case 'REGION_DISALLOWED':
+      return 'Processing must stay in the Canadian region.';
+    case 'NOT_FOUND':
+      return e.message || 'Not found.';
+    default:
+      return `${e.message} (${e.code})`;
+  }
 }
 
 function NoteBar({ note }: { note: Note | null }) {
   if (!note) return null;
-  // Announced to assistive tech; errors assertively, confirmations politely.
   return (
     <div
       className={`note ${note.kind}`}
       role={note.kind === 'err' ? 'alert' : 'status'}
       aria-live={note.kind === 'err' ? 'assertive' : 'polite'}
     >
+      <span className="note-ico" aria-hidden="true">
+        {note.kind === 'err' ? '⚠' : '✓'}
+      </span>
       {note.text}
     </div>
+  );
+}
+
+/** A labelled text/number field with an inline, field-level error message. */
+function Field({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  min,
+  max,
+  error,
+  id,
+}: {
+  label: string;
+  value: string | number;
+  onChange: (v: string) => void;
+  type?: string;
+  min?: number;
+  max?: number;
+  error?: string;
+  id: string;
+}) {
+  return (
+    <label htmlFor={id} className={error ? 'field-err' : ''}>
+      {label}
+      <input
+        id={id}
+        type={type}
+        min={min}
+        max={max}
+        value={value}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-err` : undefined}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {error && (
+        <span className="fielderr" id={`${id}-err`}>
+          {error}
+        </span>
+      )}
+    </label>
+  );
+}
+
+function Spinner({ label }: { label: string }) {
+  return (
+    <span className="spin" role="status">
+      <span className="spin-ring" aria-hidden="true" />
+      {label}
+    </span>
   );
 }
 
@@ -148,8 +248,10 @@ function ParentView({
   const [guardianId, setGuardianId] = useState('g-parent');
   const [learnerId, setLearnerId] = useState('lnr-ava');
   const [nickname, setNickname] = useState('Ava');
-  const [grade, setGrade] = useState(4);
+  const [grade, setGrade] = useState('4');
+  const [errs, setErrs] = useState<Record<string, string>>({});
   const [dash, setDash] = useState<api.Dashboard | null>(null);
+  const [dashBusy, setDashBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote, fail] = useNote();
 
@@ -163,6 +265,33 @@ function ParentView({
     } finally {
       setBusy(false);
     }
+  };
+
+  const validateIds = (): boolean => {
+    const next: Record<string, string> = {};
+    if (!familyId.trim()) next.familyId = 'Required.';
+    if (!guardianId.trim()) next.guardianId = 'Required.';
+    setErrs((e) => ({
+      ...e,
+      ...next,
+      familyId: next.familyId ?? '',
+      guardianId: next.guardianId ?? '',
+    }));
+    return !next.familyId && !next.guardianId;
+  };
+  const validateLearner = (): boolean => {
+    const next: Record<string, string> = {};
+    if (!learnerId.trim()) next.learnerId = 'Required.';
+    if (!nickname.trim()) next.nickname = 'Required.';
+    const g = Number(grade);
+    if (!Number.isInteger(g) || g < 1 || g > 8) next.grade = 'Enter a grade from 1 to 8.';
+    setErrs((e) => ({
+      ...e,
+      learnerId: next.learnerId ?? '',
+      nickname: next.nickname ?? '',
+      grade: next.grade ?? '',
+    }));
+    return !next.learnerId && !next.nickname && !next.grade;
   };
 
   return (
@@ -179,18 +308,25 @@ function ParentView({
             <span className="num">1</span> Create family
           </div>
           <div className="fields">
-            <label>
-              Family ID
-              <input value={familyId} onChange={(e) => setFamilyId(e.target.value)} />
-            </label>
-            <label>
-              Owner guardian ID
-              <input value={guardianId} onChange={(e) => setGuardianId(e.target.value)} />
-            </label>
+            <Field
+              id="familyId"
+              label="Family ID"
+              value={familyId}
+              onChange={setFamilyId}
+              error={errs.familyId}
+            />
+            <Field
+              id="guardianId"
+              label="Owner guardian ID"
+              value={guardianId}
+              onChange={setGuardianId}
+              error={errs.guardianId}
+            />
           </div>
           <button
             disabled={busy}
             onClick={() =>
+              validateIds() &&
               run(async () => {
                 await api.createFamily(familyId, guardianId);
                 setFamily({ familyId, guardianId, consentGiven: false });
@@ -198,7 +334,7 @@ function ParentView({
               })
             }
           >
-            Create family
+            {busy ? <Spinner label="Working…" /> : 'Create family'}
           </button>
         </li>
 
@@ -218,14 +354,11 @@ function ParentView({
                 await api.grantConsent(family.familyId, family.guardianId);
                 await api.grantMultimodalConsent(family.familyId, family.guardianId);
                 setFamily({ ...family, consentGiven: true });
-                setNote({
-                  kind: 'ok',
-                  text: 'Consent granted: text, voice and vision.',
-                });
+                setNote({ kind: 'ok', text: 'Consent granted: text, voice and vision.' });
               })
             }
           >
-            Grant consent
+            {busy ? <Spinner label="Working…" /> : 'Grant consent'}
           </button>
         </li>
 
@@ -234,28 +367,35 @@ function ParentView({
             <span className="num">3</span> Add a learner
           </div>
           <div className="fields">
-            <label>
-              Learner ID
-              <input value={learnerId} onChange={(e) => setLearnerId(e.target.value)} />
-            </label>
-            <label>
-              Nickname
-              <input value={nickname} onChange={(e) => setNickname(e.target.value)} />
-            </label>
-            <label>
-              Grade
-              <input
-                type="number"
-                min={1}
-                max={8}
-                value={grade}
-                onChange={(e) => setGrade(Number(e.target.value))}
-              />
-            </label>
+            <Field
+              id="learnerId"
+              label="Learner ID"
+              value={learnerId}
+              onChange={setLearnerId}
+              error={errs.learnerId}
+            />
+            <Field
+              id="nickname"
+              label="Nickname"
+              value={nickname}
+              onChange={setNickname}
+              error={errs.nickname}
+            />
+            <Field
+              id="grade"
+              label="Grade"
+              type="number"
+              min={1}
+              max={8}
+              value={grade}
+              onChange={setGrade}
+              error={errs.grade}
+            />
           </div>
           <button
             disabled={busy || !family}
             onClick={() =>
+              validateLearner() &&
               run(async () => {
                 if (!family) return;
                 const r = await api.addLearner(
@@ -263,14 +403,14 @@ function ParentView({
                   family.guardianId,
                   learnerId,
                   nickname,
-                  grade,
+                  Number(grade),
                 );
-                setLearner({ learnerId, nickname, grade });
+                setLearner({ learnerId, nickname, grade: Number(grade) });
                 setNote({ kind: 'ok', text: `Added ${nickname} (age band: ${r.ageBand}).` });
               })
             }
           >
-            Add learner
+            {busy ? <Spinner label="Working…" /> : 'Add learner'}
           </button>
           <p className="hint">Only Ontario grades 1–8 are accepted; anything else is blocked.</p>
         </li>
@@ -280,34 +420,46 @@ function ParentView({
             <span className="num">4</span> View dashboard
           </div>
           <button
-            disabled={busy || !family || !learner}
-            onClick={() =>
-              run(async () => {
-                if (!family || !learner) return;
-                const d = await api.getDashboard(
-                  family.familyId,
-                  family.guardianId,
-                  learner.learnerId,
-                );
-                setDash(d);
-                setNote({ kind: 'ok', text: 'Dashboard loaded from derived evidence.' });
-              })
-            }
+            disabled={dashBusy || !family || !learner}
+            onClick={() => {
+              if (!family || !learner) return;
+              setDashBusy(true);
+              setNote(null);
+              api
+                .getDashboard(family.familyId, family.guardianId, learner.learnerId)
+                .then((d) => {
+                  setDash(d);
+                  setNote({ kind: 'ok', text: 'Dashboard loaded from derived evidence.' });
+                })
+                .catch(fail)
+                .finally(() => setDashBusy(false));
+            }}
           >
-            Load dashboard
+            {dashBusy ? <Spinner label="Loading…" /> : 'Load dashboard'}
           </button>
         </li>
       </ol>
 
       <NoteBar note={note} />
 
+      {family && learner && (
+        <GuardianControls family={family} learner={learner} onNote={setNote} onFail={fail} />
+      )}
+
+      {family && learner && <PlacementPanel family={family} learner={learner} onFail={fail} />}
+
+      {dashBusy && !dash && <div className="skeleton" aria-hidden="true" />}
+
       {dash && (
         <div className="dash">
           <h2>{learner?.nickname}&rsquo;s progress</h2>
           {dash.bySubject.length === 0 && (
-            <p className="hint">
-              No evidence yet — have {learner?.nickname} practise on the Child tab.
-            </p>
+            <div className="empty">
+              <p>No evidence yet.</p>
+              <p className="hint">
+                Have {learner?.nickname} practise on the Child tab, then reload.
+              </p>
+            </div>
           )}
           {dash.bySubject.map((g) => (
             <div key={g.subject} className="subject">
@@ -360,12 +512,309 @@ function ParentView({
   );
 }
 
+/** Guardian controls: a subject→strand focus and tightened usage caps. */
+function GuardianControls({
+  family,
+  learner,
+  onNote,
+  onFail,
+}: {
+  family: Family;
+  learner: Learner;
+  onNote: (n: Note | null) => void;
+  onFail: (e: unknown) => void;
+}) {
+  const [focusSubject, setFocusSubject] = useState('');
+  const [focusStrand, setFocusStrand] = useState('');
+  const [maxDaily, setMaxDaily] = useState('');
+  const [maxCont, setMaxCont] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    api
+      .getPreferences(family.familyId, family.guardianId, learner.learnerId)
+      .then(({ preference: p }) => {
+        setFocusSubject(p.focusSubject ?? '');
+        setFocusStrand(p.focusStrand ?? '');
+        setMaxDaily(p.maxDailyMinutes != null ? String(p.maxDailyMinutes) : '');
+        setMaxCont(p.maxContinuousMinutes != null ? String(p.maxContinuousMinutes) : '');
+      })
+      .catch(() => {})
+      .finally(() => setLoaded(true));
+  }, [family.familyId, family.guardianId, learner.learnerId]);
+
+  const save = () => {
+    setBusy(true);
+    onNote(null);
+    const body: Parameters<typeof api.setPreferences>[3] = {
+      focus: focusSubject && focusStrand ? { subject: focusSubject, strand: focusStrand } : null,
+      caps: {
+        maxDailyMinutes: maxDaily ? Number(maxDaily) : null,
+        maxContinuousMinutes: maxCont ? Number(maxCont) : null,
+      },
+    };
+    api
+      .setPreferences(family.familyId, family.guardianId, learner.learnerId, body)
+      .then(() => onNote({ kind: 'ok', text: 'Guardian controls saved.' }))
+      .catch(onFail)
+      .finally(() => setBusy(false));
+  };
+
+  const strands = focusSubject ? STRANDS[focusSubject as 'math' | 'english'] : [];
+
+  return (
+    <div className="panel">
+      <h2>Guardian controls</h2>
+      <p className="hint">
+        A focus steers which strand a session runs; limits only tighten the safety cap, never loosen
+        it. Neither can skip a prerequisite — they feed the planner&rsquo;s existing signals.
+      </p>
+      {!loaded ? (
+        <div className="skeleton" aria-hidden="true" />
+      ) : (
+        <>
+          <div className="fields">
+            <label htmlFor="gc-subj">
+              Focus subject
+              <select
+                id="gc-subj"
+                value={focusSubject}
+                onChange={(e) => {
+                  setFocusSubject(e.target.value);
+                  setFocusStrand('');
+                }}
+              >
+                <option value="">No focus</option>
+                <option value="math">Math</option>
+                <option value="english">English</option>
+              </select>
+            </label>
+            <label htmlFor="gc-strand">
+              Focus strand
+              <select
+                id="gc-strand"
+                value={focusStrand}
+                disabled={!focusSubject}
+                onChange={(e) => setFocusStrand(e.target.value)}
+              >
+                <option value="">{focusSubject ? 'Pick a strand' : '—'}</option>
+                {strands.map((s) => (
+                  <option key={s} value={s}>
+                    {strandLabel(s)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor="gc-daily">
+              Daily limit (min)
+              <input
+                id="gc-daily"
+                type="number"
+                min={0}
+                value={maxDaily}
+                placeholder="no limit"
+                onChange={(e) => setMaxDaily(e.target.value)}
+              />
+            </label>
+            <label htmlFor="gc-cont">
+              Per-session limit (min)
+              <input
+                id="gc-cont"
+                type="number"
+                min={0}
+                value={maxCont}
+                placeholder="no limit"
+                onChange={(e) => setMaxCont(e.target.value)}
+              />
+            </label>
+          </div>
+          <button disabled={busy} onClick={save}>
+            {busy ? <Spinner label="Saving…" /> : 'Save controls'}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** A short set of diagnostic probes per subject (synthetic; server oracle-grades). */
+const PROBE_SETS: Record<
+  'math' | 'english',
+  { taskId: string; prompt: string; options: string[]; rep: string }[]
+> = {
+  math: [
+    {
+      taskId: 'frac-eq-1',
+      prompt: 'Are 1/2 and 2/4 equal in value?',
+      options: ['yes', 'no'],
+      rep: 'symbolic',
+    },
+    {
+      taskId: 'frac-eq-3',
+      prompt: 'Are 2/3 and 4/6 equal in value?',
+      options: ['yes', 'no'],
+      rep: 'area-model',
+    },
+    {
+      taskId: 'frac-eq-2',
+      prompt: 'Are 1/2 and 1/3 equal in value?',
+      options: ['yes', 'no'],
+      rep: 'number-line',
+    },
+  ],
+  english: [
+    { taskId: 'eng-base-1', prompt: 'Plural of "dog"?', options: ['dogs'], rep: 'written' },
+    { taskId: 'eng-base-2', prompt: 'Plural of "book"?', options: ['books'], rep: 'spoken' },
+    { taskId: 'eng-base-3', prompt: 'Plural of "cat"?', options: ['cats'], rep: 'picture' },
+  ],
+};
+
+/** Quick diagnostic → placement: records a few probes, then shows placement. */
+function PlacementPanel({
+  family,
+  learner,
+  onFail,
+}: {
+  family: Family;
+  learner: Learner;
+  onFail: (e: unknown) => void;
+}) {
+  const [subject, setSubject] = useState<'math' | 'english'>('math');
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [placement, setPlacement] = useState<api.Placement | null>(null);
+  const [busy, setBusy] = useState(false);
+  const probes = PROBE_SETS[subject];
+
+  const submit = () => {
+    if (!family.consentGiven) {
+      onFail({ code: 'CONSENT_REQUIRED', message: 'consent first', status: 403 } as api.ApiError);
+      return;
+    }
+    setBusy(true);
+    setPlacement(null);
+    const runId = `run-${Date.now()}`;
+    const batch: api.DiagnosticProbe[] = probes.map((p, i) => ({
+      clientSubmissionId: `${runId}-${i}`,
+      taskId: p.taskId,
+      answer: (answers[p.taskId] ?? probes[i].options[0]).trim().toLowerCase(),
+      representation: p.rep,
+    }));
+    api
+      .runDiagnosticProbes(family.familyId, learner.learnerId, runId, batch)
+      .then(() => api.getPlacement(family.familyId, family.guardianId, learner.learnerId, subject))
+      .then(setPlacement)
+      .catch(onFail)
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <div className="panel">
+      <h2>Quick diagnostic → placement</h2>
+      <p className="hint">
+        A few probe answers are recorded as immutable diagnostic evidence and graded by the oracle.
+        If a prerequisite is demonstrated, the learner is placed past it — not re-taught from the
+        start. Placement is always re-derived, never hand-set.
+      </p>
+
+      <div className="skillpick" role="group" aria-label="Diagnostic subject">
+        {(['math', 'english'] as const).map((s) => (
+          <button
+            key={s}
+            className={s === subject ? 'on' : ''}
+            aria-pressed={s === subject}
+            disabled={busy}
+            onClick={() => {
+              setSubject(s);
+              setAnswers({});
+              setPlacement(null);
+            }}
+          >
+            {subjectLabel(s)}
+          </button>
+        ))}
+      </div>
+
+      <div className="probes">
+        {probes.map((p) => (
+          <div key={p.taskId} className="probe">
+            <span className="probe-q">{p.prompt}</span>
+            {p.options.length > 1 ? (
+              <span className="probe-opts" role="group" aria-label={p.prompt}>
+                {p.options.map((o) => (
+                  <button
+                    key={o}
+                    className={(answers[p.taskId] ?? p.options[0]) === o ? 'on' : ''}
+                    aria-pressed={(answers[p.taskId] ?? p.options[0]) === o}
+                    disabled={busy}
+                    onClick={() => setAnswers((a) => ({ ...a, [p.taskId]: o }))}
+                  >
+                    {o}
+                  </button>
+                ))}
+              </span>
+            ) : (
+              <input
+                aria-label={p.prompt}
+                value={answers[p.taskId] ?? ''}
+                placeholder="type the word"
+                disabled={busy}
+                onChange={(e) => setAnswers((a) => ({ ...a, [p.taskId]: e.target.value }))}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      <button disabled={busy} onClick={submit}>
+        {busy ? <Spinner label="Placing…" /> : 'Run diagnostic'}
+      </button>
+
+      {placement && (
+        <div className="placement">
+          <h3>
+            Placement — {subjectLabel(placement.subject)} · {strandLabel(placement.course)}
+          </h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Skill</th>
+                <th>Standing</th>
+                <th>Confidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {placement.profile.skills.map((s) => (
+                <tr key={s.skillId}>
+                  <td>{skillLabel(s.skillId)}</td>
+                  <td>
+                    <span className={`pill ${standingTone(s.standing)}`}>
+                      {standingLabel(s.standing)}
+                    </span>
+                  </td>
+                  <td>{confidencePct(s.confidence)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="whytoday">
+            <span className="wt-label">A session would start on</span>{' '}
+            <strong>{skillLabel(placement.entry.skillId)}</strong> —{' '}
+            {reasonCodeLabel(placement.entry.reasonCode)}
+            {placement.entry.reasonCode !== 'PREREQUISITE_REMEDIATION' && (
+              <span className="muted"> (placed past the prerequisite)</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Representations cycled through so mastery builds across ≥2 (needed for INDEPENDENT). */
 const REPS: Record<'math' | 'english', string[]> = {
   math: ['symbolic', 'area-model', 'number-line'],
   english: ['written', 'spoken', 'picture'],
 };
-/** Friendly labels for answer tokens. */
 const OPTION_LABELS: Record<string, string> = {
   lt: 'Less (<)',
   eq: 'Equal (=)',
@@ -396,6 +845,9 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
       <section className="col">
         <h1>Child workspace</h1>
         <div className="empty">
+          <p className="empty-ico" aria-hidden="true">
+            🎒
+          </p>
           <p>No learner yet.</p>
           <p className="hint">Set up a family and add a learner on the Parent tab first.</p>
         </div>
@@ -428,6 +880,12 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
       setResult(null);
       setSummary(null);
       setAttempt(0);
+      if (s.usage && s.usage.kind !== 'ALLOW') {
+        setNote({
+          kind: 'ok',
+          text: `${usageDecisionLabel(s.usage.kind)} — ${s.allowedMinutes} min this session.`,
+        });
+      }
       await loadTask(s.session.sessionId, s.next.defaultTaskId, s.next);
     } catch (e) {
       fail(e);
@@ -453,8 +911,6 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
           representation: rep,
         });
       } else {
-        // The demo encodes the spoken/photographed answer + a confidence the
-        // recogniser "hears". A mumbled reading lands below the AT-28 floor.
         const conf = clarity === 'clear' ? 0.9 : 0.4;
         r = await api.submitMultimodalAnswer(fam.familyId, lnr.learnerId, sessionId, {
           clientSubmissionId: cid,
@@ -464,7 +920,6 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
         });
       }
       setAttempt(attempt + 1);
-      // AT-28: a low-confidence reading is never graded — ask for a do-over.
       if (!r.graded && r.action === 'REQUEST_CLARIFICATION') {
         setClarify('Hmm, I didn’t quite catch that — try again a bit more clearly.');
         return;
@@ -506,8 +961,14 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
         <div className="task">
           <p className="lede">Ready to practise {subjectLabel(subject)}?</p>
           <button disabled={busy} onClick={start}>
-            Start session
+            {busy ? <Spinner label="Starting…" /> : 'Start session'}
           </button>
+        </div>
+      )}
+
+      {phase === 'active' && !task && busy && (
+        <div className="task">
+          <Spinner label="Loading your question…" />
         </div>
       )}
 
@@ -591,7 +1052,9 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
                 aria-label="Your answer"
                 disabled={busy}
               />
-              <button disabled={busy || !freeText.trim()}>Submit</button>
+              <button disabled={busy || !freeText.trim()}>
+                {busy ? <Spinner label="…" /> : 'Submit'}
+              </button>
             </form>
           )}
         </div>
@@ -661,6 +1124,162 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
             Start again
           </button>
         </div>
+      )}
+    </section>
+  );
+}
+
+/** Operator / QA view — the engine's fail-closed safety posture (read-only). */
+function OperatorView() {
+  const [status, setStatus] = useState<api.OperatorStatus | null>(null);
+  const [phase, setPhase] = useState<'loading' | 'ok' | 'err'>('loading');
+  const [note, setNote, fail] = useNote();
+
+  const load = () => {
+    setPhase('loading');
+    setNote(null);
+    api
+      .operatorStatus()
+      .then((s) => {
+        setStatus(s);
+        setPhase('ok');
+      })
+      .catch((e) => {
+        fail(e);
+        setPhase('err');
+      });
+  };
+  useEffect(load, []);
+
+  const stateChip = (approved: boolean, configured = true) => {
+    const s = policyState(approved, configured);
+    return <span className={`pill ${s.tone}`}>{s.label}</span>;
+  };
+
+  return (
+    <section className="col">
+      <h1>Operator · QA</h1>
+      <p className="lede">
+        The engine&rsquo;s safety posture on synthetic data: every EVIDENCE-REQUIRED policy&rsquo;s
+        fail-closed state, the model-eval posture, and a live content-gate self-check. Read-only.
+      </p>
+
+      {phase === 'loading' && <div className="skeleton" aria-hidden="true" />}
+      <NoteBar note={note} />
+      {phase === 'err' && (
+        <div className="empty">
+          <p>Could not load the operator status.</p>
+          <button onClick={load}>Retry</button>
+        </div>
+      )}
+
+      {phase === 'ok' && status && (
+        <>
+          <div className={`banner ${status.prodReady ? 'good' : 'mid'}`}>
+            <strong>{status.environment}</strong> · {status.primaryRegion} / {status.drRegion} ·{' '}
+            {status.prodReady
+              ? 'All fail-closed gates signed'
+              : 'Not production-ready — unapproved gates remain'}
+          </div>
+
+          <h2>Fail-closed policies</h2>
+          <div className="statgrid">
+            <div className="statcard">
+              <div className="stat-k">Mastery (ER-03)</div>
+              {stateChip(status.policies.mastery.approved)}
+              <div className="muted mono">{status.policies.mastery.version}</div>
+            </div>
+            <div className="statcard">
+              <div className="stat-k">Usage caps (ER-09)</div>
+              {stateChip(status.policies.usageCaps.allApproved)}
+              <div className="muted">
+                {status.policies.usageCaps.bands.filter((b) => b.approved).length}/
+                {status.policies.usageCaps.bands.length} bands approved
+              </div>
+            </div>
+            <div className="statcard">
+              <div className="stat-k">Escalation (ER-08)</div>
+              {stateChip(
+                status.policies.escalation.approved,
+                status.policies.escalation.configuredCells > 0,
+              )}
+              <div className="muted">
+                {status.policies.escalation.configuredCells} cells configured
+              </div>
+            </div>
+            <div className="statcard">
+              <div className="stat-k">Retention (ER-07)</div>
+              {stateChip(status.policies.retention.ready)}
+              <div className="muted">
+                {status.policies.retention.unapprovedCount} unapproved ·{' '}
+                {status.policies.retention.unconfiguredCount} unconfigured
+              </div>
+            </div>
+          </div>
+
+          <h2>AI model &amp; evaluation</h2>
+          <div className="statgrid">
+            <div className="statcard">
+              <div className="stat-k">Candidate model</div>
+              {(() => {
+                const m = modelStatusTone(status.ai.candidateModel?.status ?? null);
+                return <span className={`pill ${m.tone}`}>{m.label}</span>;
+              })()}
+              <div className="muted mono">{status.ai.candidateModel?.modelId ?? 'none'}</div>
+            </div>
+            <div className="statcard">
+              <div className="stat-k">Production-approved model</div>
+              <span className={`pill ${status.ai.anyModelApprovedForProduction ? 'good' : 'mid'}`}>
+                {status.ai.anyModelApprovedForProduction ? 'Yes' : 'None (by design)'}
+              </span>
+              <div className="muted">No real model routes to a child yet.</div>
+            </div>
+            <div className="statcard">
+              <div className="stat-k">Eval latency SLO (NFR-07)</div>
+              <span className="pill mid">
+                {status.modelEval.latency.sloMs == null
+                  ? 'Draft — not set'
+                  : `${status.modelEval.latency.sloMs} ms`}
+              </span>
+              <div className="muted">{status.modelEval.latency.recordedRuns} runs recorded</div>
+            </div>
+            <div className="statcard">
+              <div className="stat-k">Eval runnable</div>
+              <span className={`pill ${status.modelEval.runnable ? 'good' : 'mid'}`}>
+                {status.modelEval.runnable ? 'Provider wired' : 'No provider'}
+              </span>
+              <div className="muted mono">{status.modelEval.endpoint}</div>
+            </div>
+          </div>
+
+          <h2>Containment &amp; gate</h2>
+          <div className="statgrid">
+            <div className="statcard">
+              <div className="stat-k">Content gate self-check</div>
+              <span className={`pill ${status.contentGate.active ? 'good' : 'low'}`}>
+                {status.contentGate.active ? 'Live' : 'Failing'}
+              </span>
+              <div className="muted">
+                delivers valid · refuses unknown{' '}
+                {status.contentGate.positive && status.contentGate.negativeBlocked ? '✓' : '✗'}
+              </div>
+            </div>
+            {status.killSwitches.map((k) => (
+              <div className="statcard" key={k.capability}>
+                <div className="stat-k">Kill switch · {k.capability}</div>
+                <span className={`pill ${k.active ? 'good' : 'low'}`}>
+                  {k.active ? 'Active' : 'Disabled'}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <p className="hint">
+            Every unapproved value is a fail-closed DRAFT slot — in production the enforcing path
+            refuses until an accountable owner signs it. Nothing here is a fabricated pass.
+          </p>
+          <button onClick={load}>Refresh</button>
+        </>
       )}
     </section>
   );
