@@ -27,6 +27,20 @@ input:focus-visible,
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* Target size (WCAG 2.5.8): no interactive control below 24x24 CSS px. */
+button,
+input,
+select,
+textarea {
+  box-sizing: border-box;
+  min-height: 24px;
+}
+/* The child flow is used by young children — give its controls larger targets. */
+.child button,
+.child input {
+  min-height: 44px;
+}
 :root:not([data-theme='light']) {
   @media (prefers-color-scheme: dark) {
     --bg: #0f1419;
@@ -197,6 +211,8 @@ input {
 }
 button {
   font-family: inherit;
+  padding: 8px 14px; /* default tap target for otherwise-unstyled buttons (2.5.8) */
+  cursor: pointer;
 }
 .steps button,
 .skillpick button {
