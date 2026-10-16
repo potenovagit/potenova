@@ -6,11 +6,12 @@
   --line: #e2e7ec;
   --accent: #0e7c7b;
   --accent-ink: #ffffff;
-  --good: #137a4b;
+  /* Status text colours meet WCAG AA (≥4.5:1) on their *-bg pairs (see contrast note). */
+  --good: #0f6b42;
   --good-bg: #dff3e7;
-  --mid: #9a6a00;
+  --mid: #7f5600;
   --mid-bg: #fbeecd;
-  --low: #8a5a5a;
+  --low: #704343;
   --low-bg: #f1e2e2;
   --err: #a12b2b;
   --radius: 14px;
