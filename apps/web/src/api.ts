@@ -571,3 +571,79 @@ export interface OperatorStatus {
 
 export const operatorStatus = () =>
   call<OperatorStatus>('/operator/status', { headers: operatorHeaders() });
+
+/* ---- Privacy operations (operator-only): erasure + retention sweep ---- */
+
+export interface ErasureVerification {
+  complete: boolean;
+  outstanding: string[];
+}
+export interface ErasureTargetOutcome {
+  target: { id: string; kind: string; required: boolean };
+  status: string;
+  at?: string;
+  note?: string;
+}
+export interface ErasureRecord {
+  scope: { subjectType: string; subjectId: string; reason: string; requestedAt: string };
+  outcomes: ErasureTargetOutcome[];
+}
+export interface ErasureResult {
+  requestId: string;
+  subjectType?: string;
+  state: string;
+  deleted?: unknown;
+  record: ErasureRecord;
+  verification: ErasureVerification;
+}
+
+/** Start an erasure. A 'family' subject cascades across every learner + family rows. */
+export const startErasure = (
+  subjectType: 'learner' | 'family',
+  subjectId: string,
+  reason: string,
+) =>
+  call<ErasureResult>('/privacy/erasure', {
+    method: 'POST',
+    headers: operatorHeaders(),
+    body: { subjectType, subjectId, reason },
+  });
+
+/** Attest an external target's outcome (analytics / provider / backups). */
+export const attestErasure = (requestId: string, targetId: string, status: string) =>
+  call<ErasureResult>(`/privacy/erasure/${encodeURIComponent(requestId)}/attest`, {
+    method: 'POST',
+    headers: operatorHeaders(),
+    body: { targetId, status },
+  });
+
+export const getErasure = (requestId: string) =>
+  call<ErasureResult>(`/privacy/erasure/${encodeURIComponent(requestId)}`, {
+    headers: operatorHeaders(),
+  });
+
+export interface RetentionSweepRow {
+  dataClass: string;
+  activeDays: number | null;
+  deletion: string | null;
+  basis: string | null;
+  store: string | null;
+  scanned: number;
+  due: number;
+  actioned: number;
+  status: string;
+}
+export interface RetentionSweepResult {
+  asOf: string;
+  dryRun: boolean;
+  requireApproved: boolean;
+  summary: { classes: number; totalDue: number; totalActioned: number };
+  report: RetentionSweepRow[];
+}
+/** Apply the retention schedule. dryRun flags due records without deleting. */
+export const retentionSweep = (dryRun: boolean, asOf?: string) =>
+  call<RetentionSweepResult>('/privacy/retention/sweep', {
+    method: 'POST',
+    headers: operatorHeaders(),
+    body: { dryRun, ...(asOf ? { asOf } : {}) },
+  });
