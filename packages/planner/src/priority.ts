@@ -21,6 +21,7 @@ import type { PlannerPolicy } from './policy';
 
 export const SESSION_REASON_CODES = [
   'SAFETY_LIMIT',
+  'REVALIDATION_REQUIRED',
   'PREREQUISITE_REMEDIATION',
   'REVIEW_DUE',
   'LOW_CONFIDENCE_VERIFICATION',
@@ -47,6 +48,8 @@ export interface ObjectiveSignal {
   readonly isAdvancement: boolean;
   /** Parent-preferred — reorders within a tier only (never crosses a gate). */
   readonly parentPreferred: boolean;
+  /** A once-mastered skill contradicted and not yet re-demonstrated (resurface it). */
+  readonly revalidationRequired?: boolean;
 }
 
 export interface PrioritizedObjective {
@@ -64,6 +67,8 @@ export interface PrioritizedObjective {
  */
 const REASON_EXPLANATIONS: Record<SessionReasonCode, string> = {
   SAFETY_LIMIT: 'Paused by a safety or session-time limit.',
+  REVALIDATION_REQUIRED:
+    'Re-checking a skill that slipped — an earlier answer went against mastery, so we confirm it again before moving on.',
   PREREQUISITE_REMEDIATION:
     'Shoring up a foundational skill this one builds on, before moving ahead.',
   REVIEW_DUE: 'Revisiting an earlier skill to keep it fresh.',
@@ -84,6 +89,11 @@ export function explainReasonCode(code: SessionReasonCode): string {
 export function classifyObjective(o: ObjectiveSignal, policy: PlannerPolicy): PrioritizedObjective {
   if (o.safetyBlocked) {
     return { skillId: o.skillId, tier: 1, reasonCode: 'SAFETY_LIMIT', suppressed: true };
+  }
+  // A once-mastered skill that was contradicted must be re-verified before the
+  // learner advances past it (a regressed core skill outranks a new prerequisite).
+  if (o.revalidationRequired) {
+    return { skillId: o.skillId, tier: 2, reasonCode: 'REVALIDATION_REQUIRED', suppressed: false };
   }
   if (o.prerequisiteGap) {
     return {

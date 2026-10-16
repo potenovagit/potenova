@@ -111,6 +111,17 @@ describe('selectNextObjective', () => {
     expect(preferred.reasonCode).toBe(base.reasonCode); // same tier — gate unchanged
   });
 
+  it('resurfaces a REVALIDATION_REQUIRED skill above advancement', () => {
+    // Equivalence was mastered then contradicted (revalidationRequired); comparison
+    // could otherwise advance. The regressed core skill must be re-verified first.
+    const r = select({
+      [EQUIV]: { confidence: 0.9, independent: true, revalidationRequired: true },
+      [COMPARE]: { confidence: 0.4, independent: false },
+    });
+    expect(r.targetSkillId).toBe(EQUIV);
+    expect(r.reasonCode).toBe('REVALIDATION_REQUIRED');
+  });
+
   it('a guardian preference never outranks a prerequisite gap (gate wins)', () => {
     // Fresh learner: comparison is prerequisite-blocked. Even preferring compare
     // cannot skip equivalence — the gate is non-negotiable.

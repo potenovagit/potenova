@@ -32,6 +32,9 @@ export interface SkillMastery {
   readonly transferable?: boolean;
   /** Epoch ms of the most recent trusted practice (for retention/review-due). */
   readonly lastPracticedAt?: number;
+  /** Projection is REVALIDATION_REQUIRED — a once-mastered skill contradicted and
+   *  not yet re-demonstrated; must resurface for re-verification before advancing. */
+  readonly revalidationRequired?: boolean;
 }
 
 export interface NextObjective {
@@ -94,6 +97,7 @@ export function selectNextObjective(args: {
       isTransfer: m.independent && !m.transferable,
       isAdvancement: allPrereqsIndependent && !m.independent,
       parentPreferred: parentPreferred.has(skillId),
+      revalidationRequired: m.revalidationRequired ?? false,
     };
   });
 

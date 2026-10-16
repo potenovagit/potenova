@@ -46,6 +46,8 @@ export function bandForGrade(grade: number): 'primary' | 'junior' | 'intermediat
 /** Plain-language label for a planner/plan reason code (parent-facing). */
 export function reasonCodeLabel(code: string): string {
   switch (code) {
+    case 'REVALIDATION_REQUIRED':
+      return 'Re-checking a skill that slipped';
     case 'PREREQUISITE_REMEDIATION':
       return 'Building a foundation first';
     case 'LOW_CONFIDENCE_VERIFICATION':

@@ -255,6 +255,7 @@ async function coachableMastery(
       independent: p.dimensions.independent,
       transferable: p.dimensions.transferable,
       lastPracticedAt: times.length ? Math.max(...times) : undefined,
+      revalidationRequired: p.state === 'REVALIDATION_REQUIRED',
     };
   }
   return mastery;

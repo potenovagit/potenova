@@ -119,6 +119,43 @@ describe('mastery projection (05 §2, State machine 3.1)', () => {
     expect(p.evidenceCount).toBe(4); // nothing dropped from history
   });
 
+  it('re-validation clears REVALIDATION_REQUIRED with fresh unaided evidence', () => {
+    const base = [
+      ev({ representation: 'area-model', observedAt: '2026-10-01T09:00:00.000Z' }),
+      ev({ representation: 'number-line', observedAt: '2026-10-01T09:05:00.000Z' }),
+      ev({ representation: 'symbolic', observedAt: '2026-10-01T09:10:00.000Z' }),
+      ev({ correct: false, representation: 'symbolic', observedAt: '2026-10-05T09:00:00.000Z' }),
+    ];
+    // Not enough fresh evidence yet → still in revalidation.
+    const partial = project([
+      ...base,
+      ev({ representation: 'area-model', observedAt: '2026-10-06T09:00:00.000Z' }),
+    ]);
+    expect(partial.state).toBe('REVALIDATION_REQUIRED');
+
+    // Re-demonstrated to the same DRAFT bar (3 unaided across ≥2 reps) AFTER the
+    // contradiction → cleared back to INDEPENDENT.
+    const cleared = project([
+      ...base,
+      ev({ representation: 'area-model', observedAt: '2026-10-06T09:00:00.000Z' }),
+      ev({ representation: 'number-line', observedAt: '2026-10-06T09:05:00.000Z' }),
+      ev({ representation: 'symbolic', observedAt: '2026-10-06T09:10:00.000Z' }),
+    ]);
+    expect(cleared.state).toBe('INDEPENDENT');
+  });
+
+  it('fresh evidence BEFORE the contradiction does not clear revalidation', () => {
+    // Plenty of unaided-correct, but all before the contradiction → not re-validated.
+    const p = project([
+      ev({ representation: 'area-model', observedAt: '2026-10-01T09:00:00.000Z' }),
+      ev({ representation: 'number-line', observedAt: '2026-10-01T09:05:00.000Z' }),
+      ev({ representation: 'symbolic', observedAt: '2026-10-01T09:10:00.000Z' }),
+      ev({ representation: 'set', observedAt: '2026-10-02T09:00:00.000Z' }),
+      ev({ correct: false, representation: 'symbolic', observedAt: '2026-10-05T09:00:00.000Z' }),
+    ]);
+    expect(p.state).toBe('REVALIDATION_REQUIRED');
+  });
+
   it('AT-28: a low-recognition observation is not trusted for grading', () => {
     const p = project([
       ev({ representation: 'area-model' }),

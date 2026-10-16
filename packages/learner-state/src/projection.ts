@@ -125,15 +125,26 @@ export function projectShadow(
     );
 
   // Contradiction after mastery → REVALIDATION_REQUIRED, prior history preserved.
-  const contradicted =
-    independent &&
-    scoped.some(
+  // A learner re-validates by re-demonstrating independence with FRESH unaided
+  // evidence recorded after the most recent contradiction (same DRAFT bar as the
+  // first independence); once they do, the skill clears back out of revalidation.
+  const contradictionTimes = scoped
+    .filter(
       (e) =>
         !e.correct &&
         isUnaided(e.assistanceBand, policy) &&
         e.mode === 'independent_check' &&
         Date.parse(e.observedAt) > firstUnaidedAt,
-    );
+    )
+    .map((e) => Date.parse(e.observedAt));
+  const lastContradictionAt =
+    contradictionTimes.length > 0 ? Math.max(...contradictionTimes) : Number.NEGATIVE_INFINITY;
+  const freshUnaided = unaidedCorrect.filter((e) => Date.parse(e.observedAt) > lastContradictionAt);
+  const reValidated =
+    freshUnaided.length >= policy.minUnaidedForIndependent &&
+    new Set(freshUnaided.map((e) => e.representation)).size >=
+      policy.minRepresentationsForIndependent;
+  const contradicted = independent && contradictionTimes.length > 0 && !reValidated;
 
   let state: SkillState;
   if (contradicted) state = 'REVALIDATION_REQUIRED';
