@@ -13,6 +13,7 @@ import { AGE_BANDS, type AgeBand } from '@potenova/identity';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import { type Deps } from '../deps';
 import { buildSessionSummary, computeNext, sessionBudget, courseFor } from '../adaptive';
+import { reconcileUsageOnEnd } from '../usage';
 
 /**
  * Child-facing tutoring sessions (the vertical slice start).
@@ -120,10 +121,13 @@ export function registerSessions(app: Hono, deps: Deps): void {
       subject: b.subject,
       state: session.state,
       strand: course,
+      startedAt: new Date().toISOString(),
+      reservedMinutes: usage.allowedMinutes,
     });
 
     // Reserve the allotment against today's usage so the cap holds across
-    // sessions (conservative; early-end reconciliation is a later refinement).
+    // sessions (conservative). The unused part is refunded when the session
+    // ends (early stop / item budget / mastery) — see reconcileUsageOnEnd.
     await deps.session.addUsageMinutes(alias, day, usage.allowedMinutes);
 
     // The first objective is PLANNER-selected (adaptive), not a fixed task — the
@@ -163,10 +167,12 @@ export function registerSessions(app: Hono, deps: Deps): void {
       state: row.state as SessionState,
     };
     const { session: ended, masteryChanged } = endEarly(current);
+    // Refund the unused reservation before flipping state (reconciles once).
+    const refundedMinutes = await reconcileUsageOnEnd(deps, row);
     await deps.session.saveTutoringSession({ ...row, state: ended.state });
     // Wrap-up: the session-scoped summary (neutral — AT-26, no mastery loss).
     const summary = await buildSessionSummary(deps, row.learnerAlias, row.sessionId);
-    return c.json({ session: ended, masteryChanged, summary });
+    return c.json({ session: ended, masteryChanged, refundedMinutes, summary });
   });
 
   // Session-scoped parent report (guardian): what the child did in THIS session.

@@ -178,6 +178,10 @@ export const tutoringSession = pgTable('tutoring_session', {
   state: text('state').notNull(),
   /** The strand/course within the subject (e.g. 'fractions'); null = subject default. */
   strand: text('strand'),
+  /** When the session went ACTIVE (for early-end usage reconciliation). */
+  startedAt: text('started_at'),
+  /** Minutes reserved against the daily cap at start (refunded on early end). */
+  reservedMinutes: integer('reserved_minutes'),
 });
 export const submission = pgTable('submission', {
   clientSubmissionId: text('client_submission_id').primaryKey(),
@@ -279,7 +283,7 @@ CREATE TABLE IF NOT EXISTS diagnostic_run (
   strand text, curriculum_release_id text NOT NULL, state text NOT NULL, probes_used integer NOT NULL);
 CREATE TABLE IF NOT EXISTS tutoring_session (
   session_id text PRIMARY KEY, learner_alias text NOT NULL, subject text NOT NULL, state text NOT NULL,
-  strand text);
+  strand text, started_at text, reserved_minutes integer);
 CREATE TABLE IF NOT EXISTS submission (
   client_submission_id text PRIMARY KEY, at text NOT NULL);
 CREATE TABLE IF NOT EXISTS usage_ledger (

@@ -13,6 +13,7 @@ import { decideEscalation, handleDisclosure, type EscalationInput } from '@poten
 import { completeSession, type SessionState } from '@potenova/planner';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import { now, type Deps } from '../deps';
+import { reconcileUsageOnEnd } from '../usage';
 import {
   projectSkill,
   computeNext,
@@ -81,6 +82,8 @@ async function endSessionComplete(deps: Deps, sessionId: string): Promise<void> 
     subject: row.subject as Subject,
     state: row.state as SessionState,
   });
+  // Refund the unused reservation before flipping state (reconciles once).
+  await reconcileUsageOnEnd(deps, row);
   await deps.session.saveTutoringSession({ ...row, state: completed.state });
 }
 

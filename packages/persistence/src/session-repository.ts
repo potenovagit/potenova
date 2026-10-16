@@ -30,6 +30,10 @@ export interface TutoringSessionRow {
   state: string;
   /** Strand/course within the subject; null = the subject's default course. */
   strand?: string | null;
+  /** When the session went ACTIVE (ISO); for early-end usage reconciliation. */
+  startedAt?: string | null;
+  /** Minutes reserved against the daily cap at start. */
+  reservedMinutes?: number | null;
 }
 export interface GuardianPreferenceRow {
   learnerAlias: string;
@@ -104,6 +108,20 @@ export class SessionRepository {
     const db = await this.h.ready();
     const id = `${learnerAlias}:${day}`;
     const next = (await this.getUsageMinutes(learnerAlias, day)) + minutes;
+    await db
+      .insert(usageLedger)
+      .values({ id, learnerAlias, day, minutesUsed: next })
+      .onConflictDoUpdate({ target: usageLedger.id, set: { minutesUsed: next } });
+  }
+
+  /** Release reserved minutes back to a day's usage (clamped at 0). Used by
+   *  early-end reconciliation to refund the unused part of a reservation. */
+  async reduceUsageMinutes(learnerAlias: string, day: string, minutes: number): Promise<void> {
+    if (minutes <= 0) return;
+    const current = await this.getUsageMinutes(learnerAlias, day);
+    const next = Math.max(0, current - minutes);
+    const db = await this.h.ready();
+    const id = `${learnerAlias}:${day}`;
     await db
       .insert(usageLedger)
       .values({ id, learnerAlias, day, minutesUsed: next })
