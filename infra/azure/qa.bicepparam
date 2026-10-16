@@ -16,5 +16,5 @@ param appEnv = 'qa'
 param primaryRegion = 'ca-central'
 param drRegion = 'ca-east'
 param createRegistry = false
-param sharedRegistryResourceGroup = 'rg-potenova-nonprod'
+param sharedRegistryResourceGroup = 'rg-potenova-dev'
 param minReplicas = 0 // scale-to-zero: qa costs nothing between test runs

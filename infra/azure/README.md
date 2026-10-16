@@ -86,19 +86,23 @@ registry.
 az group create -n rg-potenova-nonprod -l canadacentral
 az group create -n rg-potenova-prod    -l canadacentral
 
-# dev — creates the SHARED registry (createRegistry=true)
+# The shared registry already exists in rg-potenova-dev (earlier staging deploy),
+# so every stack references it (createRegistry=false, sharedRegistryResourceGroup
+# =rg-potenova-dev in the bicepparam files) — none recreates it.
+# dev — non-prod group
 az deployment group create -g rg-potenova-nonprod -f infra/azure/main.bicep \
   -p infra/azure/dev.bicepparam -p pgAdminPassword=$PGPASS
-# qa — same non-prod group, references the shared registry
+# qa — same non-prod group
 az deployment group create -g rg-potenova-nonprod -f infra/azure/main.bicep \
   -p infra/azure/qa.bicepparam -p pgAdminPassword=$PGPASS
-# prod — isolated group, references the shared registry
+# prod — isolated group
 az deployment group create -g rg-potenova-prod -f infra/azure/main.bicep \
   -p infra/azure/prod.bicepparam -p pgAdminPassword=$PGPASS
 
-# cross-group AcrPull for qa + prod app identities (dev is granted in-template)
-ACR_ID=$(az acr show -n acrpotenovadigitery -g rg-potenova-nonprod --query id -o tsv)
-for app_rg in "ca-potenova-api-qa rg-potenova-nonprod" "ca-potenova-api-prod rg-potenova-prod"; do
+# cross-group AcrPull for all three app identities (the registry is in a third
+# group, rg-potenova-dev, so none is granted in-template)
+ACR_ID=$(az acr show -n acrpotenovadigitery --query id -o tsv)
+for app_rg in "ca-potenova-api-dev rg-potenova-nonprod" "ca-potenova-api-qa rg-potenova-nonprod" "ca-potenova-api-prod rg-potenova-prod"; do
   set -- $app_rg
   PID=$(az containerapp show -n "$1" -g "$2" --query identity.principalId -o tsv)
   az role assignment create --assignee "$PID" --role AcrPull --scope "$ACR_ID"
