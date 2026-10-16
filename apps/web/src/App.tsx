@@ -61,19 +61,32 @@ export function App() {
     <div className="shell">
       <header className="topbar">
         <div className="brand">
-          <span className="mark">◆</span> Potenova
+          <span className="mark" aria-hidden="true">
+            ◆
+          </span>{' '}
+          Potenova
         </div>
-        <nav className="tabs">
-          <button className={tab === 'parent' ? 'on' : ''} onClick={() => setTab('parent')}>
+        <nav className="tabs" aria-label="Views">
+          <button
+            className={tab === 'parent' ? 'on' : ''}
+            aria-pressed={tab === 'parent'}
+            onClick={() => setTab('parent')}
+          >
             Parent
           </button>
-          <button className={tab === 'child' ? 'on' : ''} onClick={() => setTab('child')}>
+          <button
+            className={tab === 'child' ? 'on' : ''}
+            aria-pressed={tab === 'child'}
+            onClick={() => setTab('child')}
+          >
             Child
           </button>
         </nav>
       </header>
 
-      <div className="status">{ready}</div>
+      <div className="status" role="status">
+        {ready}
+      </div>
 
       <main className="page">
         {tab === 'parent' ? (
@@ -105,7 +118,16 @@ function useNote(): [Note | null, (n: Note | null) => void, (e: unknown) => void
 
 function NoteBar({ note }: { note: Note | null }) {
   if (!note) return null;
-  return <div className={`note ${note.kind}`}>{note.text}</div>;
+  // Announced to assistive tech; errors assertively, confirmations politely.
+  return (
+    <div
+      className={`note ${note.kind}`}
+      role={note.kind === 'err' ? 'alert' : 'status'}
+      aria-live={note.kind === 'err' ? 'assertive' : 'polite'}
+    >
+      {note.text}
+    </div>
+  );
 }
 
 function ParentView({
@@ -463,11 +485,12 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
     <section className={`col child band-${band}`}>
       <h1>Hi {lnr.nickname} 👋</h1>
 
-      <div className="skillpick">
+      <div className="skillpick" role="group" aria-label="Subject">
         {(['math', 'english'] as const).map((s) => (
           <button
             key={s}
             className={s === subject ? 'on' : ''}
+            aria-pressed={s === subject}
             disabled={phase === 'active' || busy}
             onClick={() => setSubject(s)}
           >
@@ -493,34 +516,38 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
             </div>
           )}
 
-          <div className="modepick">
+          <div className="modepick" role="group" aria-label="Answer input method">
             {(
               [
-                ['type', '⌨️ Type'],
-                ['voice', '🎤 Voice'],
-                ['vision', '📷 Photo'],
+                ['type', '⌨️', 'Type'],
+                ['voice', '🎤', 'Voice'],
+                ['vision', '📷', 'Photo'],
               ] as const
-            ).map(([m, label]) => (
+            ).map(([m, icon, label]) => (
               <button
                 key={m}
                 className={m === inputMode ? 'on' : ''}
+                aria-pressed={m === inputMode}
                 disabled={busy}
                 onClick={() => {
                   setInputMode(m);
                   setClarify(null);
                 }}
               >
-                {label}
+                <span aria-hidden="true">{icon}</span> {label}
               </button>
             ))}
           </div>
           {inputMode !== 'type' && (
-            <div className="clarity">
-              <span className="muted">Recording quality:</span>
+            <div className="clarity" role="group" aria-label="Recording quality">
+              <span className="muted" aria-hidden="true">
+                Recording quality:
+              </span>
               {(['clear', 'mumbled'] as const).map((cl) => (
                 <button
                   key={cl}
                   className={cl === clarity ? 'on' : ''}
+                  aria-pressed={cl === clarity}
                   disabled={busy}
                   onClick={() => setClarity(cl)}
                 >
@@ -530,10 +557,16 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
             </div>
           )}
 
-          <div className="q">{task.question}</div>
-          {clarify && <div className="hintbar">🔁 {clarify}</div>}
+          <div className="q" aria-live="polite">
+            {task.question}
+          </div>
+          {clarify && (
+            <div className="hintbar" role="alert">
+              <span aria-hidden="true">🔁</span> {clarify}
+            </div>
+          )}
           {task.options.length > 0 ? (
-            <div className="choices">
+            <div className="choices" role="group" aria-label="Answer choices">
               {task.options.map((o) => (
                 <button key={o} className="choice" disabled={busy} onClick={() => answer(o)}>
                   {optionLabel(o)}
@@ -552,6 +585,7 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
                 value={freeText}
                 onChange={(e) => setFreeText(e.target.value)}
                 placeholder="type the word"
+                aria-label="Your answer"
                 disabled={busy}
               />
               <button disabled={busy || !freeText.trim()}>Submit</button>
@@ -563,7 +597,7 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
       <NoteBar note={note} />
 
       {result && phase === 'active' && (
-        <div className="progress">
+        <div className="progress" role="status" aria-live="polite">
           <div className="pline">
             <span className={`pill ${result.correct ? 'good' : 'low'}`}>
               {result.correct ? 'Correct' : 'Not quite'}
@@ -575,8 +609,16 @@ function ChildView({ family, learner }: { family: Family | null; learner: Learne
               </span>
             )}
           </div>
-          {result.hint && <div className="hintbar">💡 {result.hint.message}</div>}
-          {result.coaching && <div className="hintbar">🔁 {result.coaching.message}</div>}
+          {result.hint && (
+            <div className="hintbar">
+              <span aria-hidden="true">💡</span> {result.hint.message}
+            </div>
+          )}
+          {result.coaching && (
+            <div className="hintbar">
+              <span aria-hidden="true">🔁</span> {result.coaching.message}
+            </div>
+          )}
         </div>
       )}
 
