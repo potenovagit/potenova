@@ -153,6 +153,8 @@ export const diagnosticRun = pgTable('diagnostic_run', {
   runVersion: integer('run_version').notNull(),
   learnerAlias: text('learner_alias').notNull(),
   subject: text('subject').notNull(),
+  /** The strand/course the run probes (e.g. 'addition'); null = subject default. */
+  strand: text('strand'),
   curriculumReleaseId: text('curriculum_release_id').notNull(),
   state: text('state').notNull(),
   probesUsed: integer('probes_used').notNull(),
@@ -259,7 +261,7 @@ CREATE TABLE IF NOT EXISTS incident (
 
 CREATE TABLE IF NOT EXISTS diagnostic_run (
   run_id text PRIMARY KEY, run_version integer NOT NULL, learner_alias text NOT NULL, subject text NOT NULL,
-  curriculum_release_id text NOT NULL, state text NOT NULL, probes_used integer NOT NULL);
+  strand text, curriculum_release_id text NOT NULL, state text NOT NULL, probes_used integer NOT NULL);
 CREATE TABLE IF NOT EXISTS tutoring_session (
   session_id text PRIMARY KEY, learner_alias text NOT NULL, subject text NOT NULL, state text NOT NULL,
   strand text);

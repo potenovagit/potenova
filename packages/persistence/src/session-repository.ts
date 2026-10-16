@@ -17,6 +17,8 @@ export interface DiagnosticRunRow {
   runVersion: number;
   learnerAlias: string;
   subject: string;
+  /** Strand/course the run probes; null = subject default. */
+  strand?: string | null;
   curriculumReleaseId: string;
   state: string;
   probesUsed: number;

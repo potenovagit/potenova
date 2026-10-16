@@ -146,6 +146,13 @@ export function courseGraph(course: CourseId): CurriculumGraph {
 export function defaultTaskId(course: CourseId, skillId: string): string | null {
   return COURSES[course].defaultTask[skillId] ?? null;
 }
+/** A probe/practice item for a skill, rotated by variant so repeated probes of
+ *  the same skill use different items (diagnostic variety). */
+export function probeTaskId(course: CourseId, skillId: string, variant: number): string | null {
+  const pool = COURSES[course].practiceTasks[skillId] ?? [];
+  if (pool.length === 0) return COURSES[course].defaultTask[skillId] ?? null;
+  return pool[Math.abs(variant) % pool.length];
+}
 
 /** The subject a canonical skill belongs to (via its course graph), or null. */
 export function subjectOfSkill(skillId: string): Subject | null {

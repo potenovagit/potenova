@@ -467,6 +467,54 @@ export const getPlacement = (
     { headers: guardianHeaders(familyId, guardianId) },
   );
 
+// Adaptive diagnostic run — the server picks each probe and decides when to stop.
+export interface DiagnosticProbeTask {
+  skillId: string;
+  taskId: string;
+  question: string;
+  options: string[];
+}
+export type DiagnosticStop =
+  | { kind: 'SUFFICIENT' }
+  | { kind: 'PARTIAL'; reason: string; unresolvedSkillIds: string[] };
+export interface DiagnosticRunStep {
+  runId: string;
+  state: string;
+  probesUsed: number;
+  policyVersion?: string;
+  graded?: boolean;
+  correct?: boolean;
+  skillId?: string;
+  next?: DiagnosticProbeTask;
+  complete?: boolean;
+  stop?: DiagnosticStop;
+  placement?: Placement;
+}
+
+export const startDiagnosticRun = (
+  familyId: string,
+  learnerId: string,
+  subject: 'math' | 'english',
+  strand?: string,
+) =>
+  call<DiagnosticRunStep>(`/learners/${learnerId}/diagnostic/runs`, {
+    method: 'POST',
+    headers: childHeaders(familyId, learnerId),
+    body: { subject, strand },
+  });
+
+export const answerDiagnosticProbe = (
+  familyId: string,
+  learnerId: string,
+  runId: string,
+  body: { clientSubmissionId: string; taskId: string; answer: string },
+) =>
+  call<DiagnosticRunStep>(`/learners/${learnerId}/diagnostic/runs/${runId}/answer`, {
+    method: 'POST',
+    headers: childHeaders(familyId, learnerId),
+    body,
+  });
+
 // ---- Operator / QA status ---------------------------------------------------
 
 export function operatorHeaders(): Record<string, string> {

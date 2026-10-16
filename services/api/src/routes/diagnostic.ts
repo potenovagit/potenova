@@ -1,10 +1,20 @@
 import type { Context, Hono } from 'hono';
 import { DomainError } from '@potenova/contracts';
-import { assertMasteryPolicyApproved, type MasteryEvidence } from '@potenova/learner-state';
+import {
+  assertMasteryPolicyApproved,
+  projectShadow,
+  type MasteryEvidence,
+} from '@potenova/learner-state';
 import {
   buildBaselineProfile,
   generateInitialPlan,
+  placementEvidence,
+  decideStop,
+  createRun,
+  transitionRun,
   DRAFT_DIAGNOSTIC_POLICY,
+  type DiagnosticCandidate,
+  type DiagnosticRunState,
 } from '@potenova/diagnostic';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import { now, type Deps } from '../deps';
@@ -12,12 +22,16 @@ import {
   courseFor,
   courseCoachableSkills,
   courseGraph,
+  subjectOfCourse,
+  probeTaskId,
   computeNext,
+  type CourseId,
   type Subject,
 } from '../adaptive';
 import {
-  TASK_BANK,
   RELEASE_BY_SUBJECT,
+  REPRESENTATIONS,
+  present,
   tokenValid,
   judge,
   representationOf,
@@ -54,6 +68,91 @@ interface ProbeAnswer {
 interface ProbeBody {
   runId?: string;
   probes?: ProbeAnswer[];
+}
+
+/** Count diagnostic evidence events for a skill WITHIN a run (variant + rep index). */
+async function diagProbesForSkill(
+  deps: Deps,
+  alias: string,
+  runId: string,
+  skillId: string,
+): Promise<number> {
+  const events = await deps.evidence.listEvidence(alias, skillId);
+  const prefix = `diag:${runId}:`;
+  return events.filter((e) => e.eventId.startsWith(prefix)).length;
+}
+
+/** Build the diagnostic candidate set for a course from the learner's placement
+ *  evidence: per-skill confidence/state from the shadow projection, plus the
+ *  foundational fan-out (how many targets depend on it) from the graph. */
+async function buildCandidates(
+  deps: Deps,
+  alias: string,
+  course: CourseId,
+  learnerGrade: number,
+): Promise<DiagnosticCandidate[]> {
+  const targets = courseCoachableSkills(course);
+  const graph = courseGraph(course);
+  const all = await deps.evidence.listEvidenceForLearner(alias);
+  const placement = placementEvidence(all);
+  const corrections = await deps.evidence.listCorrections(placement.map((e) => e.eventId));
+  return targets.map((skillId) => {
+    const p = projectShadow(alias, skillId, placement, corrections, deps.policies.mastery);
+    const foundationalFanout = targets.filter(
+      (t) => t !== skillId && graph.prerequisiteClosure(t).includes(skillId),
+    ).length;
+    return {
+      skillId,
+      grade: learnerGrade,
+      priorConfidence: p.confidence,
+      priorState: p.state,
+      representationsCovered: p.dimensions.representationsCovered,
+      foundationalFanout,
+      valid: true,
+    };
+  });
+}
+
+/** Deliver the next probe: a gate-validated task for the chosen skill, with the
+ *  item rotated by how many times this skill has already been probed in the run. */
+async function deliverProbe(
+  deps: Deps,
+  alias: string,
+  runId: string,
+  course: CourseId,
+  skillId: string,
+): Promise<{ skillId: string; taskId: string; question: string; options: readonly string[] }> {
+  const variant = await diagProbesForSkill(deps, alias, runId, skillId);
+  const taskId = probeTaskId(course, skillId, variant);
+  if (!taskId) throw new DomainError('NOT_FOUND', 'no probe task for skill');
+  const task = gateTask(taskId); // content gate before any item reaches the child
+  const { question, options } = present(task);
+  return { skillId, taskId, question, options };
+}
+
+/** The placement view (baseline + initial plan + entry objective) for a course,
+ *  all re-derived from immutable evidence by the mastery authority. */
+async function buildPlacement(deps: Deps, alias: string, course: CourseId) {
+  const targets = courseCoachableSkills(course);
+  const graph = courseGraph(course);
+  const allEvents = await deps.evidence.listEvidenceForLearner(alias);
+  const corrections = await deps.evidence.listCorrections(allEvents.map((e) => e.eventId));
+  const profile = buildBaselineProfile(
+    alias,
+    targets,
+    allEvents,
+    corrections,
+    deps.policies.mastery,
+  );
+  const plan = generateInitialPlan(
+    `placement:${alias}:${course}`,
+    profile,
+    graph,
+    targets,
+    DRAFT_DIAGNOSTIC_POLICY,
+  );
+  const entry = await computeNext(deps, alias, course);
+  return { subject: subjectOfCourse(course), course, profile, plan, entry };
 }
 
 export function registerDiagnostic(app: Hono, deps: Deps): void {
@@ -143,28 +242,177 @@ export function registerDiagnostic(app: Hono, deps: Deps): void {
     }
 
     const course = courseFor(subject as Subject, c.req.query('strand'));
-    const targets = courseCoachableSkills(course);
-    const graph = courseGraph(course);
+    return c.json(await buildPlacement(deps, alias, course));
+  });
 
-    const allEvents = await deps.evidence.listEvidenceForLearner(alias);
-    const corrections = await deps.evidence.listCorrections(allEvents.map((e) => e.eventId));
-    const profile = buildBaselineProfile(
-      alias,
-      targets,
-      allEvents,
-      corrections,
-      deps.policies.mastery,
-    );
-    const plan = generateInitialPlan(
-      `placement:${alias}:${course}`,
-      profile,
-      graph,
-      targets,
-      DRAFT_DIAGNOSTIC_POLICY,
-    );
-    // The entry objective off the derived placement (what a session would open on).
-    const entry = await computeNext(deps, alias, course);
+  // ---- Adaptive diagnostic run (server-driven; DIA-001/006/012; AT-05/07) ----
+  //
+  // The SERVER picks each probe by information gain + foundational weight over the
+  // learner's accumulated evidence, and stops on confidence (SUFFICIENT) or a
+  // learner-protection ceiling (PARTIAL) — never a fixed question count. Each probe
+  // is a gate-validated, oracle-graded item recorded as immutable `diagnostic`
+  // evidence; placement is then re-derived. No model on this path.
 
-    return c.json({ subject, course, profile, plan, entry });
+  // Start a run: returns the first server-selected probe (or completion if the
+  // learner's prior evidence already resolves every target).
+  app.post('/learners/:alias/diagnostic/runs', async (c) => {
+    const a = authed(c);
+    requireActorType(a, 'child');
+    const alias = c.req.param('alias');
+    if (!(await hasChildLearningConsent(deps, a.actor.familyAlias))) {
+      throw new DomainError('CONSENT_REQUIRED', 'no active child_learning consent for this family');
+    }
+    assertMasteryPolicyApproved(deps.policies.mastery, deps.policies.isProd);
+
+    const b = await c.req
+      .json<{ subject?: string; strand?: string }>()
+      .catch(() => ({}) as { subject?: string; strand?: string });
+    if (b.subject !== 'math' && b.subject !== 'english') {
+      throw new DomainError('POLICY_BLOCKED', "subject must be 'math' or 'english'");
+    }
+    const learner = await deps.identity.getLearner(alias);
+    if (!learner) throw new DomainError('NOT_FOUND', 'learner not found');
+    const course = courseFor(b.subject, b.strand);
+    const grade = learner.grade;
+
+    const runId = `diag-${Date.now()}-${alias}`;
+    let run = createRun({
+      runId,
+      learnerAlias: alias,
+      subject: b.subject,
+      curriculumReleaseId: RELEASE_BY_SUBJECT[b.subject],
+      targetSkillIds: courseCoachableSkills(course),
+    });
+    run = transitionRun(run, 'ACTIVE');
+
+    const candidates = await buildCandidates(deps, alias, course, grade);
+    const decision = decideStop({
+      candidates,
+      learnerGrade: grade,
+      probesUsed: 0,
+      ageCeilingReached: false,
+      policy: DRAFT_DIAGNOSTIC_POLICY,
+    });
+    const state: DiagnosticRunState =
+      decision.kind === 'CONTINUE'
+        ? 'ACTIVE'
+        : (transitionRun(run, decision.kind).state as DiagnosticRunState);
+
+    await deps.session.saveDiagnosticRun({
+      runId,
+      runVersion: run.runVersion,
+      learnerAlias: alias,
+      subject: b.subject,
+      strand: course,
+      curriculumReleaseId: RELEASE_BY_SUBJECT[b.subject],
+      state,
+      probesUsed: 0,
+    });
+
+    if (decision.kind === 'CONTINUE') {
+      const next = await deliverProbe(deps, alias, runId, course, decision.nextSkillId);
+      return c.json(
+        { runId, state, probesUsed: 0, policyVersion: DRAFT_DIAGNOSTIC_POLICY.policyVersion, next },
+        201,
+      );
+    }
+    return c.json(
+      {
+        runId,
+        state,
+        probesUsed: 0,
+        complete: true,
+        stop: decision,
+        placement: await buildPlacement(deps, alias, course),
+      },
+      201,
+    );
+  });
+
+  // Answer the current probe → oracle-graded diagnostic evidence → next probe or
+  // completion. The engine assigns the representation (diversity is a measured
+  // placement signal, not client-controlled).
+  app.post('/learners/:alias/diagnostic/runs/:runId/answer', async (c) => {
+    const a = authed(c);
+    requireActorType(a, 'child');
+    const alias = c.req.param('alias');
+    const runId = c.req.param('runId');
+    if (!(await hasChildLearningConsent(deps, a.actor.familyAlias))) {
+      throw new DomainError('CONSENT_REQUIRED', 'no active child_learning consent for this family');
+    }
+    assertMasteryPolicyApproved(deps.policies.mastery, deps.policies.isProd);
+
+    const row = await deps.session.getDiagnosticRun(runId);
+    if (!row || row.learnerAlias !== alias) throw new DomainError('NOT_FOUND', 'run not found');
+    if (row.state !== 'ACTIVE')
+      throw new DomainError('POLICY_BLOCKED', 'diagnostic run is not active');
+    const subject = row.subject as Subject;
+    const course = courseFor(subject, row.strand);
+
+    const b = await c.req.json<ProbeAnswer>().catch(() => ({}) as ProbeAnswer);
+    if (!b.clientSubmissionId) {
+      throw new DomainError('POLICY_BLOCKED', 'clientSubmissionId is required');
+    }
+    const task = gateTask(b.taskId ?? ''); // content gate
+    if (task.course !== course) {
+      throw new DomainError('POLICY_BLOCKED', 'task is not for this run course');
+    }
+    if (typeof b.answer !== 'string' || !tokenValid(task, b.answer)) {
+      throw new DomainError('POLICY_BLOCKED', 'answer is not valid for this probe');
+    }
+
+    // At-most-once (AT-27).
+    const eventId = `diag:${runId}:${b.clientSubmissionId}`;
+    const sub = await deps.session.recordSubmission(eventId, now());
+    if (!sub.accepted) return c.json({ duplicate: true });
+
+    // Engine-assigned representation (cycles so diversity builds across probes).
+    const perSkill = await diagProbesForSkill(deps, alias, runId, task.skillId);
+    const reps = REPRESENTATIONS[subject];
+    const representation = reps[perSkill % reps.length] ?? representationOf(task, undefined);
+
+    const correct = judge(task, b.answer);
+    await deps.evidence.appendEvidence({
+      eventId,
+      learnerAlias: alias,
+      skillId: task.skillId,
+      mode: 'diagnostic',
+      assistanceBand: 'A0',
+      correct,
+      representation,
+      recognitionConfidence: 1,
+      observedAt: now(),
+      curriculumReleaseId: RELEASE_BY_SUBJECT[task.subject],
+      schemaVersion: 'evt-0.1',
+    });
+
+    const probesUsed = row.probesUsed + 1;
+    const grade = (await deps.identity.getLearner(alias))?.grade ?? 0;
+    const candidates = await buildCandidates(deps, alias, course, grade);
+    const decision = decideStop({
+      candidates,
+      learnerGrade: grade,
+      probesUsed,
+      ageCeilingReached: false,
+      policy: DRAFT_DIAGNOSTIC_POLICY,
+    });
+    const state: DiagnosticRunState = decision.kind === 'CONTINUE' ? 'ACTIVE' : decision.kind;
+
+    await deps.session.saveDiagnosticRun({ ...row, state, probesUsed });
+
+    const graded = { graded: true as const, correct, skillId: task.skillId, probesUsed };
+    if (decision.kind === 'CONTINUE') {
+      const next = await deliverProbe(deps, alias, runId, course, decision.nextSkillId);
+      return c.json({ ...graded, next }, 201);
+    }
+    return c.json(
+      {
+        ...graded,
+        complete: true,
+        stop: decision,
+        placement: await buildPlacement(deps, alias, course),
+      },
+      201,
+    );
   });
 }
