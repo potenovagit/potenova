@@ -49,11 +49,28 @@ async function check(name, fn) {
   }
 }
 
+// Scale-to-zero (non-prod) and the rollout of a freshly deployed revision mean the
+// app may not be routable the instant `az containerapp update` returns. Poll
+// /healthz until it answers 200 before running the rest of the checks, rather than
+// failing on a single cold-start request.
+async function waitHealthy(maxMs = 180000, stepMs = 4000) {
+  const deadline = Date.now() + maxMs;
+  let last = 'no response';
+  while (Date.now() < deadline) {
+    try {
+      const r = await get('/healthz');
+      if (r.status === 200) return;
+      last = `status ${r.status}`;
+    } catch (e) {
+      last = e.message;
+    }
+    await new Promise((r) => setTimeout(r, stepMs));
+  }
+  throw new Error(`not healthy within ${Math.round(maxMs / 1000)}s (last: ${last})`);
+}
+
 try {
-  await check('healthz 200', async () => {
-    const r = await get('/healthz');
-    if (r.status !== 200) throw new Error(`status ${r.status}`);
-  });
+  await check('healthz 200 (warm-up poll)', () => waitHealthy());
 
   await check('readyz 200 + Canadian region', async () => {
     const r = await get('/readyz');
