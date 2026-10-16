@@ -1,7 +1,14 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { createApp } from '../src/app';
 import { buildPolicies } from '../src/deps';
-import { masteryPolicyFrom, usageCapsFrom, parseApprovals } from '../src/approvals';
+import {
+  masteryPolicyFrom,
+  usageCapsFrom,
+  escalationMatrixFromApproval,
+  retentionPolicyFromApproval,
+  parseApprovals,
+} from '../src/approvals';
+import { DATA_CLASSES, checkRetentionReadiness, type RetentionRule } from '@potenova/policy';
 import { openDatabase, BillingRepository, type PotenovaDb } from '@potenova/persistence';
 
 /**
@@ -20,6 +27,38 @@ const approvals = {
       intermediate: { maxContinuousMinutes: 40, maxDailyMinutes: 80, breakAfterMinutes: 10 },
     },
   },
+};
+
+// A signed escalation matrix (a single benign cell is enough to mark it signed;
+// every unset cell still fails closed to max containment).
+const escalationApproval = {
+  cells: [
+    {
+      input: {
+        category: 'general_distress' as const,
+        severity: 'low' as const,
+        confidence: 'low' as const,
+        householdImplicated: false,
+      },
+      rule: {
+        humanReview: false,
+        parentNotify: 'standard' as const,
+        responsePattern: 'standard_safe' as const,
+      },
+    },
+  ],
+};
+
+// A signed retention schedule covering every in-use data class (ready = all signed).
+const aRule: RetentionRule = { activeDays: 90, backupDays: 35, deletion: 'purge' };
+const retentionApproval = {
+  setBy: 'privacy-counsel',
+  classes: Object.fromEntries(DATA_CLASSES.map((dc) => [dc, aRule])),
+};
+const fullApprovals = {
+  ...approvals,
+  escalation: escalationApproval,
+  retention: retentionApproval,
 };
 
 describe('approval-flip — policy construction', () => {
@@ -71,6 +110,27 @@ describe('approval-flip — policy construction', () => {
     expect(parseApprovals({ POTENOVA_APPROVALS: 'not json' })).toBeUndefined();
     const c = parseApprovals({ POTENOVA_APPROVALS: JSON.stringify(approvals) });
     expect(c?.mastery?.version).toBe('mastery-1.0(ER-03-approved)');
+  });
+
+  it('a signed escalation matrix is approved (unset cells still fail closed)', () => {
+    expect(escalationMatrixFromApproval()).toBeUndefined();
+    const m = escalationMatrixFromApproval(escalationApproval);
+    expect(m?.approved).toBe(true);
+    expect(Object.keys(m?.rules ?? {}).length).toBe(1);
+    const p = buildPolicies(true, { escalation: escalationApproval });
+    expect(p.escalation.approved).toBe(true);
+  });
+
+  it('a signed retention schedule configures every signed class → ready', () => {
+    expect(retentionPolicyFromApproval()).toBeUndefined();
+    const p = buildPolicies(true, { retention: retentionApproval });
+    const readiness = checkRetentionReadiness(p.retention, DATA_CLASSES);
+    expect(readiness.ready).toBe(true);
+    // A partial schedule leaves the rest pending → not ready.
+    const partial = buildPolicies(true, {
+      retention: { setBy: 'x', classes: { billing: aRule } },
+    });
+    expect(checkRetentionReadiness(partial.retention, DATA_CLASSES).ready).toBe(false);
   });
 });
 
@@ -144,5 +204,18 @@ describe('approval-flip — prod unblock through the app', () => {
     const s = await (await app2.request('/operator/status', json(operator))).json();
     expect(s.policies.mastery.approved).toBe(true);
     expect(s.policies.usageCaps.allApproved).toBe(true);
+  });
+
+  it('a fully-signed config reports prodReady: true in the operator view', async () => {
+    const db = openDatabase();
+    dbs.push(db);
+    const app = createApp({ env: prodEnv, db, approvals: fullApprovals });
+    const s = await (await app.request('/operator/status', json(operator))).json();
+    expect(s.policies.mastery.approved).toBe(true);
+    expect(s.policies.usageCaps.allApproved).toBe(true);
+    expect(s.policies.escalation.approved).toBe(true);
+    expect(s.policies.retention.ready).toBe(true);
+    // Every EVIDENCE-REQUIRED gate signed → the fail-closed posture clears.
+    expect(s.prodReady).toBe(true);
   });
 });

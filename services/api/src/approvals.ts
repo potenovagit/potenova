@@ -1,6 +1,16 @@
 import { AGE_BANDS, type AgeBand } from '@potenova/identity';
 import { DRAFT_MASTERY_POLICY, type MasteryPolicy } from '@potenova/learner-state';
-import { usageCapsPolicyFrom, type UsageCaps, type UsageCapsPolicy } from '@potenova/policy';
+import {
+  usageCapsPolicyFrom,
+  retentionPolicyFrom,
+  DATA_CLASSES,
+  type UsageCaps,
+  type UsageCapsPolicy,
+  type RetentionRule,
+  type RetentionPolicy,
+  type DataClass,
+} from '@potenova/policy';
+import { escalationMatrixFrom, type EscalationCell, type EscalationMatrix } from '@potenova/safety';
 
 /**
  * Approval-flip config path (governance: encode a reviewer's decision).
@@ -35,9 +45,22 @@ export interface UsageCapsApproval {
   readonly bands: Partial<Record<AgeBand, UsageCaps>>;
 }
 
+export interface EscalationApproval {
+  /** The signed escalation cells (category × severity × confidence × household). */
+  readonly cells: readonly EscalationCell[];
+}
+
+export interface RetentionApproval {
+  /** Who signed the schedule (licensed privacy counsel). */
+  readonly setBy: string;
+  readonly classes: Partial<Record<DataClass, RetentionRule>>;
+}
+
 export interface ApprovalsConfig {
   readonly mastery?: MasteryApproval;
   readonly usageCaps?: UsageCapsApproval;
+  readonly escalation?: EscalationApproval;
+  readonly retention?: RetentionApproval;
 }
 
 /** The approved mastery policy from a signed approval, or the fail-closed DRAFT. */
@@ -67,6 +90,31 @@ export function usageCapsFrom(approval?: UsageCapsApproval): UsageCapsPolicy | u
     if (caps) entries[b] = { caps, setBy: approval.setBy, approved: true };
   }
   return usageCapsPolicyFrom(entries);
+}
+
+/** The approved (signed) escalation matrix from an approval, or undefined. An
+ *  approved matrix still fails closed on any cell the expert didn't set. */
+export function escalationMatrixFromApproval(
+  approval?: EscalationApproval,
+): EscalationMatrix | undefined {
+  if (!approval) return undefined;
+  return escalationMatrixFrom(approval.cells, { approved: true });
+}
+
+/** The approved retention schedule from an approval (signed classes configured;
+ *  the rest stay pending → fail closed), or undefined when no approval. */
+export function retentionPolicyFromApproval(
+  approval?: RetentionApproval,
+): RetentionPolicy | undefined {
+  if (!approval) return undefined;
+  const entries: Partial<
+    Record<DataClass, { rule: RetentionRule; setBy: string; approved: boolean }>
+  > = {};
+  for (const dc of DATA_CLASSES) {
+    const rule = approval.classes[dc];
+    if (rule) entries[dc] = { rule, setBy: approval.setBy, approved: true };
+  }
+  return retentionPolicyFrom(entries);
 }
 
 /** Parse an approvals config from the environment (JSON). Invalid/absent → none. */

@@ -31,6 +31,8 @@ import {
   parseApprovals,
   masteryPolicyFrom,
   usageCapsFrom,
+  escalationMatrixFromApproval,
+  retentionPolicyFromApproval,
   type ApprovalsConfig,
 } from './approvals';
 
@@ -96,9 +98,9 @@ export function buildPolicies(isProd: boolean, approvals?: ApprovalsConfig): Pol
   const approvedCaps = usageCapsFrom(approvals?.usageCaps);
   return {
     isProd,
-    retention: proposedRetentionPolicy(),
+    retention: retentionPolicyFromApproval(approvals?.retention) ?? proposedRetentionPolicy(),
     usageCaps: approvedCaps ?? (isProd ? emptyUsageCapsPolicy() : stagingUsageCaps()),
-    escalation: emptyEscalationMatrix(),
+    escalation: escalationMatrixFromApproval(approvals?.escalation) ?? emptyEscalationMatrix(),
     mastery: masteryPolicyFrom(approvals?.mastery),
   };
 }
