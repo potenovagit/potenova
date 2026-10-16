@@ -11,6 +11,7 @@ import { registerOps } from './routes/ops';
 import { registerAiEval } from './routes/ai-eval';
 import { registerSessions } from './routes/sessions';
 import { registerCoaching } from './routes/coaching';
+import { registerDiagnostic } from './routes/diagnostic';
 
 export interface CreateAppOptions extends BuildDepsOptions {
   /**
@@ -58,6 +59,7 @@ export function createApp(opts: CreateAppOptions = {}): Hono {
   registerAiEval(app, deps);
   registerSessions(app, deps);
   registerCoaching(app, deps);
+  registerDiagnostic(app, deps);
 
   // Serve the built web UI from the same origin (after API routes, so they win).
   if (opts.webRoot) {

@@ -135,6 +135,14 @@ export function courseFor(subject: Subject, strand?: string | null): CourseId {
 export function subjectOfCourse(course: CourseId): Subject {
   return COURSES[course].subject;
 }
+/** The oracle-coachable skills of a course (the placement/plan target set). */
+export function courseCoachableSkills(course: CourseId): readonly string[] {
+  return COURSES[course].coachableSkillIds;
+}
+/** The course's curriculum graph (for diagnostic placement planning). */
+export function courseGraph(course: CourseId): CurriculumGraph {
+  return COURSES[course].buildGraph();
+}
 export function defaultTaskId(course: CourseId, skillId: string): string | null {
   return COURSES[course].defaultTask[skillId] ?? null;
 }
