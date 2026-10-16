@@ -1281,6 +1281,226 @@ function OperatorView() {
           <button onClick={load}>Refresh</button>
         </>
       )}
+
+      <PrivacyOps />
     </section>
+  );
+}
+
+const ERASURE_TERMINAL = ['completed', 'tombstoned', 'not_applicable'];
+const isTerminal = (s: string) => ERASURE_TERMINAL.includes(s);
+const erasureTone = (s: string) => (isTerminal(s) ? 'good' : s === 'failed' ? 'low' : 'mid');
+const sweepTone = (s: string) => (s === 'swept' ? 'good' : s === 'blocked' ? 'low' : 'mid');
+
+/** Operator privacy actions — retention sweep + data-subject erasure (ER-07 / PRIV-005). */
+function PrivacyOps() {
+  return (
+    <>
+      <h2>Privacy operations</h2>
+      <p className="hint">
+        Operator-only, on synthetic data. In production both stay fail-closed: the sweep blocks
+        every class until its schedule is signed, and an erasure reads complete only once every
+        external target is attested.
+      </p>
+      <RetentionSweepPanel />
+      <ErasurePanel />
+    </>
+  );
+}
+
+/** Retention-expiry sweep (ER-07): age out first-party records per the schedule. */
+function RetentionSweepPanel() {
+  const [res, setRes] = useState<api.RetentionSweepResult | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote, fail] = useNote();
+
+  const run = (dryRun: boolean) => {
+    setBusy(true);
+    setNote(null);
+    api
+      .retentionSweep(dryRun)
+      .then((r) => {
+        setRes(r);
+        setNote({
+          kind: 'ok',
+          text: dryRun
+            ? 'Dry run complete — nothing deleted.'
+            : `Swept — ${r.summary.totalActioned} record(s) aged out.`,
+        });
+      })
+      .catch(fail)
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <div className="panel">
+      <h3>Retention-expiry sweep (ER-07)</h3>
+      <p className="hint">
+        Ages out first-party records past their window. Dry run flags what is due without deleting;
+        unapproved classes stay blocked.
+      </p>
+      <div className="ops-row">
+        <button disabled={busy} onClick={() => run(true)}>
+          {busy ? <Spinner label="Running…" /> : 'Dry run'}
+        </button>
+        <button className="btn-danger" disabled={busy} onClick={() => run(false)}>
+          {busy ? <Spinner label="Sweeping…" /> : 'Run sweep (delete)'}
+        </button>
+      </div>
+      <NoteBar note={note} />
+      {res && (
+        <>
+          <p className="muted">
+            {res.summary.classes} classes · {res.summary.totalDue} due · {res.summary.totalActioned}{' '}
+            actioned{res.dryRun ? ' (dry run)' : ''} · asOf {res.asOf.slice(0, 10)}
+          </p>
+          <table className="ops-table">
+            <thead>
+              <tr>
+                <th>Data class</th>
+                <th>Store</th>
+                <th>Scanned</th>
+                <th>Due</th>
+                <th>Actioned</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {res.report.map((r) => (
+                <tr key={r.dataClass}>
+                  <td className="mono">{r.dataClass}</td>
+                  <td className="muted">{r.store ?? '—'}</td>
+                  <td>{r.scanned}</td>
+                  <td>{r.due}</td>
+                  <td>{r.actioned}</td>
+                  <td>
+                    <span className={`pill ${sweepTone(r.status)}`}>{r.status}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Data-subject erasure (PRIV-005): learner or family cascade, fail-closed until attested. */
+function ErasurePanel() {
+  const [subjectType, setSubjectType] = useState<'learner' | 'family'>('learner');
+  const [subjectId, setSubjectId] = useState('');
+  const [reason, setReason] = useState('subject_request');
+  const [res, setRes] = useState<api.ErasureResult | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote, fail] = useNote();
+
+  const start = () => {
+    if (!subjectId.trim()) {
+      setNote({ kind: 'err', text: 'Enter a subject id.' });
+      return;
+    }
+    setBusy(true);
+    setNote(null);
+    api
+      .startErasure(subjectType, subjectId.trim(), reason)
+      .then((r) => {
+        setRes(r);
+        setNote({ kind: 'ok', text: `First-party rows deleted; request ${r.state}.` });
+      })
+      .catch(fail)
+      .finally(() => setBusy(false));
+  };
+
+  const attest = (targetId: string, status: string) => {
+    if (!res) return;
+    setBusy(true);
+    api
+      .attestErasure(res.requestId, targetId, status)
+      .then((r) => {
+        setRes(r);
+        setNote({
+          kind: 'ok',
+          text: r.verification.complete
+            ? 'Erasure complete — every target verified.'
+            : `Attested ${targetId}.`,
+        });
+      })
+      .catch(fail)
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <div className="panel">
+      <h3>Data-subject erasure (PRIV-005)</h3>
+      <p className="hint">
+        A learner erases that learner; a family cascades across every learner plus the family rows.
+        Billing is retained under its legal hold. Complete only once every external target is
+        attested.
+      </p>
+      <div className="fields">
+        <label htmlFor="er-type">
+          Subject
+          <select
+            id="er-type"
+            value={subjectType}
+            onChange={(e) => setSubjectType(e.target.value as 'learner' | 'family')}
+          >
+            <option value="learner">Learner</option>
+            <option value="family">Family (cascade)</option>
+          </select>
+        </label>
+        <label htmlFor="er-id">
+          {subjectType === 'family' ? 'Family id' : 'Learner alias'}
+          <input
+            id="er-id"
+            value={subjectId}
+            placeholder={subjectType === 'family' ? 'fam1' : 'kid1'}
+            onChange={(e) => setSubjectId(e.target.value)}
+          />
+        </label>
+        <label htmlFor="er-reason">
+          Reason
+          <select id="er-reason" value={reason} onChange={(e) => setReason(e.target.value)}>
+            <option value="subject_request">Subject request</option>
+            <option value="account_closure">Account closure</option>
+            <option value="retention_expiry">Retention expiry</option>
+          </select>
+        </label>
+      </div>
+      <button className="btn-danger" disabled={busy} onClick={start}>
+        {busy ? <Spinner label="Erasing…" /> : 'Start erasure'}
+      </button>
+      <NoteBar note={note} />
+      {res && (
+        <>
+          <div className={`banner ${res.verification.complete ? 'good' : 'mid'}`}>
+            Request <span className="mono">{res.requestId}</span> · <strong>{res.state}</strong>
+            {res.verification.complete
+              ? ' · all targets verified'
+              : ` · outstanding: ${res.verification.outstanding.join(', ') || 'none'}`}
+          </div>
+          {res.record.outcomes.map((o) => (
+            <div className="ops-row" key={o.target.id}>
+              <span className="mono">{o.target.id}</span>
+              <span className={`pill ${erasureTone(o.status)}`}>{o.status}</span>
+              {o.target.required && !isTerminal(o.status) && (
+                <span className="ops-attest">
+                  <button disabled={busy} onClick={() => attest(o.target.id, 'completed')}>
+                    completed
+                  </button>
+                  <button disabled={busy} onClick={() => attest(o.target.id, 'tombstoned')}>
+                    tombstoned
+                  </button>
+                  <button disabled={busy} onClick={() => attest(o.target.id, 'not_applicable')}>
+                    n/a
+                  </button>
+                </span>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+    </div>
   );
 }

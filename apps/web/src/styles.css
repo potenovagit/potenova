@@ -737,3 +737,42 @@ label.field-err input {
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+
+/* Operator privacy operations — sweep table + erasure target rows */
+.ops-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  flex-wrap: wrap;
+}
+.ops-attest {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.ops-attest button {
+  padding: 2px 10px;
+  font-size: 12px;
+}
+.btn-danger {
+  background: var(--err);
+  color: #fff;
+  border-color: var(--err);
+}
+.ops-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.ops-table th,
+.ops-table td {
+  text-align: left;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.ops-table th {
+  color: var(--muted);
+  font-weight: 600;
+}
