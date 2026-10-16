@@ -15,4 +15,4 @@ param appEnv = 'qa'
 param primaryRegion = 'ca-central'
 param drRegion = 'ca-east'
 param createRegistry = false
-param minReplicas = 0 // scale-to-zero: qa costs nothing between test runs
+param minReplicas = 1 // warm (no cold-start lag); bump back to 0 for scale-to-zero
