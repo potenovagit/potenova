@@ -493,3 +493,24 @@ code {
     scroll-behavior: auto !important;
   }
 }
+
+/* Skip link (WCAG 2.4.1): hidden until focused, then visible at top-left. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 100;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  text-decoration: none;
+  transition: top 0.12s;
+}
+.skip-link:focus-visible {
+  top: 8px;
+}
+/* The <main> is a scripted skip target, not an interactive control — no focus ring. */
+#main:focus-visible {
+  outline: none;
+}

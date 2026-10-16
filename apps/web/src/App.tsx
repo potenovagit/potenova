@@ -59,6 +59,9 @@ export function App() {
 
   return (
     <div className="shell">
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
       <header className="topbar">
         <div className="brand">
           <span className="mark" aria-hidden="true">
@@ -88,7 +91,7 @@ export function App() {
         {ready}
       </div>
 
-      <main className="page">
+      <main className="page" id="main" tabIndex={-1}>
         {tab === 'parent' ? (
           <ParentView
             family={family}
