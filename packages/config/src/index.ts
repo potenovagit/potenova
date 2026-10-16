@@ -9,7 +9,7 @@ import { type Region, isApprovedRegion, DomainError } from '@potenova/contracts'
  * secrets are injected per environment (see .env.example) and never committed.
  */
 
-export const ENVIRONMENTS = ['dev', 'test', 'staging', 'prod'] as const;
+export const ENVIRONMENTS = ['dev', 'test', 'qa', 'staging', 'prod'] as const;
 export type Environment = (typeof ENVIRONMENTS)[number];
 
 export interface PotenovaConfig {

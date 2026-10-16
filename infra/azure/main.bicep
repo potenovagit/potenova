@@ -31,16 +31,17 @@ param pgAdminUser string = 'potenova_admin'
 @description('PostgreSQL administrator password. Use a URL-safe value (it is embedded in DATABASE_URL).')
 param pgAdminPassword string
 
-@description('Container image tag to deploy (built and pushed by the deploy-api workflow).')
-param imageTag string = 'v3'
+@description('Bootstrap container image. Defaults to a public placeholder so the app provisions cleanly before any real image exists; the promote pipeline wires the private registry and swaps in the real image (acrLoginServer/potenova-api:<sha>) on its first run.')
+param containerImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
 
 @allowed([
   'dev'
+  'qa'
   'staging'
   'prod'
 ])
 @description('Application environment label. Not prod until the G2 gate.')
-param appEnv string = 'staging'
+param appEnv string = 'dev'
 
 @description('Primary Canadian region label passed to the app config.')
 param primaryRegion string = 'ca-central'
@@ -48,10 +49,18 @@ param primaryRegion string = 'ca-central'
 @description('DR Canadian region label passed to the app config.')
 param drRegion string = 'ca-east'
 
+@description('Create the shared Azure Container Registry in THIS deployment. True for the dev/shared stack (which owns the registry); false for qa and prod, which pull from it. See ADR-0020 and infra/azure/README.')
+param createRegistry bool = true
+
+@description('Baseline replica count. 0 enables scale-to-zero (cheap non-prod: dev/qa); prod runs warm at 1.')
+param minReplicas int = 1
+
+// Per-environment resource names so one template stands up dev, qa and prod as
+// distinct stacks (ADR-0020). The registry is shared and keeps its fixed name.
 var pgDatabaseName = 'potenova'
-var containerAppName = 'ca-potenova-api'
-var environmentName = 'cae-potenova-dev'
-var logAnalyticsName = 'log-potenova-dev'
+var containerAppName = 'ca-potenova-api-${appEnv}'
+var environmentName = 'cae-potenova-${appEnv}'
+var logAnalyticsName = 'log-potenova-${appEnv}'
 
 resource law 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: logAnalyticsName
@@ -64,7 +73,10 @@ resource law 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   }
 }
 
-resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
+// One shared registry for all environments (ADR-0020): the dev/shared stack
+// creates it; qa and prod reference the same registry so the promote pipeline
+// builds an image once and every environment pulls that identical image.
+resource acrNew 'Microsoft.ContainerRegistry/registries@2023-07-01' = if (createRegistry) {
   name: acrName
   location: location
   sku: {
@@ -76,6 +88,12 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
     adminUserEnabled: false
   }
 }
+
+// Login server is deterministic in Azure public cloud, so we don't dereference a
+// (possibly-null) conditional resource — avoids BCP318. The registry itself is
+// created above only for the shared/dev stack; qa/prod reference it by name and
+// the promote pipeline wires it onto each app (AcrPull granted out-of-band).
+var acrLoginServer = '${acrName}.azurecr.io'
 
 // AcrPull role definition id (built-in).
 var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
@@ -154,12 +172,12 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         targetPort: 8080
         transport: 'auto'
       }
-      registries: [
-        {
-          server: acr.properties.loginServer
-          identity: 'system'
-        }
-      ]
+      // The private registry is NOT wired here: on a fresh provision the app's
+      // identity has no AcrPull yet and the real image isn't built, so a registry
+      // reference would fail the create. The promote pipeline runs
+      // `az containerapp registry set --identity system` (after AcrPull is granted)
+      // and then deploys the real image. Until then the app runs the public
+      // bootstrap image below.
       secrets: [
         {
           name: 'db-url'
@@ -171,7 +189,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       containers: [
         {
           name: 'api'
-          image: '${acr.properties.loginServer}/potenova-api:${imageTag}'
+          image: containerImage
           resources: {
             cpu: json('0.5')
             memory: '1Gi'
@@ -201,8 +219,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         }
       ]
       scale: {
-        minReplicas: 1
-        maxReplicas: 1
+        minReplicas: minReplicas
+        maxReplicas: 2
       }
     }
   }
@@ -212,10 +230,16 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   ]
 }
 
-// Let the app's managed identity pull images from the registry.
-resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(acr.id, containerApp.id, 'AcrPull')
-  scope: acr
+// Let the app's managed identity pull images from the registry. Created here
+// only for the dev/shared stack that owns the registry (same resource group).
+// For qa and prod (createRegistry=false) the registry lives in another group, so
+// grant AcrPull to each app's managed identity out-of-band after deploy:
+//   az role assignment create --assignee <app-principal-id> --role AcrPull \
+//     --scope <shared-registry-resource-id>
+// (documented in infra/azure/README).
+resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (createRegistry) {
+  name: guid(acrNew.id, containerApp.id, 'AcrPull')
+  scope: acrNew
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleId)
     principalId: containerApp.identity.principalId
@@ -224,5 +248,5 @@ resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 output apiUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
-output acrLoginServer string = acr.properties.loginServer
+output acrLoginServer string = acrLoginServer
 output postgresFqdn string = pg.properties.fullyQualifiedDomainName
