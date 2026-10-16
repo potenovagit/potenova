@@ -94,6 +94,15 @@ export class IdentityRepository {
       .where(eq(learnerProfile.learnerId, learnerId));
     return r ?? null;
   }
+  /** Every learner id under a family — drives the family-scope erasure cascade. */
+  async listLearnerIdsByFamily(familyId: string): Promise<string[]> {
+    const db = await this.h.ready();
+    const rows = await db
+      .select({ id: learnerProfile.learnerId })
+      .from(learnerProfile)
+      .where(eq(learnerProfile.familyId, familyId));
+    return rows.map((r) => r.id);
+  }
 
   async saveConsentGrant(c: ConsentGrantRow): Promise<void> {
     const db = await this.h.ready();

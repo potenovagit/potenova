@@ -9,6 +9,11 @@ import {
   guardianPreference,
   learnerProfile,
   dataSubjectRequest,
+  family,
+  guardian,
+  consentGrant,
+  entitlement,
+  providerCallback,
 } from './schema';
 
 /**
@@ -30,6 +35,17 @@ export interface LearnerDataCounts {
   usageDays: number;
   preferences: number;
   profile: number;
+}
+
+export interface FamilyIdentityCounts {
+  family: number;
+  guardians: number;
+  consentGrants: number;
+}
+
+export interface FamilyBillingCounts {
+  entitlements: number;
+  providerCallbacks: number;
 }
 
 export interface DataSubjectRequestRow {
@@ -103,6 +119,56 @@ export class ErasureRepository {
     ).length;
 
     return { evidence, corrections, sessions, diagnosticRuns, usageDays, preferences, profile };
+  }
+
+  /**
+   * Delete the family-level identity rows (family record, guardians, consent
+   * grants). Learner rows are erased separately via `deleteLearnerData` per
+   * learner; billing/financial rows are NOT touched here (see
+   * `countFamilyBilling`). Consent grants go first so nothing reads as a live
+   * processing basis once the family record is gone.
+   */
+  async deleteFamilyIdentity(familyId: string): Promise<FamilyIdentityCounts> {
+    const db = await this.h.ready();
+    const consentGrants = (
+      await db
+        .delete(consentGrant)
+        .where(eq(consentGrant.familyId, familyId))
+        .returning({ id: consentGrant.grantId })
+    ).length;
+    const guardians = (
+      await db
+        .delete(guardian)
+        .where(eq(guardian.familyId, familyId))
+        .returning({ id: guardian.guardianId })
+    ).length;
+    const fam = (
+      await db
+        .delete(family)
+        .where(eq(family.familyId, familyId))
+        .returning({ id: family.familyId })
+    ).length;
+    return { family: fam, guardians, consentGrants };
+  }
+
+  /**
+   * Count the family's billing/financial rows (entitlement + provider-callback
+   * ledger). These carry a financial-records retention obligation (the ER-07
+   * `billing` class), so a subject-erasure REPORTS them and deletes nothing —
+   * whether erasure overrides that legal hold is a privacy-counsel decision, not
+   * one this code makes. They age out later on the billing retention schedule.
+   */
+  async countFamilyBilling(familyId: string): Promise<FamilyBillingCounts> {
+    const db = await this.h.ready();
+    const ent = await db
+      .select({ id: entitlement.familyId })
+      .from(entitlement)
+      .where(eq(entitlement.familyId, familyId));
+    const cb = await db
+      .select({ id: providerCallback.callbackKey })
+      .from(providerCallback)
+      .where(eq(providerCallback.familyId, familyId));
+    return { entitlements: ent.length, providerCallbacks: cb.length };
   }
 
   async saveDataSubjectRequest(r: DataSubjectRequestRow): Promise<void> {

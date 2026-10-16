@@ -33,6 +33,13 @@ const ERASURE_REASONS: readonly ErasureReason[] = [
   'subject_request',
   'retention_expiry',
 ];
+const ERASURE_SUBJECTS = ['learner', 'family'] as const;
+type ErasureSubject = (typeof ERASURE_SUBJECTS)[number];
+
+/** Financial rows are held under their own retention obligation, not purged by a
+ *  subject-erasure — whether erasure overrides that hold is a counsel decision. */
+const BILLING_RETENTION_BASIS =
+  'financial-records retention (ER-07 billing class) — retained, not purged by erasure; confirm with privacy counsel';
 const DELETION_STATUSES: readonly DeletionStatus[] = [
   'pending',
   'completed',
@@ -88,35 +95,70 @@ export function registerPrivacy(app: Hono, deps: Deps): void {
   };
 
   // Start an erasure: delete the first-party store now; external targets pending.
+  // A 'learner' subject erases that one learner's rows; a 'family' subject cascades
+  // across every learner under the family plus the family-level identity rows
+  // (family, guardians, consent grants). Billing/financial rows are retained under
+  // their retention obligation and reported, never purged here (fail-closed).
   app.post('/privacy/erasure', async (c) => {
     const a = operator(c);
     const b = await c.req.json<ErasureBody>().catch(() => ({}) as ErasureBody);
-    if (b.subjectType !== 'learner') {
-      throw new DomainError('POLICY_BLOCKED', "subjectType must be 'learner'");
+    if (!b.subjectType || !ERASURE_SUBJECTS.includes(b.subjectType as ErasureSubject)) {
+      throw new DomainError('POLICY_BLOCKED', "subjectType must be 'learner' or 'family'");
     }
     if (!b.subjectId) throw new DomainError('POLICY_BLOCKED', 'subjectId is required');
     if (!b.reason || !ERASURE_REASONS.includes(b.reason as ErasureReason)) {
       throw new DomainError('POLICY_BLOCKED', 'reason must be a valid erasure reason');
     }
 
+    const subjectType = b.subjectType as ErasureSubject;
     const requestId = `dsr-${Date.now()}-${b.subjectId}`;
     const plan = planErasure({
-      subjectType: 'learner',
+      subjectType,
       subjectId: b.subjectId,
       reason: b.reason as ErasureReason,
       requestedAt: now(),
     });
 
-    // Actually delete the learner's first-party rows (synthetic data).
-    const deleted = await deps.erasure.deleteLearnerData(b.subjectId);
+    // Actually delete the first-party rows (synthetic data), then record the
+    // first_party_store target completed. External targets stay pending.
+    let deleted: unknown;
+    let note: string;
+    if (subjectType === 'learner') {
+      deleted = await deps.erasure.deleteLearnerData(b.subjectId);
+      note = `first-party rows deleted: ${JSON.stringify(deleted)}`;
+    } else {
+      const learnerIds = await deps.identity.listLearnerIdsByFamily(b.subjectId);
+      const learners: Record<
+        string,
+        Awaited<ReturnType<typeof deps.erasure.deleteLearnerData>>
+      > = {};
+      for (const id of learnerIds) {
+        learners[id] = await deps.erasure.deleteLearnerData(id);
+      }
+      const familyIdentity = await deps.erasure.deleteFamilyIdentity(b.subjectId);
+      const billing = await deps.erasure.countFamilyBilling(b.subjectId);
+      deleted = {
+        scope: 'family',
+        family: b.subjectId,
+        learnerCount: learnerIds.length,
+        learners,
+        familyIdentity,
+        billingRetained: { ...billing, basis: BILLING_RETENTION_BASIS },
+      };
+      note =
+        `family cascade — ${learnerIds.length} learner(s) + identity deleted ` +
+        `(${familyIdentity.guardians} guardian(s), ${familyIdentity.consentGrants} consent grant(s)); ` +
+        `billing retained ${JSON.stringify(billing)}`;
+    }
+
     const record = recordTargetOutcome(plan, 'first_party_store', 'completed', {
       at: now(),
-      note: `first-party rows deleted: ${JSON.stringify(deleted)}`,
+      note,
     });
 
     const { state, verification } = await persist(
       requestId,
-      'learner',
+      subjectType,
       b.subjectId,
       b.reason,
       record,
@@ -125,14 +167,14 @@ export function registerPrivacy(app: Hono, deps: Deps): void {
     await deps.safety.recordAudit({
       approver: a.actor.actorAlias,
       reason: b.reason,
-      object: `learner:${b.subjectId}`,
+      object: `${subjectType}:${b.subjectId}`,
       action: 'erasure_first_party_deleted',
       outcome: 'EXECUTED',
       expiry: null,
       at: now(),
     });
 
-    return c.json({ requestId, state, deleted, record, verification }, 201);
+    return c.json({ requestId, subjectType, state, deleted, record, verification }, 201);
   });
 
   // Attest an external target's outcome (analytics / provider / backups).
