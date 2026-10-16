@@ -35,6 +35,12 @@ permissions:
   id-token: write
   contents: read
 
+# One promote at a time: queue overlapping runs (e.g. two quick merges) instead of
+# letting them modify the same Container App concurrently (ContainerAppOperationInProgress).
+concurrency:
+  group: promote
+  cancel-in-progress: false
+
 env:
   ACR_NAME: acrpotenovadigitery
   ACR_LOGIN_SERVER: acrpotenovadigitery.azurecr.io
@@ -97,9 +103,6 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Deploy same image to dev
         run: |
-          az containerapp registry set \
-            --name ca-potenova-api-dev --resource-group "$RG_NONPROD" \
-            --server "$ACR_LOGIN_SERVER" --identity system
           az containerapp update \
             --name ca-potenova-api-dev \
             --resource-group "$RG_NONPROD" \
@@ -126,9 +129,6 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Deploy same image to qa
         run: |
-          az containerapp registry set \
-            --name ca-potenova-api-qa --resource-group "$RG_NONPROD" \
-            --server "$ACR_LOGIN_SERVER" --identity system
           az containerapp update \
             --name ca-potenova-api-qa \
             --resource-group "$RG_NONPROD" \
@@ -155,9 +155,6 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Deploy same image to prod (isolated resource group)
         run: |
-          az containerapp registry set \
-            --name ca-potenova-api-prod --resource-group "$RG_PROD" \
-            --server "$ACR_LOGIN_SERVER" --identity system
           az containerapp update \
             --name ca-potenova-api-prod \
             --resource-group "$RG_PROD" \
