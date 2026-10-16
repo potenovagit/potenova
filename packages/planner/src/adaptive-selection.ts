@@ -53,9 +53,12 @@ export function selectNextObjective(args: {
   readonly policy: PlannerPolicy;
   /** Clock for retention/review-due (epoch ms); defaults to now. */
   readonly now?: number;
+  /** Guardian-preferred skills — reorder WITHIN a tier only, never across a gate. */
+  readonly parentPreferredSkillIds?: readonly string[];
 }): NextObjective {
   const { graph, coachableSkillIds, mastery, policy } = args;
   const now = args.now ?? Date.now();
+  const parentPreferred = new Set(args.parentPreferredSkillIds ?? []);
   if (coachableSkillIds.length === 0) {
     throw new DomainError('NOT_FOUND', 'no coachable skills configured');
   }
@@ -90,7 +93,7 @@ export function selectNextObjective(args: {
       // A mastered skill not yet shown in a novel context earns a transfer check.
       isTransfer: m.independent && !m.transferable,
       isAdvancement: allPrereqsIndependent && !m.independent,
-      parentPreferred: false,
+      parentPreferred: parentPreferred.has(skillId),
     };
   });
 

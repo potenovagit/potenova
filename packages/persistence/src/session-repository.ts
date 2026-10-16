@@ -1,6 +1,12 @@
 import { eq } from 'drizzle-orm';
 import type { PotenovaDb } from './database';
-import { diagnosticRun, tutoringSession, submission, usageLedger } from './schema';
+import {
+  diagnosticRun,
+  tutoringSession,
+  submission,
+  usageLedger,
+  guardianPreference,
+} from './schema';
 
 /** Session persistence (WP-06/07/08). Diagnostic runs and tutoring sessions are
  *  resumable, so their state is durable (AT-04/06). The submission ledger is
@@ -22,6 +28,17 @@ export interface TutoringSessionRow {
   state: string;
   /** Strand/course within the subject; null = the subject's default course. */
   strand?: string | null;
+}
+export interface GuardianPreferenceRow {
+  learnerAlias: string;
+  /** A subject→strand focus (both set together, or both null). */
+  focusSubject?: string | null;
+  focusStrand?: string | null;
+  /** A within-course skill the guardian wants prioritised (tie-break only). */
+  focusSkillId?: string | null;
+  /** Tightened usage limits (minutes). Null = no parent limit for that dimension. */
+  maxDailyMinutes?: number | null;
+  maxContinuousMinutes?: number | null;
 }
 
 export class SessionRepository {
@@ -89,5 +106,33 @@ export class SessionRepository {
       .insert(usageLedger)
       .values({ id, learnerAlias, day, minutesUsed: next })
       .onConflictDoUpdate({ target: usageLedger.id, set: { minutesUsed: next } });
+  }
+
+  /** Guardian controls for a learner (focus + tightened caps), or null. */
+  async getGuardianPreference(learnerAlias: string): Promise<GuardianPreferenceRow | null> {
+    const db = await this.h.ready();
+    const [r] = await db
+      .select()
+      .from(guardianPreference)
+      .where(eq(guardianPreference.learnerAlias, learnerAlias));
+    return r ?? null;
+  }
+
+  /** Upsert a learner's guardian controls (replaces the whole row). */
+  async saveGuardianPreference(p: GuardianPreferenceRow): Promise<void> {
+    const db = await this.h.ready();
+    await db
+      .insert(guardianPreference)
+      .values(p)
+      .onConflictDoUpdate({
+        target: guardianPreference.learnerAlias,
+        set: {
+          focusSubject: p.focusSubject ?? null,
+          focusStrand: p.focusStrand ?? null,
+          focusSkillId: p.focusSkillId ?? null,
+          maxDailyMinutes: p.maxDailyMinutes ?? null,
+          maxContinuousMinutes: p.maxContinuousMinutes ?? null,
+        },
+      });
   }
 }

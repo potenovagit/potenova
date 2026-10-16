@@ -62,8 +62,16 @@ export function registerSessions(app: Hono, deps: Deps): void {
       throw new DomainError('POLICY_BLOCKED', "subject must be 'math' or 'english'");
     }
     const requestedMinutes = b.requestedMinutes ?? 0;
-    // The strand/course the session runs (an explicit, subject-valid strand or the default).
-    const course = courseFor(b.subject, b.strand);
+    // Guardian controls (PAR): a subject-matched strand focus and tightened caps.
+    const pref = await deps.session.getGuardianPreference(alias);
+    const focusStrand =
+      pref && pref.focusSubject === b.subject ? (pref.focusStrand ?? undefined) : undefined;
+    // The strand/course the session runs: an explicit request wins, else the
+    // guardian's focus for this subject, else the subject default.
+    const course = courseFor(b.subject, b.strand ?? focusStrand);
+    // A guardian-preferred skill reorders within a planner tier (never a gate).
+    const parentPreferredSkillIds =
+      pref?.focusSkillId && pref.focusSubject === b.subject ? [pref.focusSkillId] : undefined;
 
     // Age band is derived from the learner's registered grade — never self-declared.
     const learner = await deps.identity.getLearner(alias);
@@ -88,6 +96,13 @@ export function registerSessions(app: Hono, deps: Deps): void {
       band,
       requestedSessionMinutes: requestedMinutes,
       usedTodayMinutes,
+      // Parent limits may only tighten the safety cap, never loosen it.
+      parentCaps: pref
+        ? {
+            maxDailyMinutes: pref.maxDailyMinutes ?? undefined,
+            maxContinuousMinutes: pref.maxContinuousMinutes ?? undefined,
+          }
+        : undefined,
       requireApproved: deps.policies.isProd,
     });
     const withinAgeCap = usage.kind === 'ALLOW' || usage.kind === 'SHORTEN';
@@ -113,13 +128,15 @@ export function registerSessions(app: Hono, deps: Deps): void {
 
     // The first objective is PLANNER-selected (adaptive), not a fixed task — the
     // client opens the session straight onto next.defaultTaskId.
-    const next = await computeNext(deps, alias, course, { sessionId });
+    const next = await computeNext(deps, alias, course, { sessionId, parentPreferredSkillIds });
     // Session item budget (ER-09) the learner-protection ceiling for this session.
     const budget = await sessionBudget(deps, alias, sessionId);
 
     return c.json(
       {
         session,
+        subject: b.subject,
+        strand: course, // the resolved strand/course this session runs
         allowedMinutes: usage.allowedMinutes,
         breakAfterMinutes: usage.breakAfterMinutes,
         usage: { kind: usage.kind, reasonCodes: usage.reasonCodes },

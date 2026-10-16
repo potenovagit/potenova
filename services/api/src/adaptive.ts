@@ -284,7 +284,7 @@ export async function computeNext(
   deps: Deps,
   alias: string,
   course: CourseId,
-  opts?: { sessionId?: string },
+  opts?: { sessionId?: string; parentPreferredSkillIds?: readonly string[] },
 ): Promise<NextRecommendation> {
   const plan = COURSES[course];
   const mastery = await coachableMastery(deps, alias, course);
@@ -293,6 +293,7 @@ export async function computeNext(
     coachableSkillIds: plan.coachableSkillIds,
     mastery,
     policy: DRAFT_PLANNER_POLICY,
+    parentPreferredSkillIds: opts?.parentPreferredSkillIds,
   });
   // A transfer check points at the novel-context task; otherwise a practice item
   // from the skill's pool, rotated by prior in-session attempts.

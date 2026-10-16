@@ -81,6 +81,50 @@ describe('selectNextObjective', () => {
     expect(r.reasonCode).toBe('REVIEW_DUE');
   });
 
+  it('a guardian preference breaks a within-tier tie (never crosses a gate)', () => {
+    const now = Date.now();
+    // Both skills mastered & recently practised → both land in the same tier
+    // (TRANSFER_CHECK). The tie breaks on skillId by default (compare < equiv).
+    const mastery = {
+      [EQUIV]: { confidence: 0.9, independent: true, lastPracticedAt: now },
+      [COMPARE]: { confidence: 0.9, independent: true, lastPracticedAt: now },
+    };
+    const base = selectNextObjective({
+      graph: buildFractionsDraftGraph(),
+      coachableSkillIds: COACHABLE,
+      mastery,
+      policy: DRAFT_PLANNER_POLICY,
+      now,
+    });
+    expect(base.targetSkillId).toBe(COMPARE);
+
+    // A guardian preference for equivalence reorders within that tier.
+    const preferred = selectNextObjective({
+      graph: buildFractionsDraftGraph(),
+      coachableSkillIds: COACHABLE,
+      mastery,
+      policy: DRAFT_PLANNER_POLICY,
+      now,
+      parentPreferredSkillIds: [EQUIV],
+    });
+    expect(preferred.targetSkillId).toBe(EQUIV);
+    expect(preferred.reasonCode).toBe(base.reasonCode); // same tier — gate unchanged
+  });
+
+  it('a guardian preference never outranks a prerequisite gap (gate wins)', () => {
+    // Fresh learner: comparison is prerequisite-blocked. Even preferring compare
+    // cannot skip equivalence — the gate is non-negotiable.
+    const preferred = selectNextObjective({
+      graph: buildFractionsDraftGraph(),
+      coachableSkillIds: COACHABLE,
+      mastery: {},
+      policy: DRAFT_PLANNER_POLICY,
+      parentPreferredSkillIds: [COMPARE],
+    });
+    expect(preferred.targetSkillId).toBe(EQUIV);
+    expect(preferred.reasonCode).toBe('PREREQUISITE_REMEDIATION');
+  });
+
   it('does not flag review for a recently-practised mastered skill', () => {
     const now = Date.now();
     const r = selectNextObjective({

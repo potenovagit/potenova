@@ -175,6 +175,16 @@ export const usageLedger = pgTable('usage_ledger', {
   day: text('day').notNull(),
   minutesUsed: integer('minutes_used').notNull(),
 });
+/** Guardian controls per learner (PAR): a subject→strand focus and tightened
+ *  usage caps. Parent limits may only tighten the safety cap, never loosen it. */
+export const guardianPreference = pgTable('guardian_preference', {
+  learnerAlias: text('learner_alias').primaryKey(),
+  focusSubject: text('focus_subject'),
+  focusStrand: text('focus_strand'),
+  focusSkillId: text('focus_skill_id'),
+  maxDailyMinutes: integer('max_daily_minutes'),
+  maxContinuousMinutes: integer('max_continuous_minutes'),
+});
 
 /* ---- curriculum reference (WP-02) ---- */
 export const skill = pgTable('skill', {
@@ -257,6 +267,9 @@ CREATE TABLE IF NOT EXISTS submission (
   client_submission_id text PRIMARY KEY, at text NOT NULL);
 CREATE TABLE IF NOT EXISTS usage_ledger (
   id text PRIMARY KEY, learner_alias text NOT NULL, day text NOT NULL, minutes_used integer NOT NULL);
+CREATE TABLE IF NOT EXISTS guardian_preference (
+  learner_alias text PRIMARY KEY, focus_subject text, focus_strand text, focus_skill_id text,
+  max_daily_minutes integer, max_continuous_minutes integer);
 
 CREATE TABLE IF NOT EXISTS skill (
   skill_id text PRIMARY KEY, domain text NOT NULL, competency text NOT NULL, skill text NOT NULL,
