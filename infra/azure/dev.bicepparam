@@ -16,4 +16,4 @@ param appEnv = 'dev'
 param primaryRegion = 'ca-central'
 param drRegion = 'ca-east'
 param createRegistry = false
-param minReplicas = 0 // scale-to-zero: dev costs nothing while idle
+param minReplicas = 1 // warm (no cold-start lag); bump back to 0 for scale-to-zero
