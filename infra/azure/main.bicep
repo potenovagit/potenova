@@ -36,11 +36,12 @@ param imageTag string = 'v3'
 
 @allowed([
   'dev'
+  'qa'
   'staging'
   'prod'
 ])
 @description('Application environment label. Not prod until the G2 gate.')
-param appEnv string = 'staging'
+param appEnv string = 'dev'
 
 @description('Primary Canadian region label passed to the app config.')
 param primaryRegion string = 'ca-central'
@@ -48,10 +49,21 @@ param primaryRegion string = 'ca-central'
 @description('DR Canadian region label passed to the app config.')
 param drRegion string = 'ca-east'
 
+@description('Create the shared Azure Container Registry in THIS deployment. True for the dev/shared stack (which owns the registry); false for qa and prod, which pull from it. See ADR-0020 and infra/azure/README.')
+param createRegistry bool = true
+
+@description('Resource group that holds the shared registry — used by qa/prod (createRegistry=false) to reference it cross-group.')
+param sharedRegistryResourceGroup string = resourceGroup().name
+
+@description('Baseline replica count. 0 enables scale-to-zero (cheap non-prod: dev/qa); prod runs warm at 1.')
+param minReplicas int = 1
+
+// Per-environment resource names so one template stands up dev, qa and prod as
+// distinct stacks (ADR-0020). The registry is shared and keeps its fixed name.
 var pgDatabaseName = 'potenova'
-var containerAppName = 'ca-potenova-api'
-var environmentName = 'cae-potenova-dev'
-var logAnalyticsName = 'log-potenova-dev'
+var containerAppName = 'ca-potenova-api-${appEnv}'
+var environmentName = 'cae-potenova-${appEnv}'
+var logAnalyticsName = 'log-potenova-${appEnv}'
 
 resource law 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: logAnalyticsName
@@ -64,7 +76,10 @@ resource law 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   }
 }
 
-resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
+// One shared registry for all environments (ADR-0020): the dev/shared stack
+// creates it; qa and prod reference the same registry so the promote pipeline
+// builds an image once and every environment pulls that identical image.
+resource acrNew 'Microsoft.ContainerRegistry/registries@2023-07-01' = if (createRegistry) {
   name: acrName
   location: location
   sku: {
@@ -76,6 +91,13 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
     adminUserEnabled: false
   }
 }
+
+resource acrExisting 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = if (!createRegistry) {
+  name: acrName
+  scope: resourceGroup(sharedRegistryResourceGroup)
+}
+
+var acrLoginServer = createRegistry ? acrNew.properties.loginServer : acrExisting.properties.loginServer
 
 // AcrPull role definition id (built-in).
 var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
@@ -156,7 +178,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       }
       registries: [
         {
-          server: acr.properties.loginServer
+          server: acrLoginServer
           identity: 'system'
         }
       ]
@@ -171,7 +193,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       containers: [
         {
           name: 'api'
-          image: '${acr.properties.loginServer}/potenova-api:${imageTag}'
+          image: '${acrLoginServer}/potenova-api:${imageTag}'
           resources: {
             cpu: json('0.5')
             memory: '1Gi'
@@ -201,8 +223,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         }
       ]
       scale: {
-        minReplicas: 1
-        maxReplicas: 1
+        minReplicas: minReplicas
+        maxReplicas: 2
       }
     }
   }
@@ -212,10 +234,16 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   ]
 }
 
-// Let the app's managed identity pull images from the registry.
-resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(acr.id, containerApp.id, 'AcrPull')
-  scope: acr
+// Let the app's managed identity pull images from the registry. Created here
+// only for the dev/shared stack that owns the registry (same resource group).
+// For qa and prod (createRegistry=false) the registry lives in another group, so
+// grant AcrPull to each app's managed identity out-of-band after deploy:
+//   az role assignment create --assignee <app-principal-id> --role AcrPull \
+//     --scope <shared-registry-resource-id>
+// (documented in infra/azure/README).
+resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (createRegistry) {
+  name: guid(acrNew.id, containerApp.id, 'AcrPull')
+  scope: acrNew
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleId)
     principalId: containerApp.identity.principalId
@@ -224,5 +252,5 @@ resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 output apiUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
-output acrLoginServer string = acr.properties.loginServer
+output acrLoginServer string = acrLoginServer
 output postgresFqdn string = pg.properties.fullyQualifiedDomainName

@@ -1,0 +1,162 @@
+name: promote
+
+# Build-once, promote-many pipeline (ADR-0020).
+#
+# When CI goes green on `main`, build the API image ONCE and promote that exact
+# image through dev → qa → prod automatically. Each stage deploys the same
+# immutable tag (the commit sha) and is gated by a post-deploy smoke check
+# (infra/smoke.mjs): prod only runs if qa's smoke passed, qa only if dev's did.
+#
+# Build-once discipline: the image is never rebuilt per stage. Environment
+# differences (APP_ENV, regions) are injected at deploy time via --set-env-vars,
+# and per-env secrets (DATABASE_URL, provider keys) live on each Container App —
+# so dev, qa and prod run byte-identical code.
+#
+# Topology (ADR-0020): dev + qa share the non-prod resource group; prod is
+# isolated in its own resource group. One shared registry.
+#
+# IMPORTANT: this promotes CODE only. It never turns prod into a real-child-data
+# service — prod stays fail-closed (no approved model, empty caps), and the smoke
+# check asserts that posture until the G2 gate is signed. Enabling real child
+# data in prod is a separate, manual, post-G2 action this pipeline never performs.
+
+on:
+  workflow_run:
+    workflows: ['ci']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Commit sha to (re)promote (defaults to current main)
+        required: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ACR_NAME: acrpotenovadigitery
+  ACR_LOGIN_SERVER: acrpotenovadigitery.azurecr.io
+  IMAGE: potenova-api
+  RG_NONPROD: rg-potenova-nonprod
+  RG_PROD: rg-potenova-prod
+  PRIMARY_REGION: ca-central
+  DR_REGION: ca-east
+
+jobs:
+  # Only promote on a genuinely green CI run (or a manual dispatch).
+  guard:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    outputs:
+      sha: ${{ steps.pick.outputs.sha }}
+    steps:
+      - id: pick
+        run: |
+          SHA="${{ github.event.inputs.sha || github.event.workflow_run.head_sha || github.sha }}"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Promoting $SHA"
+
+  build:
+    needs: guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.guard.outputs.sha }}
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Registry login
+        run: az acr login --name "$ACR_NAME"
+      - name: Build and push the image once (tagged by sha)
+        run: |
+          SHA="${{ needs.guard.outputs.sha }}"
+          docker build -f services/api/Dockerfile \
+            -t "$ACR_LOGIN_SERVER/$IMAGE:$SHA" .
+          docker push "$ACR_LOGIN_SERVER/$IMAGE:$SHA"
+
+  dev:
+    needs: [guard, build]
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.guard.outputs.sha }}
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy same image to dev
+        run: |
+          az containerapp update \
+            --name ca-potenova-api-dev \
+            --resource-group "$RG_NONPROD" \
+            --image "$ACR_LOGIN_SERVER/$IMAGE:${{ needs.guard.outputs.sha }}" \
+            --set-env-vars APP_ENV=dev PRIMARY_REGION=$PRIMARY_REGION DR_REGION=$DR_REGION
+      - name: Smoke dev (gates qa)
+        env:
+          SMOKE_URL: ${{ vars.DEV_API_URL }}
+          SMOKE_ENV: dev
+        run: node infra/smoke.mjs
+
+  qa:
+    needs: [guard, dev]
+    runs-on: ubuntu-latest
+    environment: qa
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.guard.outputs.sha }}
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy same image to qa
+        run: |
+          az containerapp update \
+            --name ca-potenova-api-qa \
+            --resource-group "$RG_NONPROD" \
+            --image "$ACR_LOGIN_SERVER/$IMAGE:${{ needs.guard.outputs.sha }}" \
+            --set-env-vars APP_ENV=qa PRIMARY_REGION=$PRIMARY_REGION DR_REGION=$DR_REGION
+      - name: Smoke qa (gates prod)
+        env:
+          SMOKE_URL: ${{ vars.QA_API_URL }}
+          SMOKE_ENV: qa
+        run: node infra/smoke.mjs
+
+  prod:
+    needs: [guard, qa]
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.guard.outputs.sha }}
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy same image to prod (isolated resource group)
+        run: |
+          az containerapp update \
+            --name ca-potenova-api-prod \
+            --resource-group "$RG_PROD" \
+            --image "$ACR_LOGIN_SERVER/$IMAGE:${{ needs.guard.outputs.sha }}" \
+            --set-env-vars APP_ENV=prod PRIMARY_REGION=$PRIMARY_REGION DR_REGION=$DR_REGION
+      - name: Smoke prod (asserts fail-closed posture pre-G2)
+        env:
+          SMOKE_URL: ${{ vars.PROD_API_URL }}
+          SMOKE_ENV: prod
+          SMOKE_EXPECT_FAILCLOSED: 'true'
+        run: node infra/smoke.mjs

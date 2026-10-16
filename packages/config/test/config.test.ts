@@ -11,8 +11,23 @@ describe('config + residency (SEC-002, B9)', () => {
 
   it('only prod may carry real child data', () => {
     expect(loadConfig({ APP_ENV: 'prod' }).allowRealChildData).toBe(true);
-    for (const e of ['dev', 'test', 'staging']) {
+    for (const e of ['dev', 'test', 'qa', 'staging']) {
       expect(loadConfig({ APP_ENV: e }).allowRealChildData).toBe(false);
+    }
+  });
+
+  it('accepts qa as a non-prod, Canadian, synthetic-only environment', () => {
+    const c = loadConfig({ APP_ENV: 'qa', PRIMARY_REGION: 'ca-central', DR_REGION: 'ca-east' });
+    expect(c.environment).toBe('qa');
+    expect(c.allowRealChildData).toBe(false);
+  });
+
+  it('rejects an unknown environment label (fail-closed)', () => {
+    try {
+      loadConfig({ APP_ENV: 'uat' });
+      throw new Error('expected POLICY_BLOCKED');
+    } catch (e) {
+      expect(isDomainError(e) && e.code).toBe('POLICY_BLOCKED');
     }
   });
 
