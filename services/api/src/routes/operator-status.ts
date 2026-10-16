@@ -85,6 +85,7 @@ export function registerOperatorStatus(app: Hono, deps: Deps): void {
     };
 
     // --- Model-eval + latency evidence. Latency SLO is EVIDENCE REQUIRED. ---
+    const evalStats = await deps.operator.evalRunStats();
     const modelEval = {
       endpoint: '/operator/model-eval',
       runnable: deps.ai.provider !== null,
@@ -95,9 +96,17 @@ export function registerOperatorStatus(app: Hono, deps: Deps): void {
             capabilities: candidate.capabilities,
           }
         : null,
-      // Never a fabricated pass: the target is an unapproved DRAFT slot and no
-      // run is recorded until an operator invokes the eval with a real provider.
-      latency: { sloMs: null, decisionId: 'NFR-07', approved: false, recordedRuns: 0 },
+      // The SLO target is an unapproved DRAFT slot (never a fabricated pass); the
+      // MEASURED latency + containment below are evidence read from recorded runs.
+      latency: {
+        sloMs: null,
+        decisionId: 'NFR-07',
+        approved: false,
+        recordedRuns: evalStats.count,
+        measuredP95Ms: evalStats.count > 0 ? evalStats.p95LatencyMs : null,
+      },
+      containmentHeldAll: evalStats.containmentHeldAll,
+      lastRun: evalStats.last,
     };
 
     // --- Kill switches (operator-controlled containment). ---

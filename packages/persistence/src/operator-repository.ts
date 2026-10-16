@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { PotenovaDb } from './database';
-import { killSwitch, incident } from './schema';
+import { killSwitch, incident, evalRun } from './schema';
 
 /** Operator persistence (WP-13). A kill switch's disabled state is durable — a
  *  capability an operator disabled stays disabled across a restart/redeploy
@@ -14,6 +14,32 @@ export interface IncidentRow {
   state: string;
   rcaAttached: boolean;
   regressionCaseId: string | null;
+}
+
+export interface EvalRunInput {
+  modelId: string;
+  kind: 'single' | 'suite';
+  latencyMs: number;
+  accuracy: number | null;
+  containmentHeld: boolean;
+  verdict: string;
+  at: string;
+}
+export interface EvalRunStats {
+  count: number;
+  /** Nearest-rank P95 over recorded run latencies (ms). Reported, not SLO-judged. */
+  p95LatencyMs: number;
+  /** True iff every recorded eval run held containment (no incorrect delivery). */
+  containmentHeldAll: boolean;
+  last: {
+    modelId: string;
+    kind: string;
+    verdict: string;
+    accuracy: number | null;
+    latencyMs: number;
+    containmentHeld: boolean;
+    at: string;
+  } | null;
 }
 
 export class OperatorRepository {
@@ -61,5 +87,39 @@ export class OperatorRepository {
     const db = await this.h.ready();
     const [r] = await db.select().from(incident).where(eq(incident.incidentId, incidentId));
     return r ?? null;
+  }
+
+  /** Append an immutable model-eval run record (latency/containment evidence). */
+  async recordEvalRun(input: EvalRunInput): Promise<void> {
+    const db = await this.h.ready();
+    await db.insert(evalRun).values(input);
+  }
+
+  /** Aggregate the recorded eval runs for the operator surface. */
+  async evalRunStats(): Promise<EvalRunStats> {
+    const db = await this.h.ready();
+    const rows = await db.select().from(evalRun);
+    if (rows.length === 0) {
+      return { count: 0, p95LatencyMs: 0, containmentHeldAll: true, last: null };
+    }
+    const latencies = rows.map((r) => r.latencyMs).sort((a, b) => a - b);
+    const p95 = latencies[Math.min(latencies.length - 1, Math.ceil(0.95 * latencies.length) - 1)];
+    const containmentHeldAll = rows.every((r) => r.containmentHeld);
+    // Most recent by id (bigserial is monotonic with insertion).
+    const last = rows.reduce((a, b) => (b.id > a.id ? b : a));
+    return {
+      count: rows.length,
+      p95LatencyMs: p95,
+      containmentHeldAll,
+      last: {
+        modelId: last.modelId,
+        kind: last.kind,
+        verdict: last.verdict,
+        accuracy: last.accuracy ?? null,
+        latencyMs: last.latencyMs,
+        containmentHeld: last.containmentHeld,
+        at: last.at,
+      },
+    };
   }
 }

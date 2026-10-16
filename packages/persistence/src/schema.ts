@@ -137,6 +137,18 @@ export const killSwitch = pgTable('kill_switch', {
   reason: text('reason').notNull(),
   at: text('at').notNull(),
 });
+/** Model-eval run evidence (AI-003 / ER-05 / NFR-07). Append-only; latency and
+ *  containment are reported, never pass/failed here — the SLO is an owner decision. */
+export const evalRun = pgTable('eval_run', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  modelId: text('model_id').notNull(),
+  kind: text('kind').notNull(), // 'single' | 'suite'
+  latencyMs: integer('latency_ms').notNull(),
+  accuracy: doublePrecision('accuracy'),
+  containmentHeld: boolean('containment_held').notNull(),
+  verdict: text('verdict').notNull(),
+  at: text('at').notNull(),
+});
 export const incident = pgTable('incident', {
   incidentId: text('incident_id').primaryKey(),
   stream: text('stream').notNull(),
@@ -255,6 +267,9 @@ CREATE TABLE IF NOT EXISTS data_subject_request (
 
 CREATE TABLE IF NOT EXISTS kill_switch (
   capability text PRIMARY KEY, disabled boolean NOT NULL, actor text NOT NULL, reason text NOT NULL, at text NOT NULL);
+CREATE TABLE IF NOT EXISTS eval_run (
+  id bigserial PRIMARY KEY, model_id text NOT NULL, kind text NOT NULL, latency_ms integer NOT NULL,
+  accuracy double precision, containment_held boolean NOT NULL, verdict text NOT NULL, at text NOT NULL);
 CREATE TABLE IF NOT EXISTS incident (
   incident_id text PRIMARY KEY, stream text NOT NULL, severity text NOT NULL, owner text NOT NULL,
   state text NOT NULL, rca_attached boolean NOT NULL, regression_case_id text);

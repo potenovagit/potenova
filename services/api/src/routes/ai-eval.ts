@@ -78,7 +78,9 @@ export function registerAiEval(app: Hono, deps: Deps): void {
       right: readFraction(body.right, DEFAULT_TASK.right),
     };
 
+    const t0 = Date.now();
     const gen = await provider.generate({ ...buildComparisonPrompt(task), temperature: 0 });
+    const latencyMs = Date.now() - t0;
     const generated = parseGeneratedMathAnswer(gen.text);
 
     const result = evaluateMathCandidate({
@@ -89,6 +91,18 @@ export function registerAiEval(app: Hono, deps: Deps): void {
       generated,
       fallbackAssetId: body.fallbackAssetId ?? null,
       now,
+    });
+
+    // Persist the run as latency/containment evidence (reported, not SLO-judged).
+    // The eval never delivers to a child, so containment trivially holds here.
+    await deps.operator.recordEvalRun({
+      modelId: provider.id,
+      kind: 'single',
+      latencyMs,
+      accuracy: result.verdict === 'PASS' ? 1 : 0,
+      containmentHeld: result.delivery !== 'DELIVER' || result.verdict === 'PASS',
+      verdict: result.verdict,
+      at: now(),
     });
 
     return c.json({
@@ -131,6 +145,18 @@ export function registerAiEval(app: Hono, deps: Deps): void {
       validatorVersion: VALIDATOR_VERSION,
       generate: runner.generate,
       now,
+    });
+
+    // Persist the suite as evidence: representative P95 latency, accuracy and the
+    // containment gate property (no incorrect answer was ever delivered).
+    await deps.operator.recordEvalRun({
+      modelId: provider.id,
+      kind: 'suite',
+      latencyMs: Math.round(report.latency.p95Ms),
+      accuracy: report.accuracy,
+      containmentHeld: report.containmentHeld,
+      verdict: report.containmentHeld ? 'CONTAINED' : 'LEAK',
+      at: now(),
     });
 
     return c.json({

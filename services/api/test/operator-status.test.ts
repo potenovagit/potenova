@@ -28,6 +28,11 @@ const get = (headers: Record<string, string>) => ({
   method: 'GET',
   headers: { 'content-type': 'application/json', ...headers },
 });
+const post = (headers: Record<string, string>, body: unknown) => ({
+  method: 'POST',
+  headers: { 'content-type': 'application/json', ...headers },
+  body: JSON.stringify(body),
+});
 
 describe('GET /operator/status', () => {
   it('reports fail-closed policy states and a passing content-gate self-check', async () => {
@@ -66,6 +71,29 @@ describe('GET /operator/status', () => {
     expect(s.ai.anyModelApprovedForProduction).toBe(false);
     expect(s.modelEval.runnable).toBe(true);
     expect(s.modelEval.envelope.subjects).toContain('math');
+  });
+
+  it('surfaces recorded eval runs + measured latency (SLO stays a DRAFT slot)', async () => {
+    const app = appWith(new StubGenerativeProvider('{"answer":"gt","explanation":"1/2 > 1/3"}'));
+
+    // Before any run: nothing recorded.
+    const before = await (await app.request('/operator/status', get(operator))).json();
+    expect(before.modelEval.latency.recordedRuns).toBe(0);
+    expect(before.modelEval.latency.measuredP95Ms).toBeNull();
+    expect(before.modelEval.lastRun).toBeNull();
+
+    // Run an eval (synthetic, never delivered to a child) → recorded as evidence.
+    const evalRes = await app.request('/operator/model-eval', post(operator, {}));
+    expect(evalRes.status).toBe(200);
+
+    const after = await (await app.request('/operator/status', get(operator))).json();
+    expect(after.modelEval.latency.recordedRuns).toBeGreaterThanOrEqual(1);
+    expect(typeof after.modelEval.latency.measuredP95Ms).toBe('number');
+    expect(after.modelEval.containmentHeldAll).toBe(true);
+    expect(after.modelEval.lastRun.verdict).toBe('PASS');
+    // The approved SLO is still an unapproved DRAFT slot — measured ≠ approved.
+    expect(after.modelEval.latency.sloMs).toBeNull();
+    expect(after.modelEval.latency.approved).toBe(false);
   });
 
   it('is operator-only (a guardian is forbidden)', async () => {
