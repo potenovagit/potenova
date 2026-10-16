@@ -14,7 +14,13 @@ import {
 } from '@potenova/domain-core';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import type { Deps } from '../deps';
-import { subjectOfSkill, computeNext, reviewDueFor, type Subject } from '../adaptive';
+import {
+  subjectOfSkill,
+  computeNext,
+  reviewDueFor,
+  DEFAULT_COURSE,
+  type Subject,
+} from '../adaptive';
 
 /** Consent fence at the edge (PRIV-004; AT-01): learning processing needs an
  *  active child_learning grant for the family. */
@@ -104,7 +110,8 @@ export function registerLearning(app: Hono, deps: Deps): void {
     const bySubject = await Promise.all(
       base.bySubject.map(async (g) => {
         if (g.subject !== 'math' && g.subject !== 'english') return g;
-        const next = await computeNext(deps, alias, g.subject as Subject);
+        // Subject-level dashboard focus uses that subject's default course.
+        const next = await computeNext(deps, alias, DEFAULT_COURSE[g.subject as Subject]);
         return {
           ...g,
           nextFocus: {

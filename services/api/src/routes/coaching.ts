@@ -4,6 +4,7 @@ import { decideDelivery, type CandidateContent } from '@potenova/domain-core';
 import {
   checkMathTask,
   checkEnglishTask,
+  checkAdditionTask,
   pluralize,
   trueRelation,
   areEquivalent,
@@ -34,7 +35,9 @@ import {
   buildSessionSummary,
   reviewDueFor,
   allCoachableMastered,
+  courseFor,
   type Subject,
+  type CourseId,
 } from '../adaptive';
 
 /**
@@ -65,9 +68,12 @@ const COMPARE = 'SK-FR-compare';
 const EQUIV = 'SK-FR-equiv';
 const PLURAL_BASE = 'SK-EN-plural-base';
 const PLURAL_SIB = 'SK-EN-plural-sibilant';
+const ADD_10 = 'SK-NS-add-within10';
+const ADD_20 = 'SK-NS-add-within20';
 
 interface CompareTask {
   readonly subject: 'math';
+  readonly course: 'fractions';
   readonly skillId: typeof COMPARE;
   readonly kind: 'fraction_comparison';
   readonly left: Fraction;
@@ -75,6 +81,7 @@ interface CompareTask {
 }
 interface EquivTask {
   readonly subject: 'math';
+  readonly course: 'fractions';
   readonly skillId: typeof EQUIV;
   readonly kind: 'fraction_equivalence';
   readonly left: Fraction;
@@ -82,15 +89,25 @@ interface EquivTask {
 }
 interface PluralTask {
   readonly subject: 'english';
+  readonly course: 'plurals';
   readonly skillId: typeof PLURAL_BASE | typeof PLURAL_SIB;
   readonly kind: 'noun_plural';
   readonly word: string;
 }
-type Task = CompareTask | EquivTask | PluralTask;
+interface AdditionTask {
+  readonly subject: 'math';
+  readonly course: 'addition';
+  readonly skillId: typeof ADD_10 | typeof ADD_20;
+  readonly kind: 'integer_addition';
+  readonly a: number;
+  readonly b: number;
+}
+type Task = CompareTask | EquivTask | PluralTask | AdditionTask;
 
 const f = (numerator: number, denominator: number): Fraction => ({ numerator, denominator });
 const cmp = (left: Fraction, right: Fraction): CompareTask => ({
   subject: 'math',
+  course: 'fractions',
   skillId: COMPARE,
   kind: 'fraction_comparison',
   left,
@@ -98,6 +115,7 @@ const cmp = (left: Fraction, right: Fraction): CompareTask => ({
 });
 const eq = (left: Fraction, right: Fraction): EquivTask => ({
   subject: 'math',
+  course: 'fractions',
   skillId: EQUIV,
   kind: 'fraction_equivalence',
   left,
@@ -105,9 +123,18 @@ const eq = (left: Fraction, right: Fraction): EquivTask => ({
 });
 const plural = (skillId: PluralTask['skillId'], word: string): PluralTask => ({
   subject: 'english',
+  course: 'plurals',
   skillId,
   kind: 'noun_plural',
   word,
+});
+const add = (skillId: AdditionTask['skillId'], a: number, b: number): AdditionTask => ({
+  subject: 'math',
+  course: 'addition',
+  skillId,
+  kind: 'integer_addition',
+  a,
+  b,
 });
 
 const TASK_BANK: Readonly<Record<string, Task>> = {
@@ -123,23 +150,38 @@ const TASK_BANK: Readonly<Record<string, Task>> = {
   'eng-sib-1': plural(PLURAL_SIB, 'box'), // boxes
   'eng-sib-2': plural(PLURAL_SIB, 'baby'), // babies
   'eng-sib-3': plural(PLURAL_SIB, 'dish'), // dishes
+  'add-10-1': add(ADD_10, 3, 4), // 7
+  'add-10-2': add(ADD_10, 2, 5), // 7
+  'add-10-3': add(ADD_10, 6, 1), // 7
+  'add-20-1': add(ADD_20, 8, 5), // 13
+  'add-20-2': add(ADD_20, 7, 6), // 13
+  'add-20-3': add(ADD_20, 9, 4), // 13
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
   'eng-xfer-base': plural(PLURAL_BASE, 'pen'), // pens
   'eng-xfer-sib': plural(PLURAL_SIB, 'wish'), // wishes
+  'add-xfer-10': add(ADD_10, 4, 5), // 9
+  'add-xfer-20': add(ADD_20, 8, 7), // 15
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
  *  correct answer can lift an already-mastered skill to TRANSFERABLE (AT-12). */
-const TRANSFER_TASKS = new Set(['frac-xfer-cmp', 'frac-xfer-eq', 'eng-xfer-base', 'eng-xfer-sib']);
+const TRANSFER_TASKS = new Set([
+  'frac-xfer-cmp',
+  'frac-xfer-eq',
+  'eng-xfer-base',
+  'eng-xfer-sib',
+  'add-xfer-10',
+  'add-xfer-20',
+]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
 const isRelation = (v: unknown): v is FractionRelation => v === 'lt' || v === 'eq' || v === 'gt';
 
 /** Representations are per-subject working modes; the projection counts their diversity. */
 const REPRESENTATIONS: Record<Subject, readonly string[]> = {
-  math: ['symbolic', 'area-model', 'number-line', 'set'],
+  math: ['symbolic', 'area-model', 'number-line', 'set', 'counters'],
   english: ['written', 'spoken', 'picture'],
 };
 const representationOf = (task: Task, raw: unknown): string => {
@@ -160,6 +202,9 @@ function present(task: Task): { question: string; options: readonly string[] } {
       question: `Are ${fmt(task.left)} and ${fmt(task.right)} equal in value? (yes / no)`,
       options: ['yes', 'no'],
     };
+  }
+  if (task.kind === 'integer_addition') {
+    return { question: `What is ${task.a} + ${task.b}?`, options: [] /* type the number */ };
   }
   return {
     question: `What is the plural of "${task.word}"? Type the word.`,
@@ -185,6 +230,14 @@ function answerKeyValid(task: Task): boolean {
       claimedEquivalent: areEquivalent(task.left, task.right),
     }).correct;
   }
+  if (task.kind === 'integer_addition') {
+    return checkAdditionTask({
+      kind: 'integer_addition',
+      a: task.a,
+      b: task.b,
+      claimedSum: task.a + task.b,
+    }).correct;
+  }
   return checkEnglishTask({
     kind: 'noun_plural',
     word: task.word,
@@ -197,6 +250,7 @@ function tokenValid(task: Task, raw: string): boolean {
   const a = raw.trim().toLowerCase();
   if (task.kind === 'fraction_comparison') return isRelation(a);
   if (task.kind === 'fraction_equivalence') return a === 'yes' || a === 'no';
+  if (task.kind === 'integer_addition') return /^\d+$/.test(a); // a non-negative integer
   return /^[a-z]+$/.test(a); // a single word
 }
 
@@ -219,6 +273,14 @@ function judge(task: Task, raw: string): boolean {
       claimedEquivalent: a === 'yes',
     }).correct;
   }
+  if (task.kind === 'integer_addition') {
+    return checkAdditionTask({
+      kind: 'integer_addition',
+      a: task.a,
+      b: task.b,
+      claimedSum: Number(a),
+    }).correct;
+  }
   return checkEnglishTask({ kind: 'noun_plural', word: task.word, claimedPlural: a }).correct;
 }
 
@@ -226,11 +288,13 @@ async function requireActiveSession(
   deps: Deps,
   sessionId: string,
   alias: string,
-): Promise<{ subject: Subject }> {
+): Promise<{ subject: Subject; course: CourseId }> {
   const row = await deps.session.getTutoringSession(sessionId);
   if (!row || row.learnerAlias !== alias) throw new DomainError('NOT_FOUND', 'session not found');
   if (row.state !== 'ACTIVE') throw new DomainError('POLICY_BLOCKED', 'session is not active');
-  return { subject: row.subject as Subject };
+  const subject = row.subject as Subject;
+  // The strand/course the session actually runs (persisted at start; default by subject).
+  return { subject, course: courseFor(subject, row.strand) };
 }
 
 /** End a session cleanly as COMPLETED (e.g. the ER-09 item budget was reached). */
@@ -314,8 +378,8 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     requireActorType(a, 'child');
     const alias = c.req.param('alias');
     const sessionId = c.req.param('sessionId');
-    const { subject } = await requireActiveSession(deps, sessionId, alias);
-    const next = await computeNext(deps, alias, subject);
+    const { course } = await requireActiveSession(deps, sessionId, alias);
+    const next = await computeNext(deps, alias, course);
     const budget = await sessionBudget(deps, alias, sessionId);
     return c.json({ ...next, budget });
   });
@@ -325,13 +389,13 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     const a = authed(c);
     requireActorType(a, 'child');
     const alias = c.req.param('alias');
-    const { subject } = await requireActiveSession(deps, c.req.param('sessionId'), alias);
+    const { course } = await requireActiveSession(deps, c.req.param('sessionId'), alias);
 
     const taskId = c.req.query('taskId') ?? 'frac-cmp-1';
     const task = TASK_BANK[taskId];
     if (!task) throw new DomainError('NOT_FOUND', 'task not found');
-    if (task.subject !== subject) {
-      throw new DomainError('POLICY_BLOCKED', 'task is not for this session subject');
+    if (task.course !== course) {
+      throw new DomainError('POLICY_BLOCKED', 'task is not for this session course');
     }
 
     // Validate the answer key with the INDEPENDENT oracle before delivery. The
@@ -365,7 +429,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     requireActorType(a, 'child');
     const alias = c.req.param('alias');
     const sessionId = c.req.param('sessionId');
-    const { subject } = await requireActiveSession(deps, sessionId, alias);
+    const { course } = await requireActiveSession(deps, sessionId, alias);
 
     const b = await c.req.json<AnswerBody>().catch(() => ({}) as AnswerBody);
     if (!b.clientSubmissionId) {
@@ -389,8 +453,8 @@ export function registerCoaching(app: Hono, deps: Deps): void {
 
     const task = TASK_BANK[b.taskId ?? ''];
     if (!task) throw new DomainError('NOT_FOUND', 'task not found');
-    if (task.subject !== subject) {
-      throw new DomainError('POLICY_BLOCKED', 'task is not for this session subject');
+    if (task.course !== course) {
+      throw new DomainError('POLICY_BLOCKED', 'task is not for this session course');
     }
     if (typeof b.answer !== 'string' || !tokenValid(task, b.answer)) {
       throw new DomainError('POLICY_BLOCKED', 'answer is not valid for this task');
@@ -428,7 +492,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     const postBudget = await sessionBudget(deps, alias, sessionId);
     const completionReason = postBudget.itemCeilingReached
       ? 'ITEM_BUDGET'
-      : (await allCoachableMastered(deps, alias, subject))
+      : (await allCoachableMastered(deps, alias, course))
         ? 'MASTERY_COMPLETE'
         : null;
     if (completionReason) {
@@ -450,13 +514,13 @@ export function registerCoaching(app: Hono, deps: Deps): void {
 
     // Self-driving loop: the planner recommends the next objective off the freshly
     // re-derived mastery (advancement once the prerequisite is independent).
-    const next = await computeNext(deps, alias, subject);
+    const next = await computeNext(deps, alias, course);
     // Coaching ladder on a wrong answer: a targeted HINT first (early wrong), then
     // a stall-driven strategy change (AT-08) once the learner keeps missing.
     const coaching = graded.correct
       ? null
-      : await assessStall(deps, alias, sessionId, task.skillId, subject);
-    const hint = !graded.correct && !coaching ? hintFor(subject, task.skillId) : null;
+      : await assessStall(deps, alias, sessionId, task.skillId, course);
+    const hint = !graded.correct && !coaching ? hintFor(course, task.skillId) : null;
     return c.json(
       {
         graded: true,
@@ -479,7 +543,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     requireActorType(a, 'child');
     const alias = c.req.param('alias');
     const sessionId = c.req.param('sessionId');
-    const { subject } = await requireActiveSession(deps, sessionId, alias);
+    const { course } = await requireActiveSession(deps, sessionId, alias);
 
     const b = await c.req.json<MultimodalBody>().catch(() => ({}) as MultimodalBody);
     if (!b.clientSubmissionId) {
@@ -517,8 +581,8 @@ export function registerCoaching(app: Hono, deps: Deps): void {
 
     const task = TASK_BANK[b.taskId ?? ''];
     if (!task) throw new DomainError('NOT_FOUND', 'task not found');
-    if (task.subject !== subject) {
-      throw new DomainError('POLICY_BLOCKED', 'task is not for this session subject');
+    if (task.course !== course) {
+      throw new DomainError('POLICY_BLOCKED', 'task is not for this session course');
     }
 
     // AT-28: below the trust floor, or an unreadable token, ask for clarification —
@@ -559,7 +623,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     const postBudget = await sessionBudget(deps, alias, sessionId);
     const completionReason = postBudget.itemCeilingReached
       ? 'ITEM_BUDGET'
-      : (await allCoachableMastered(deps, alias, subject))
+      : (await allCoachableMastered(deps, alias, course))
         ? 'MASTERY_COMPLETE'
         : null;
     if (completionReason) {
@@ -581,11 +645,11 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       );
     }
 
-    const next = await computeNext(deps, alias, subject);
+    const next = await computeNext(deps, alias, course);
     const coaching = graded.correct
       ? null
-      : await assessStall(deps, alias, sessionId, task.skillId, subject);
-    const hint = !graded.correct && !coaching ? hintFor(subject, task.skillId) : null;
+      : await assessStall(deps, alias, sessionId, task.skillId, course);
+    const hint = !graded.correct && !coaching ? hintFor(course, task.skillId) : null;
     return c.json(
       {
         graded: true,

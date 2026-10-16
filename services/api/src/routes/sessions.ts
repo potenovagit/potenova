@@ -12,7 +12,7 @@ import { decideUsage } from '@potenova/policy';
 import { AGE_BANDS, type AgeBand } from '@potenova/identity';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
 import { type Deps } from '../deps';
-import { buildSessionSummary, computeNext, sessionBudget } from '../adaptive';
+import { buildSessionSummary, computeNext, sessionBudget, courseFor } from '../adaptive';
 
 /**
  * Child-facing tutoring sessions (the vertical slice start).
@@ -35,6 +35,8 @@ async function hasChildLearningConsent(deps: Deps, familyAlias: string | null): 
 
 interface StartBody {
   subject?: string;
+  /** Optional strand/course within the subject (e.g. 'addition'); default by subject. */
+  strand?: string;
   requestedMinutes?: number;
 }
 
@@ -60,6 +62,8 @@ export function registerSessions(app: Hono, deps: Deps): void {
       throw new DomainError('POLICY_BLOCKED', "subject must be 'math' or 'english'");
     }
     const requestedMinutes = b.requestedMinutes ?? 0;
+    // The strand/course the session runs (an explicit, subject-valid strand or the default).
+    const course = courseFor(b.subject, b.strand);
 
     // Age band is derived from the learner's registered grade — never self-declared.
     const learner = await deps.identity.getLearner(alias);
@@ -100,6 +104,7 @@ export function registerSessions(app: Hono, deps: Deps): void {
       learnerAlias: alias,
       subject: b.subject,
       state: session.state,
+      strand: course,
     });
 
     // Reserve the allotment against today's usage so the cap holds across
@@ -108,7 +113,7 @@ export function registerSessions(app: Hono, deps: Deps): void {
 
     // The first objective is PLANNER-selected (adaptive), not a fixed task — the
     // client opens the session straight onto next.defaultTaskId.
-    const next = await computeNext(deps, alias, b.subject as 'math' | 'english');
+    const next = await computeNext(deps, alias, course);
     // Session item budget (ER-09) the learner-protection ceiling for this session.
     const budget = await sessionBudget(deps, alias, sessionId);
 

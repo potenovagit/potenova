@@ -20,6 +20,8 @@ export interface TutoringSessionRow {
   learnerAlias: string;
   subject: string;
   state: string;
+  /** Strand/course within the subject; null = the subject's default course. */
+  strand?: string | null;
 }
 
 export class SessionRepository {

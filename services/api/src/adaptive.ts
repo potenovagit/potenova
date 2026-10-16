@@ -7,11 +7,14 @@ import { DomainError } from '@potenova/contracts';
 import {
   buildFractionsDraftGraph,
   buildEnglishDraftGraph,
+  buildAdditionDraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
   ENGLISH_MISCONCEPTIONS,
   ENGLISH_STRATEGIES,
+  ADDITION_MISCONCEPTIONS,
+  ADDITION_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -36,15 +39,20 @@ import type { Deps } from './deps';
  * selection is READ-ONLY and can never set mastery (the mastery authority stays
  * the single source).
  *
- * SUBJECT-AGNOSTIC: each subject supplies its own graph, oracle-validatable
- * coachable skills, default tasks and remediation-representation ladder. The
- * planner/stall/selection code is identical across subjects — that is what shows
- * the engine is not Math-only. Skill ids are CANONICAL curriculum ids.
+ * SUBJECT/STRAND-AGNOSTIC: each COURSE (a strand within a subject) supplies its
+ * own graph, oracle-validatable coachable skills, default tasks and remediation-
+ * representation ladder. The planner/stall/selection code is identical across
+ * every course — that is what shows the engine is not fractions-only (or
+ * Math-only). A subject can hold several courses (Math = fractions + addition);
+ * a session is pinned to one course via the subject's default or an explicit
+ * strand. Skill ids are CANONICAL curriculum ids.
  */
 
 export type Subject = 'math' | 'english';
+export type CourseId = 'fractions' | 'addition' | 'plurals';
 
-interface SubjectPlan {
+interface CoursePlan {
+  readonly subject: Subject;
   readonly buildGraph: () => CurriculumGraph;
   /** Oracle-validatable skills the slice can coach, in canonical order. */
   readonly coachableSkillIds: readonly string[];
@@ -52,15 +60,16 @@ interface SubjectPlan {
   readonly defaultTask: Readonly<Record<string, string>>;
   /** Strategy-change representation ladder (first = most concrete). */
   readonly remediationReps: readonly string[];
-  /** Misconception KB for the hint ladder (empty when a subject has none yet). */
+  /** Misconception KB for the hint ladder (empty when a course has none yet). */
   readonly misconceptions: readonly MisconceptionDefinition[];
   readonly strategies: readonly InstructionalStrategy[];
   /** The transfer (novel-context) task offered when a mastered skill earns one. */
   readonly transferTask: Readonly<Record<string, string>>;
 }
 
-const SUBJECTS: Record<Subject, SubjectPlan> = {
-  math: {
+const COURSES: Record<CourseId, CoursePlan> = {
+  fractions: {
+    subject: 'math',
     buildGraph: buildFractionsDraftGraph,
     coachableSkillIds: ['SK-FR-equiv', 'SK-FR-compare'],
     defaultTask: { 'SK-FR-compare': 'frac-cmp-1', 'SK-FR-equiv': 'frac-eq-1' },
@@ -69,7 +78,18 @@ const SUBJECTS: Record<Subject, SubjectPlan> = {
     strategies: FRACTION_STRATEGIES,
     transferTask: { 'SK-FR-compare': 'frac-xfer-cmp', 'SK-FR-equiv': 'frac-xfer-eq' },
   },
-  english: {
+  addition: {
+    subject: 'math',
+    buildGraph: buildAdditionDraftGraph,
+    coachableSkillIds: ['SK-NS-add-within10', 'SK-NS-add-within20'],
+    defaultTask: { 'SK-NS-add-within10': 'add-10-1', 'SK-NS-add-within20': 'add-20-1' },
+    remediationReps: ['counters', 'number-line', 'symbolic'],
+    misconceptions: ADDITION_MISCONCEPTIONS,
+    strategies: ADDITION_STRATEGIES,
+    transferTask: { 'SK-NS-add-within10': 'add-xfer-10', 'SK-NS-add-within20': 'add-xfer-20' },
+  },
+  plurals: {
+    subject: 'english',
     buildGraph: buildEnglishDraftGraph,
     coachableSkillIds: ['SK-EN-plural-base', 'SK-EN-plural-sibilant'],
     defaultTask: { 'SK-EN-plural-base': 'eng-base-1', 'SK-EN-plural-sibilant': 'eng-sib-1' },
@@ -80,19 +100,36 @@ const SUBJECTS: Record<Subject, SubjectPlan> = {
   },
 };
 
-/** The coachable skills for a subject (for the coaching task bank / routes). */
-export function coachableSkillsFor(subject: Subject): readonly string[] {
-  return SUBJECTS[subject].coachableSkillIds;
+/** The default course for each subject (preserves single-strand behaviour). */
+export const DEFAULT_COURSE: Record<Subject, CourseId> = { math: 'fractions', english: 'plurals' };
+/** Courses a subject offers, for the parent strand-focus control. */
+export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
+  math: ['fractions', 'addition'],
+  english: ['plurals'],
+};
+
+/** Resolve the course a session runs: an explicit, subject-valid strand or the default. */
+export function courseFor(subject: Subject, strand?: string | null): CourseId {
+  if (strand && (COURSES_BY_SUBJECT[subject] as string[]).includes(strand)) {
+    return strand as CourseId;
+  }
+  return DEFAULT_COURSE[subject];
+}
+export function subjectOfCourse(course: CourseId): Subject {
+  return COURSES[course].subject;
+}
+export function defaultTaskId(course: CourseId, skillId: string): string | null {
+  return COURSES[course].defaultTask[skillId] ?? null;
 }
 
-/** The subject a canonical skill belongs to (via its curriculum graph), or null. */
+/** The subject a canonical skill belongs to (via its course graph), or null. */
 export function subjectOfSkill(skillId: string): Subject | null {
-  for (const subject of Object.keys(SUBJECTS) as Subject[]) {
+  for (const course of Object.keys(COURSES) as CourseId[]) {
     try {
-      SUBJECTS[subject].buildGraph().getSkill(skillId);
-      return subject;
+      COURSES[course].buildGraph().getSkill(skillId);
+      return COURSES[course].subject;
     } catch {
-      // not in this subject's graph — try the next
+      // not in this course's graph — try the next
     }
   }
   return null;
@@ -157,9 +194,9 @@ const MASTERED_STATES = new Set(['INDEPENDENT', 'RETAINED', 'TRANSFERABLE']);
 export async function allCoachableMastered(
   deps: Deps,
   alias: string,
-  subject: Subject,
+  course: CourseId,
 ): Promise<boolean> {
-  for (const skillId of SUBJECTS[subject].coachableSkillIds) {
+  for (const skillId of COURSES[course].coachableSkillIds) {
     const p = await projectSkill(deps, alias, skillId);
     if (!MASTERED_STATES.has(p.state)) return false;
   }
@@ -167,16 +204,16 @@ export async function allCoachableMastered(
 }
 
 /**
- * A mastery snapshot of every coachable skill in a subject (for the planner),
+ * A mastery snapshot of every coachable skill in a course (for the planner),
  * including each skill's most recent trusted practice time for retention/review.
  */
 async function coachableMastery(
   deps: Deps,
   alias: string,
-  subject: Subject,
+  course: CourseId,
 ): Promise<Record<string, SkillMastery>> {
   const mastery: Record<string, SkillMastery> = {};
-  for (const skillId of SUBJECTS[subject].coachableSkillIds) {
+  for (const skillId of COURSES[course].coachableSkillIds) {
     const events = await deps.evidence.listEvidence(alias, skillId);
     const corrections = await deps.evidence.listCorrections(events.map((e) => e.eventId));
     const p = projectShadow(alias, skillId, events, corrections, deps.policies.mastery);
@@ -205,10 +242,10 @@ export interface NextRecommendation {
 export async function computeNext(
   deps: Deps,
   alias: string,
-  subject: Subject,
+  course: CourseId,
 ): Promise<NextRecommendation> {
-  const plan = SUBJECTS[subject];
-  const mastery = await coachableMastery(deps, alias, subject);
+  const plan = COURSES[course];
+  const mastery = await coachableMastery(deps, alias, course);
   const next = selectNextObjective({
     graph: plan.buildGraph(),
     coachableSkillIds: plan.coachableSkillIds,
@@ -253,10 +290,10 @@ export async function buildReportRationale(
   deps: Deps,
   alias: string,
   workedSkillIds: readonly string[],
-  subject: Subject,
+  course: CourseId,
 ): Promise<ReportRationale> {
-  const plan = SUBJECTS[subject];
-  const mastery = await coachableMastery(deps, alias, subject);
+  const plan = COURSES[course];
+  const mastery = await coachableMastery(deps, alias, course);
   const selection = selectNextObjective({
     graph: plan.buildGraph(),
     coachableSkillIds: plan.coachableSkillIds,
@@ -272,7 +309,7 @@ export async function buildReportRationale(
       reasonCode,
       explanation: reasonCode
         ? explainReasonCode(reasonCode)
-        : 'Not part of the current adaptive plan for this subject.',
+        : 'Not part of the current adaptive plan for this course.',
     };
   });
 
@@ -308,8 +345,8 @@ export interface Hint {
   ladder: readonly SkillHint[];
 }
 
-export function hintFor(subject: Subject, skillId: string): Hint | null {
-  const plan = SUBJECTS[subject];
+export function hintFor(course: CourseId, skillId: string): Hint | null {
+  const plan = COURSES[course];
   const ladder = hintsForSkill(skillId, plan.misconceptions, plan.strategies);
   const top = ladder[0];
   if (!top) return null;
@@ -377,7 +414,8 @@ export async function buildSessionSummary(
     mastery.push({ skillId, projection: await projectSkill(deps, alias, skillId) });
   }
 
-  const rationale = await buildReportRationale(deps, alias, skillIds, row.subject as Subject);
+  const course = courseFor(row.subject as Subject, row.strand);
+  const rationale = await buildReportRationale(deps, alias, skillIds, course);
 
   return {
     sessionId,
@@ -422,7 +460,7 @@ export async function assessStall(
   alias: string,
   sessionId: string,
   skillId: string,
-  subject: Subject,
+  course: CourseId,
 ): Promise<StallCoaching | null> {
   const prefix = `${sessionId}:`;
   const inSession = (await deps.evidence.listEvidence(alias, skillId))
@@ -435,7 +473,7 @@ export async function assessStall(
   );
   if (!status.stalled) return null;
 
-  const plan = SUBJECTS[subject];
+  const plan = COURSES[course];
   const base = {
     stalled: true as const,
     consecutiveWrong: status.consecutiveWrong,
