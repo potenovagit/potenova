@@ -37,33 +37,47 @@ export interface CreateAppOptions extends BuildDepsOptions {
  */
 export function createApp(opts: CreateAppOptions = {}): Hono {
   const deps: Deps = buildDeps(opts);
+
+  // The API as a self-contained sub-app so it can be mounted at both the root
+  // (dev proxy strips the prefix) AND under `/api` (single-origin production,
+  // where the same server also serves the built web UI). Same routes, one place.
+  const buildApi = (): Hono => {
+    const api = new Hono();
+    api.onError(onError);
+    api.get('/healthz', (c) => c.json({ status: 'ok' }));
+    api.get('/readyz', (c) =>
+      c.json({
+        status: 'ready',
+        environment: deps.config.environment,
+        primaryRegion: deps.config.primaryRegion,
+        drRegion: deps.config.drRegion,
+        modules: DOMAIN_MODULES.length,
+      }),
+    );
+    // Authenticate API paths (UI + health stay public). dev headers or verified JWT.
+    api.use(
+      '*',
+      authMiddleware(readAuthConfig(opts.env ?? process.env), deps.config.primaryRegion),
+    );
+    registerFamilies(api, deps);
+    registerLearning(api, deps);
+    registerCommerce(api, deps);
+    registerOps(api, deps);
+    registerAiEval(api, deps);
+    registerSessions(api, deps);
+    registerCoaching(api, deps);
+    registerDiagnostic(api, deps);
+    registerParent(api, deps);
+    registerOperatorStatus(api, deps);
+    return api;
+  };
+
   const app = new Hono();
   app.onError(onError);
-
-  app.get('/healthz', (c) => c.json({ status: 'ok' }));
-  app.get('/readyz', (c) =>
-    c.json({
-      status: 'ready',
-      environment: deps.config.environment,
-      primaryRegion: deps.config.primaryRegion,
-      drRegion: deps.config.drRegion,
-      modules: DOMAIN_MODULES.length,
-    }),
-  );
-
-  // Authenticate API paths (UI + health stay public). dev headers or verified JWT.
-  app.use('*', authMiddleware(readAuthConfig(opts.env ?? process.env), deps.config.primaryRegion));
-
-  registerFamilies(app, deps);
-  registerLearning(app, deps);
-  registerCommerce(app, deps);
-  registerOps(app, deps);
-  registerAiEval(app, deps);
-  registerSessions(app, deps);
-  registerCoaching(app, deps);
-  registerDiagnostic(app, deps);
-  registerParent(app, deps);
-  registerOperatorStatus(app, deps);
+  // Root mount keeps every existing path (and the dev proxy) working; the `/api`
+  // mount lets the single-origin production build reach the API at `/api/*`.
+  app.route('/', buildApi());
+  app.route('/api', buildApi());
 
   // Serve the built web UI from the same origin (after API routes, so they win).
   if (opts.webRoot) {

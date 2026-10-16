@@ -65,6 +65,24 @@ describe('Potenova API (Stage 2 Step 2)', () => {
     expect(ready.modules).toBe(14);
   });
 
+  it('also serves the API under /api (single-origin production path)', async () => {
+    const app = freshApp();
+    // The dev proxy strips /api; the single-origin build calls /api/* directly.
+    expect((await app.request('/api/healthz')).status).toBe(200);
+    const ready = await (await app.request('/api/readyz')).json();
+    expect(ready.modules).toBe(14);
+    // An authed API route works under the prefix too.
+    const op = await app.request('/api/operator/status', json(operator));
+    expect(op.status).toBe(200);
+    // Auth still enforced under the prefix.
+    const noauth = await app.request('/api/families', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+    });
+    expect(noauth.status).toBe(401);
+  });
+
   it('requires an actor identity (401 without auth headers)', async () => {
     const app = freshApp();
     const r = await app.request('/families', {
