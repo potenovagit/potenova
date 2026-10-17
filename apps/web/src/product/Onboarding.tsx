@@ -28,9 +28,18 @@ interface Ids {
   learnerId: string;
 }
 
-function stashActive(ids: Ids, nickname: string, grade: number, focus: Focus): void {
+function stashActive(
+  ids: Ids,
+  nickname: string,
+  grade: number,
+  focus: Focus,
+  modalities: { voice: boolean; photo: boolean },
+): void {
   try {
-    localStorage.setItem('potenova.active', JSON.stringify({ ...ids, nickname, grade, focus }));
+    localStorage.setItem(
+      'potenova.active',
+      JSON.stringify({ ...ids, nickname, grade, focus, modalities }),
+    );
   } catch {
     /* private mode / storage disabled — the flow still works, dashboard just can't preload */
   }
@@ -135,7 +144,10 @@ export function Onboarding() {
     try {
       const { familyId } = idsRef.current;
       await api.activateEntitlement(familyId);
-      stashActive(idsRef.current, nickname.trim(), grade, focus);
+      stashActive(idsRef.current, nickname.trim(), grade, focus, {
+        voice: consentVoice,
+        photo: consentPhoto,
+      });
       go(7);
     } catch (e) {
       fail(e, 'Could not start the trial. Please try again.');
