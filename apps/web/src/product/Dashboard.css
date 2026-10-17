@@ -255,6 +255,19 @@
   color: var(--muted);
   font-size: 12px;
 }
+.dash-usagebar {
+  height: 8px;
+  border-radius: 999px;
+  background: #ece7da;
+  overflow: hidden;
+}
+.dash-usagebar > span {
+  display: block;
+  height: 100%;
+  background: var(--teal);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
 .dash-tag {
   font: 600 11px/1 var(--font-sans);
   color: #8a7f6a;
