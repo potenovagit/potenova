@@ -1,0 +1,21 @@
+/* Potenova design tokens — the single source for colour and type across the
+ * product UI (landing, onboarding, dashboard, learner). Scoped component styles
+ * reference these; the legacy operator/QA demo keeps its own styles.css. */
+:root {
+  --ink: #17202a;
+  --ground: #faf9f5;
+  --surface: #ffffff;
+  --muted: #5d6b79;
+  --teal: #0e7c7b;
+  --teal-ink: #0b6160;
+  --teal-dk: #094b4a;
+  --teal-wash: #e3f1f0;
+  --coral: #e07a4e;
+  --coral-ink: #a2502a;
+  --dark: #0e3a39;
+  --line: #ebe7db;
+  --line-strong: #e4ded0;
+  --radius: 16px;
+  --font-sans: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+}
