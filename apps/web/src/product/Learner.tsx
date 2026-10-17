@@ -5,6 +5,7 @@ import {
   type DeliveredTask,
   type DiagnosticProbeTask,
   type DiagnosticRunStep,
+  type Lesson,
   type Placement,
   type SessionBudget,
   type SessionNext,
@@ -80,6 +81,10 @@ export function Learner() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [teachMode, setTeachMode] = useState<TeachMode>('step');
+  // "Learn it" lesson: selected to the child's last-shown misconception.
+  const [lastMisconceptionId, setLastMisconceptionId] = useState<string | null>(null);
+  const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [lessonLoading, setLessonLoading] = useState(false);
   // Baseline ("find your starting point") state
   const [probe, setProbe] = useState<DiagnosticProbeTask | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
@@ -184,6 +189,27 @@ export function Learner() {
     setFeedback(null);
     setHintMsg(null);
     setAnswered(false);
+    setLastMisconceptionId(null);
+  }
+
+  /** Open the "Learn it" hub and fetch the approved lesson selected to the
+   *  child's last-shown misconception. Falls back silently to the client's
+   *  static example if the fetch fails or nothing approved matches. */
+  async function goTeach(): Promise<void> {
+    setTeachMode('step');
+    setView('teach');
+    if (!active || !skillId) return;
+    setLessonLoading(true);
+    try {
+      const r = await api.getLesson(active.familyId, active.learnerId, skillId, {
+        misconception: lastMisconceptionId,
+      });
+      setLesson(r.lesson);
+    } catch {
+      setLesson(null);
+    } finally {
+      setLessonLoading(false);
+    }
   }
 
   async function begin(subj: 'math' | 'english'): Promise<void> {
@@ -237,6 +263,8 @@ export function Learner() {
         setAnswered(false);
         if (r.hint) {
           setHintMsg(r.hint.message);
+          // Remember the misconception so "Show me how" teaches to THIS slip.
+          if (r.hint.misconceptionId) setLastMisconceptionId(r.hint.misconceptionId);
           setFeedback({ kind: 'wrong', message: 'Take another look.' });
         } else if (r.coaching) {
           setFeedback({ kind: 'coaching', message: r.coaching.message });
@@ -553,7 +581,24 @@ export function Learner() {
               </button>
             </div>
 
-            <WorkedExample skillId={skillId} />
+            {lessonLoading ? (
+              <div
+                style={{
+                  background: '#fff',
+                  border: '1px solid var(--line, #ebe7db)',
+                  borderRadius: 16,
+                  padding: '22px 26px',
+                }}
+              >
+                <p className="lrn-muted" style={{ margin: 0 }}>
+                  Finding the clearest way to explain this…
+                </p>
+              </div>
+            ) : lesson ? (
+              <LessonView lesson={lesson} />
+            ) : (
+              <WorkedExample skillId={skillId} />
+            )}
 
             <div
               style={{
@@ -785,10 +830,7 @@ export function Learner() {
                 <button
                   className="lrn-actbtn"
                   style={{ borderColor: 'var(--coral)', color: '#a2502a' }}
-                  onClick={() => {
-                    setTeachMode('step');
-                    setView('teach');
-                  }}
+                  onClick={() => void goTeach()}
                 >
                   Show me how
                 </button>
@@ -855,8 +897,63 @@ function TopBar({
   );
 }
 
+/** Renders a selected, approved lesson from the teaching library. Steps are
+ *  structured data (say / bars), so nothing free-form or unvetted is drawn. */
+function LessonView({ lesson }: { lesson: Lesson }) {
+  return (
+    <div
+      style={{
+        background: '#fff',
+        border: '1px solid var(--line, #ebe7db)',
+        borderRadius: 16,
+        padding: '22px 26px',
+      }}
+    >
+      <p style={{ fontSize: 16, margin: '0 0 18px' }}>
+        <strong>The idea:</strong> {lesson.intro}
+      </p>
+      <div style={{ display: 'grid', gap: 14 }}>
+        {lesson.steps.map((s, i) =>
+          s.kind === 'bars' ? (
+            <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+              <span className="lrn-num">{i + 1}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>{s.label}</div>
+                <div className="lrn-bar" role="img" aria-label={`${s.filled} of ${s.total} shaded`}>
+                  {Array.from({ length: s.total }).map((_, j) => (
+                    <span key={j} className={`lrn-cell${j < s.filled ? ' on' : ''}`} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+              <span className="lrn-num">{i + 1}</span>
+              <p style={{ margin: 0, fontSize: 16 }}>{s.text}</p>
+            </div>
+          ),
+        )}
+      </div>
+      <div
+        style={{
+          background: '#eaf5f4',
+          border: '1px solid #cfe6e4',
+          borderRadius: 12,
+          padding: '12px 14px',
+          marginTop: 16,
+          fontSize: 15,
+          color: 'var(--teal-ink)',
+        }}
+      >
+        <strong>{lesson.takeaway}</strong>
+      </div>
+    </div>
+  );
+}
+
 /** A fixed, approved worked example. Fraction skills get the bar-model lesson;
- *  other skills get a plain idea card — never a mismatched fraction diagram. */
+ *  other skills get a plain idea card — never a mismatched fraction diagram.
+ *  Used only as a client fallback when the server lesson can't be fetched. */
 function WorkedExample({ skillId }: { skillId: string }) {
   if (isFractionSkill(skillId)) {
     return (

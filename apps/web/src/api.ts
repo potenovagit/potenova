@@ -329,6 +329,45 @@ export const submitAnswer = (
     body,
   });
 
+// ---- "Learn it" teaching library --------------------------------------------
+
+export type LessonStep =
+  | { kind: 'say'; text: string }
+  | { kind: 'bars'; label: string; filled: number; total: number };
+export interface Lesson {
+  lessonId: string;
+  skillId: string;
+  misconceptionId: string;
+  representation: string;
+  approved: boolean;
+  approvalRef: string | null;
+  version: string;
+  title: string;
+  intro: string;
+  steps: LessonStep[];
+  takeaway: string;
+}
+
+/** Fetch the approved worked explanation for a skill, selected to the child's
+ *  just-shown misconception (and representation, when known). Returns null when
+ *  nothing approved matches — the caller shows a minimal fallback, never
+ *  anything unvetted. */
+export const getLesson = (
+  familyId: string,
+  learnerId: string,
+  skillId: string,
+  opts?: { misconception?: string | null; representation?: string | null },
+) => {
+  const q = new URLSearchParams();
+  if (opts?.misconception) q.set('misconception', opts.misconception);
+  if (opts?.representation) q.set('representation', opts.representation);
+  const qs = q.toString();
+  return call<{ lesson: Lesson | null }>(
+    `/learners/${learnerId}/lessons/${encodeURIComponent(skillId)}${qs ? `?${qs}` : ''}`,
+    { headers: childHeaders(familyId, learnerId) },
+  );
+};
+
 /** Grant the per-modality consents the multimodal answer path requires. */
 export const grantMultimodalConsent = (familyId: string, guardianId: string) =>
   Promise.all([
