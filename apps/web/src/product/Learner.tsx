@@ -1,12 +1,35 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import * as api from '../api';
-import { isApiError, type DeliveredTask, type SessionBudget, type SessionNext } from '../api';
-import { readActive, type ActiveLearner } from './active';
+import {
+  isApiError,
+  type DeliveredTask,
+  type DiagnosticProbeTask,
+  type DiagnosticRunStep,
+  type Placement,
+  type SessionBudget,
+  type SessionNext,
+} from '../api';
+import {
+  readActive,
+  isBaselineDone,
+  markBaselineDone,
+  stashBaselineRun,
+  readBaselineRun,
+  clearBaselineRun,
+  type ActiveLearner,
+} from './active';
 import { skillLabel, isFractionSkill } from './labels';
 import './Learner.css';
 
 /**
- * Learner experience at #/learn. One route, four views:
+ * Learner experience at #/learn. One route, several views:
+ *   baseline  — the "find your starting point" check the onboarding promises. The
+ *               server drives it adaptively, one probe at a time, and decides when
+ *               it knows enough; probes come only from the API (content gate). It
+ *               shows no right/wrong — it only places the learner. Runs once per
+ *               learner+subject, then is skipped on later sessions; an interrupted
+ *               run resumes.
+ *   placed    — a short transition showing the starting point the baseline found.
  *   practice  — the real session loop (tasks come only from the API, so the
  *               content gate holds: nothing free-form or unvalidated is shown).
  *   teach     — "Learn it" hub: a worked example (an approved, fixed lesson),
@@ -20,7 +43,17 @@ import './Learner.css';
  * reads projections back. Hints/coaching come from the API, never invented here.
  */
 
-type View = 'loading' | 'connect' | 'error' | 'practice' | 'teach' | 'video' | 'game' | 'summary';
+type View =
+  | 'loading'
+  | 'connect'
+  | 'error'
+  | 'baseline'
+  | 'placed'
+  | 'practice'
+  | 'teach'
+  | 'video'
+  | 'game'
+  | 'summary';
 type TeachMode = 'video' | 'step' | 'game';
 type Feedback = { kind: 'correct' | 'wrong' | 'coaching'; message: string } | null;
 
@@ -47,15 +80,101 @@ export function Learner() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [teachMode, setTeachMode] = useState<TeachMode>('step');
+  // Baseline ("find your starting point") state
+  const [probe, setProbe] = useState<DiagnosticProbeTask | null>(null);
+  const [runId, setRunId] = useState<string | null>(null);
+  const [probesUsed, setProbesUsed] = useState(0);
+  const [placement, setPlacement] = useState<Placement | null>(null);
 
   useEffect(() => {
     if (!active) {
       setView('connect');
       return;
     }
-    void begin(subject);
+    void enter(subject);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Decide the entry: run the baseline first unless it's already done for this
+   *  learner + subject, in which case go straight to a practice session. */
+  async function enter(subj: 'math' | 'english'): Promise<void> {
+    if (!active) return;
+    setSubject(subj);
+    if (isBaselineDone(active.learnerId, subj)) {
+      await begin(subj);
+    } else {
+      await beginBaseline(subj);
+    }
+  }
+
+  /** Apply one step of the adaptive baseline: either show the next probe, or, when
+   *  the server decides it knows enough, record completion and move to placement. */
+  function applyBaselineStep(step: DiagnosticRunStep, subj: 'math' | 'english'): void {
+    if (!active) return;
+    setProbesUsed(step.probesUsed);
+    if (step.complete) {
+      setProbe(null);
+      setPlacement(step.placement ?? null);
+      markBaselineDone(active.learnerId, subj);
+      setView('placed');
+    } else if (step.next) {
+      setProbe(step.next);
+      setSelected(null);
+      setView('baseline');
+    } else {
+      // No probe and not complete — treat as placed with whatever we have.
+      setView('placed');
+    }
+  }
+
+  async function beginBaseline(subj: 'math' | 'english'): Promise<void> {
+    if (!active) return;
+    setView('loading');
+    setBusy(true);
+    setErr(null);
+    setPlacement(null);
+    try {
+      await api.activateEntitlement(active.familyId).catch(() => undefined);
+      // Resume an interrupted run if one is stashed; otherwise start fresh.
+      const stashed = readBaselineRun(active.learnerId, subj);
+      let step: DiagnosticRunStep | null = null;
+      if (stashed) {
+        step = await api
+          .resumeDiagnosticRun(active.familyId, active.learnerId, stashed)
+          .catch(() => null);
+        if (!step) clearBaselineRun(active.learnerId, subj);
+      }
+      if (!step) {
+        step = await api.startDiagnosticRun(active.familyId, active.learnerId, subj);
+      }
+      setRunId(step.runId);
+      stashBaselineRun(active.learnerId, subj, step.runId);
+      applyBaselineStep(step, subj);
+    } catch (e) {
+      setErr(isApiError(e) ? `${e.message} (${e.code})` : 'Could not start the baseline.');
+      setView('error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function answerBaseline(): Promise<void> {
+    if (!active || !runId || !probe || !selected) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const step = await api.answerDiagnosticProbe(active.familyId, active.learnerId, runId, {
+        clientSubmissionId: subId(),
+        taskId: probe.taskId,
+        answer: selected,
+      });
+      applyBaselineStep(step, subject);
+    } catch (e) {
+      setErr(isApiError(e) ? `${e.message} (${e.code})` : 'Could not record that answer.');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function loadTask(taskId: string, sid: string): Promise<void> {
     if (!active) return;
@@ -188,7 +307,7 @@ export function Learner() {
             {err ?? 'Something went wrong.'}
           </p>
           <div style={{ display: 'flex', gap: 12 }}>
-            <button className="lrn-btn" onClick={() => void begin(subject)} disabled={busy}>
+            <button className="lrn-btn" onClick={() => void enter(subject)} disabled={busy}>
               Try again
             </button>
             <a className="lrn-btn lrn-btn-g" href="#/dashboard">
@@ -234,7 +353,7 @@ export function Learner() {
             {active?.focus === 'both' && (
               <button
                 className="lrn-btn lrn-btn-g"
-                onClick={() => void begin(subject === 'math' ? 'english' : 'math')}
+                onClick={() => void enter(subject === 'math' ? 'english' : 'math')}
                 disabled={busy}
               >
                 Try {subject === 'math' ? 'English' : 'Math'}
@@ -244,6 +363,118 @@ export function Learner() {
               Parent dashboard
             </a>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---- Baseline ("find your starting point") ---------------------------------
+  if (view === 'baseline') {
+    return (
+      <div className="lrn">
+        <TopBar
+          nickname={nickname}
+          chip={{ text: 'Finding your starting point', cls: 'teal' }}
+          right={
+            <span style={{ font: '600 13px/1 var(--font-sans)', color: 'var(--muted)' }}>
+              Question {probesUsed + 1}
+            </span>
+          }
+        />
+        <main className="lrn-stage">
+          {!probe ? (
+            <p className="lrn-muted">Setting up…</p>
+          ) : (
+            <div className="lrn-q">
+              <div style={{ font: '600 15px/1 var(--font-sans)', color: 'var(--teal-ink)' }}>
+                {skillLabel(probe.skillId)}
+              </div>
+              <h1 style={{ fontSize: 36, margin: '12px 0 26px' }}>{probe.question}</h1>
+              <div
+                className="lrn-ans-grid"
+                style={{
+                  gridTemplateColumns: `repeat(${probe.options.length <= 2 ? 2 : probe.options.length <= 4 ? 2 : 3}, minmax(0,1fr))`,
+                }}
+              >
+                {probe.options.map((opt) => (
+                  <button
+                    key={opt}
+                    className={`lrn-ans ${selected === opt ? 'sel' : ''}`}
+                    aria-pressed={selected === opt}
+                    disabled={busy}
+                    onClick={() => setSelected(opt)}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+              <div className="lrn-actions">
+                <button
+                  className="lrn-btn"
+                  onClick={() => void answerBaseline()}
+                  disabled={busy || !selected}
+                >
+                  Next
+                </button>
+              </div>
+              <p className="lrn-muted" style={{ fontSize: 14, marginTop: 14 }}>
+                There are no wrong answers here — this just finds the right place to start. Pick
+                what you think, and we’ll keep it short.
+              </p>
+            </div>
+          )}
+        </main>
+        {err && (
+          <p
+            className="lrn-muted"
+            style={{ color: '#a12b2b', textAlign: 'center', padding: '0 24px 12px' }}
+            role="alert"
+          >
+            {err}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // ---- Placed (starting point found) -----------------------------------------
+  if (view === 'placed') {
+    const entry = placement?.entry;
+    const checked = placement?.profile.skills.length ?? 0;
+    return (
+      <div className="lrn">
+        <TopBar
+          nickname={nickname}
+          chip={{ text: 'Starting point found', cls: 'teal' }}
+          right={null}
+        />
+        <div className="lrn-center">
+          <span
+            className="lrn-av"
+            aria-hidden="true"
+            style={{ width: 64, height: 64, fontSize: 30, borderRadius: 999 }}
+          >
+            ✓
+          </span>
+          <h1 style={{ fontSize: 32 }}>Found your starting point</h1>
+          {entry ? (
+            <p className="lrn-muted" style={{ maxWidth: '46ch' }}>
+              We’ll start {nickname} on <strong>{skillLabel(entry.skillId)}</strong>.{' '}
+              {entry.explanation}
+            </p>
+          ) : (
+            <p className="lrn-muted" style={{ maxWidth: '46ch' }}>
+              We’ve got a good place to start. Let’s begin.
+            </p>
+          )}
+          {checked > 0 && (
+            <p className="lrn-muted" style={{ fontSize: 13 }}>
+              Based on {checked} skill{checked === 1 ? '' : 's'} we checked just now.
+            </p>
+          )}
+          <button className="lrn-btn" onClick={() => void begin(subject)} disabled={busy}>
+            Start practising
+          </button>
         </div>
       </div>
     );
