@@ -12,6 +12,7 @@ import { registerAiEval } from './routes/ai-eval';
 import { registerSessions } from './routes/sessions';
 import { registerCoaching } from './routes/coaching';
 import { registerDiagnostic } from './routes/diagnostic';
+import { registerLessons } from './routes/lessons';
 import { registerParent } from './routes/parent';
 import { registerOperatorStatus } from './routes/operator-status';
 import { registerPrivacy } from './routes/privacy';
@@ -68,6 +69,7 @@ export function createApp(opts: CreateAppOptions = {}): Hono {
     registerSessions(api, deps);
     registerCoaching(api, deps);
     registerDiagnostic(api, deps);
+    registerLessons(api, deps);
     registerParent(api, deps);
     registerOperatorStatus(api, deps);
     registerPrivacy(api, deps);
