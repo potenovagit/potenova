@@ -3,6 +3,7 @@ import { Console } from './App';
 import { Landing } from './product/Landing';
 import { Onboarding } from './product/Onboarding';
 import { Dashboard } from './product/Dashboard';
+import { Learner } from './product/Learner';
 
 /**
  * Minimal hash-based router — no router dependency, so no lockfile churn.
@@ -11,7 +12,7 @@ import { Dashboard } from './product/Dashboard';
  *   #/console    → the operator / QA console (the existing tabbed demo)
  *   #/signup     → caregiver onboarding (guided linear stepper)
  *   #/dashboard  → parent dashboard (derived progress + controls + safety/data)
- *   #/learn      → learner experience (placeholder until a later PR)
+ *   #/learn      → learner experience (practice / learn-it / watch / play)
  */
 type Route = 'landing' | 'console' | 'signup' | 'dashboard' | 'learn';
 
@@ -34,41 +35,6 @@ function useHashRoute(): Route {
   return route;
 }
 
-/** Placeholder shown for routes whose product screen lands in a later PR. */
-function ComingSoon({ title }: { title: string }) {
-  return (
-    <div className="landing" style={{ minHeight: '100vh' }}>
-      <div
-        className="ln-wrap"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          textAlign: 'center',
-          minHeight: '100vh',
-          gap: 18,
-        }}
-      >
-        <span
-          className="ln-mark"
-          aria-hidden="true"
-          style={{ width: 44, height: 44, fontSize: 22 }}
-        >
-          P
-        </span>
-        <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 38, margin: 0 }}>{title}</h1>
-        <p className="ln-muted" style={{ fontSize: 18, maxWidth: '42ch' }}>
-          This screen is coming next. The design is approved and the React port is in progress.
-        </p>
-        <a className="ln-btn ln-btn-primary" href="#/">
-          Back to home
-        </a>
-      </div>
-    </div>
-  );
-}
-
 export function Shell() {
   const route = useHashRoute();
   switch (route) {
@@ -79,7 +45,7 @@ export function Shell() {
     case 'dashboard':
       return <Dashboard />;
     case 'learn':
-      return <ComingSoon title="Learning session" />;
+      return <Learner />;
     case 'landing':
     default:
       return <Landing />;

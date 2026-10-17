@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import * as api from '../api';
 import { isApiError, type Dashboard as DashboardData, type GuardianPreference } from '../api';
 import { readActive, type ActiveLearner } from './active';
+import { skillLabel, subjectLabel } from './labels';
 import './Dashboard.css';
 
 /**
@@ -12,22 +13,6 @@ import './Dashboard.css';
  * as requests; erasure is executed in the operator console under operator authz,
  * not from a guardian actor here.
  */
-
-const SKILL_LABELS: Record<string, string> = {
-  'SK-FR-compare': 'Comparing fractions',
-  'SK-FR-equiv': 'Equivalent fractions',
-  'SK-EN-plural-base': 'Plurals: adding -s',
-  'SK-EN-plural-sibilant': 'Plurals: -es and -ies',
-  'SK-NS-add-within10': 'Adding within 10',
-  'SK-NS-add-within20': 'Adding within 20',
-};
-const skillLabel = (id: string): string => SKILL_LABELS[id] ?? id;
-const SUBJECT_LABELS: Record<string, string> = {
-  math: 'Math',
-  english: 'English',
-  other: 'Other',
-};
-const subjectLabel = (s: string): string => SUBJECT_LABELS[s] ?? s;
 
 /** Known subject/strand focus options (mirrors the API's COURSES_BY_SUBJECT). */
 const FOCUS_OPTIONS: { value: string; subject: string; strand: string; label: string }[] = [
