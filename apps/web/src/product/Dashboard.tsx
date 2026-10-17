@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as api from '../api';
-import { isApiError, type Dashboard as DashboardData, type GuardianPreference } from '../api';
+import {
+  isApiError,
+  type Dashboard as DashboardData,
+  type GuardianPreference,
+  type UsageToday,
+} from '../api';
 import { readActive, type ActiveLearner } from './active';
 import { skillLabel, subjectLabel } from './labels';
 import './Dashboard.css';
@@ -36,6 +41,7 @@ export function Dashboard() {
   const [active] = useState<ActiveLearner | null>(() => readActive());
   const [data, setData] = useState<DashboardData | null>(null);
   const [pref, setPref] = useState<GuardianPreference | null>(null);
+  const [usage, setUsage] = useState<UsageToday | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -45,6 +51,9 @@ export function Dashboard() {
   const [editFocus, setEditFocus] = useState(false);
   const [savingCtl, setSavingCtl] = useState(false);
   const [eraseState, setEraseState] = useState<'idle' | 'confirm' | 'requested'>('idle');
+  const [eraseReceipt, setEraseReceipt] = useState<string | null>(null);
+  const [exportState, setExportState] = useState<'idle' | 'requesting' | 'requested'>('idle');
+  const [exportReceipt, setExportReceipt] = useState<string | null>(null);
 
   useEffect(() => {
     if (!active) {
@@ -54,16 +63,18 @@ export function Dashboard() {
     let live = true;
     (async () => {
       try {
-        const [d, p] = await Promise.all([
+        const [d, p, u] = await Promise.all([
           api.getDashboard(active.familyId, active.guardianId, active.learnerId),
           api
             .getPreferences(active.familyId, active.guardianId, active.learnerId)
             .then((r) => r.preference)
             .catch(() => null),
+          api.getUsage(active.familyId, active.guardianId, active.learnerId).catch(() => null),
         ]);
         if (!live) return;
         setData(d);
         setPref(p);
+        setUsage(u);
       } catch (e) {
         if (live)
           setErr(isApiError(e) ? `${e.message} (${e.code})` : 'Could not load the dashboard.');
@@ -132,6 +143,42 @@ export function Dashboard() {
       setErr(isApiError(e) ? `${e.message} (${e.code})` : 'Could not update the focus.');
     } finally {
       setSavingCtl(false);
+    }
+  }
+
+  async function requestExport(): Promise<void> {
+    if (!active) return;
+    setExportState('requesting');
+    setErr(null);
+    try {
+      const r = await api.submitDataRequest(
+        active.familyId,
+        active.guardianId,
+        active.learnerId,
+        'access',
+      );
+      setExportReceipt(r.requestId);
+      setExportState('requested');
+    } catch (e) {
+      setExportState('idle');
+      setErr(isApiError(e) ? `${e.message} (${e.code})` : 'Could not submit the request.');
+    }
+  }
+
+  async function requestErasure(): Promise<void> {
+    if (!active) return;
+    setErr(null);
+    try {
+      const r = await api.submitDataRequest(
+        active.familyId,
+        active.guardianId,
+        active.learnerId,
+        'erasure',
+      );
+      setEraseReceipt(r.requestId);
+      setEraseState('requested');
+    } catch (e) {
+      setErr(isApiError(e) ? `${e.message} (${e.code})` : 'Could not submit the request.');
     }
   }
 
@@ -502,9 +549,35 @@ export function Dashboard() {
                       </strong>
                     )}
                   </div>
+                  <div className="dash-row">
+                    <span>Today’s learning time</span>
+                    <strong>
+                      {usage ? `${usage.usedTodayMinutes} min` : '—'}
+                      {usage && usage.maxDailyMinutes != null && (
+                        <span className="dash-muted" style={{ fontWeight: 500 }}>
+                          {' '}
+                          of {usage.maxDailyMinutes}
+                        </span>
+                      )}
+                    </strong>
+                  </div>
+                  {usage && usage.maxDailyMinutes != null && usage.maxDailyMinutes > 0 && (
+                    <div
+                      className="dash-usagebar"
+                      role="img"
+                      aria-label={`${usage.usedTodayMinutes} of ${usage.maxDailyMinutes} minutes used today`}
+                    >
+                      <span
+                        style={{
+                          width: `${Math.min(100, Math.round((usage.usedTodayMinutes / usage.maxDailyMinutes) * 100))}%`,
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
                 <p className="dash-note" style={{ margin: '14px 0 0' }}>
-                  A limit can tighten the safety cap — never raise it above the approved maximum.
+                  Time today is counted from real sessions. A limit can tighten the safety cap —
+                  never raise it above the approved maximum.
                 </p>
               </div>
 
@@ -531,9 +604,23 @@ export function Dashboard() {
                       gap: 10,
                     }}
                   >
-                    <button className="dash-link" style={{ textAlign: 'left' }}>
-                      Download your data
-                    </button>
+                    {exportState !== 'requested' ? (
+                      <button
+                        className="dash-link"
+                        style={{ textAlign: 'left' }}
+                        onClick={() => void requestExport()}
+                        disabled={exportState === 'requesting'}
+                      >
+                        {exportState === 'requesting'
+                          ? 'Requesting…'
+                          : 'Request a copy of your data'}
+                      </button>
+                    ) : (
+                      <p style={{ margin: 0, fontSize: 14, color: 'var(--teal-ink)' }}>
+                        Request received{exportReceipt ? ` (ref ${exportReceipt})` : ''}. We’ll
+                        prepare an export and send a secure link.
+                      </p>
+                    )}
                     {eraseState === 'idle' && (
                       <button
                         className="dash-link danger"
@@ -553,14 +640,15 @@ export function Dashboard() {
                         }}
                       >
                         <p style={{ margin: '0 0 10px', fontSize: 14 }}>
-                          This submits a verified erasure request. Consent is revoked immediately so
-                          processing stops, and {active.nickname}’s data is removed across every
-                          system. Billing records are retained only as the law requires.
+                          This submits a verified erasure request to our privacy team. We stop new
+                          processing and remove {active.nickname}’s data across every system;
+                          billing records are retained only as the law requires. It’s carried out
+                          under reviewed authority — not from this screen.
                         </p>
                         <div style={{ display: 'flex', gap: 10 }}>
                           <button
                             className="dash-link danger"
-                            onClick={() => setEraseState('requested')}
+                            onClick={() => void requestErasure()}
                           >
                             Submit request
                           </button>
@@ -572,8 +660,8 @@ export function Dashboard() {
                     )}
                     {eraseState === 'requested' && (
                       <p style={{ margin: 0, fontSize: 14, color: 'var(--teal-ink)' }}>
-                        Request submitted. You’ll get confirmation once erasure is verified across
-                        all systems.
+                        Request received{eraseReceipt ? ` (ref ${eraseReceipt})` : ''}. You’ll get
+                        confirmation once erasure is verified across all systems.
                       </p>
                     )}
                   </div>

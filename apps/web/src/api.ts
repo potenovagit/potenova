@@ -415,6 +415,43 @@ export const setPreferences = (
     body,
   });
 
+// ---- Guardian self-service: usage + data-subject requests -------------------
+
+export interface UsageToday {
+  day: string;
+  usedTodayMinutes: number;
+  maxDailyMinutes: number | null;
+}
+
+/** Today's learning time from the usage ledger (derived, read-only). */
+export const getUsage = (familyId: string, guardianId: string, learnerId: string) =>
+  call<UsageToday>(`/learners/${learnerId}/usage`, {
+    headers: guardianHeaders(familyId, guardianId),
+  });
+
+export interface DataRequestReceipt {
+  requestId: string;
+  kind: 'access' | 'erasure';
+  state: string;
+  receivedAt?: string;
+}
+
+/** Submit a data-subject request (access/export or erasure) for the learner.
+ *  This is intake only — a guardian never executes an erasure; the privacy team
+ *  / operator fulfils it. */
+export const submitDataRequest = (
+  familyId: string,
+  guardianId: string,
+  learnerId: string,
+  kind: 'access' | 'erasure',
+  note?: string,
+) =>
+  call<DataRequestReceipt>(`/learners/${learnerId}/data-requests`, {
+    method: 'POST',
+    headers: guardianHeaders(familyId, guardianId),
+    body: { kind, ...(note ? { note } : {}) },
+  });
+
 // ---- Diagnostic → placement -------------------------------------------------
 
 export interface PlacementSkill {

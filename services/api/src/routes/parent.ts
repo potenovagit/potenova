@@ -2,7 +2,7 @@ import type { Context, Hono } from 'hono';
 import { DomainError } from '@potenova/contracts';
 import type { GuardianPreferenceRow } from '@potenova/persistence';
 import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
-import { type Deps } from '../deps';
+import { now, type Deps } from '../deps';
 import { COURSES_BY_SUBJECT, courseCoachableSkills, courseFor, type Subject } from '../adaptive';
 
 /**
@@ -13,7 +13,22 @@ import { COURSES_BY_SUBJECT, courseCoachableSkills, courseFor, type Subject } fr
  * never raise it (decideUsage enforces min(safety, parent)), and a focus only
  * reorders within a planner tier or pins the session's strand; it can never skip
  * a prerequisite or cross a non-negotiable gate. Guardian-only, tenant-isolated.
+ *
+ * This route also serves two guardian self-service reads/writes: today's usage
+ * minutes from the ledger (read-only, derived), and data-subject-request intake
+ * (DSAR). A guardian can REQUEST access/export or erasure of their own child's
+ * data; the request is recorded for the privacy team / operator to fulfil. The
+ * guardian never executes an erasure here — that stays operator-authz in the
+ * privacy route, fail-closed. Nothing on this route sets mastery.
  */
+
+/** UTC day key (YYYY-MM-DD) for the usage ledger — mirrors sessions.ts. */
+function utcDay(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+const DATA_REQUEST_KINDS = ['access', 'erasure'] as const;
+type DataRequestKind = (typeof DATA_REQUEST_KINDS)[number];
 
 interface PreferenceBody {
   focus?: { subject?: string; strand?: string } | null;
@@ -106,5 +121,85 @@ export function registerParent(app: Hono, deps: Deps): void {
     };
     await deps.session.saveGuardianPreference(row);
     return c.json({ preference: row }, 200);
+  });
+
+  // Today's learning time from the usage ledger (derived, read-only). Returns the
+  // parent's daily limit when set; the enforced ceiling is min(safety cap, parent
+  // cap), so the limit shown is the parent's own, never the internal safety value.
+  app.get('/learners/:alias/usage', async (c) => {
+    const a = authed(c);
+    requireActorType(a, 'guardian');
+    const alias = c.req.param('alias');
+    await assertOwnsLearner(a, alias);
+    const day = utcDay(now());
+    const usedTodayMinutes = await deps.session.getUsageMinutes(alias, day);
+    const pref = await deps.session.getGuardianPreference(alias);
+    return c.json({ day, usedTodayMinutes, maxDailyMinutes: pref?.maxDailyMinutes ?? null });
+  });
+
+  // DSAR intake: a guardian REQUESTS access/export or erasure of their own child's
+  // data. The request is recorded (RECEIVED) for the privacy team / operator to
+  // fulfil — a guardian never executes an erasure (that is operator-authz in the
+  // privacy route). Tenant-isolated: only for a learner in the guardian's family.
+  app.post('/learners/:alias/data-requests', async (c) => {
+    const a = authed(c);
+    requireActorType(a, 'guardian');
+    const alias = c.req.param('alias');
+    await assertOwnsLearner(a, alias);
+
+    const b = await c.req
+      .json<{ kind?: string; note?: string }>()
+      .catch(() => ({}) as { kind?: string; note?: string });
+    if (!b.kind || !DATA_REQUEST_KINDS.includes(b.kind as DataRequestKind)) {
+      throw new DomainError('POLICY_BLOCKED', "kind must be 'access' or 'erasure'");
+    }
+    const kind = b.kind as DataRequestKind;
+    const note = typeof b.note === 'string' ? b.note.slice(0, 2000) : undefined;
+
+    const requestId = `dsr-req-${Date.now()}-${alias}`;
+    const receivedAt = now();
+    await deps.erasure.saveDataSubjectRequest({
+      requestId,
+      kind: `${kind}_request`,
+      subjectType: 'learner',
+      subjectId: alias,
+      reason: 'subject_request',
+      state: 'RECEIVED',
+      outcomesJson: JSON.stringify({
+        requestedBy: a.actor.actorAlias,
+        familyId: a.actor.familyAlias,
+        note,
+      }),
+      updatedAt: receivedAt,
+    });
+    await deps.safety.recordAudit({
+      approver: a.actor.actorAlias,
+      reason: 'subject_request',
+      object: `learner:${alias}`,
+      action: `data_request_${kind}_received`,
+      outcome: 'RECEIVED',
+      expiry: null,
+      at: receivedAt,
+    });
+    return c.json({ requestId, kind, state: 'received', receivedAt }, 201);
+  });
+
+  // Read the status of a guardian's own data-subject request.
+  app.get('/learners/:alias/data-requests/:requestId', async (c) => {
+    const a = authed(c);
+    requireActorType(a, 'guardian');
+    const alias = c.req.param('alias');
+    await assertOwnsLearner(a, alias);
+    const requestId = c.req.param('requestId');
+    const row = await deps.erasure.getDataSubjectRequest(requestId);
+    if (!row || row.subjectType !== 'learner' || row.subjectId !== alias) {
+      throw new DomainError('NOT_FOUND', 'data request not found');
+    }
+    return c.json({
+      requestId: row.requestId,
+      kind: row.kind.replace(/_request$/, ''),
+      state: row.state,
+      updatedAt: row.updatedAt,
+    });
   });
 }
