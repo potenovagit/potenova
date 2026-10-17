@@ -1,0 +1,393 @@
+/* Caregiver onboarding — scoped under .onb. Guided linear stepper:
+ * Account (create → verify → secure) → Child & consent → Start. */
+.onb {
+  --ink: #17202a;
+  --muted: #5d6b79;
+  --line: #ebe7db;
+  font-family: var(--font-sans);
+  color: var(--ink);
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  background: var(--ground);
+}
+.onb h1,
+.onb h2 {
+  font-family: var(--font-serif);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.onb a {
+  color: var(--teal-ink);
+}
+
+/* Left rail */
+.onb-rail {
+  width: 360px;
+  flex: 0 0 360px;
+  background: var(--dark);
+  color: #eaf4f3;
+  padding: 38px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.onb-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: #fff;
+}
+.onb-brand .m {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--teal);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 18px/1 var(--font-serif);
+}
+.onb-rail h1 {
+  font-size: 28px;
+  color: #fff;
+  line-height: 1.15;
+}
+.onb-rail p {
+  color: #b6d3d1;
+  font-size: 15px;
+  margin-top: 12px;
+}
+.onb-rail .foot {
+  font-size: 13px;
+  color: #cfe6e4;
+}
+
+/* Main pane */
+.onb-pane {
+  flex: 1;
+  min-width: 0;
+  padding: 44px 52px;
+  display: flex;
+  flex-direction: column;
+  max-width: 760px;
+}
+.onb-phases {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 26px;
+}
+.onb-ph {
+  flex: 1;
+  font: 600 12px/1.3 var(--font-sans);
+  color: #9aa7ad;
+  border-top: 3px solid #e2ddd0;
+  padding-top: 8px;
+}
+.onb-ph.on {
+  color: var(--teal-ink);
+  border-top-color: var(--teal);
+}
+.onb-ph.done {
+  color: var(--ink);
+  border-top-color: var(--teal);
+}
+.onb-kicker {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+.onb-lead {
+  color: var(--muted);
+  font-size: 15px;
+  margin: 8px 0 26px;
+}
+.onb-form {
+  display: grid;
+  gap: 16px;
+  max-width: 460px;
+}
+.onb-lab {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  margin: 0 0 7px;
+}
+.onb-hint {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.onb-inp {
+  width: 100%;
+  height: 46px;
+  border: 1.5px solid #d9d3c6;
+  border-radius: 10px;
+  padding: 0 14px;
+  font: 400 16px/1 var(--font-sans);
+  background: #fff;
+  color: var(--ink);
+}
+.onb-inp:focus {
+  outline: 2px solid var(--teal);
+  border-color: var(--teal);
+}
+select.onb-inp {
+  appearance: none;
+  cursor: pointer;
+}
+
+/* Buttons */
+.onb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: 10px;
+  font: 600 16px/1 var(--font-sans);
+  text-decoration: none;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  background: none;
+  color: inherit;
+}
+.onb-btn-p {
+  background: var(--teal);
+  color: #fff;
+}
+.onb-btn-p:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.onb-btn-g {
+  background: transparent;
+  border-color: #cfc9ba;
+  color: var(--ink);
+}
+.onb-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+/* OTP row */
+.onb-code-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.onb-code {
+  width: 52px;
+  height: 60px;
+  text-align: center;
+  border: 1.5px solid #d9d3c6;
+  border-radius: 10px;
+  font: 600 24px/1 var(--font-sans);
+  background: #fff;
+  color: var(--ink);
+}
+.onb-code:focus {
+  outline: 2px solid var(--teal);
+  border-color: var(--teal);
+}
+
+/* Option cards (MFA + consent) */
+.onb-opt {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  background: #fff;
+  cursor: pointer;
+}
+.onb-opt.sel {
+  border-color: var(--teal);
+  background: var(--teal-wash);
+}
+.onb-opt input {
+  margin-top: 3px;
+}
+.onb-opt .t strong {
+  font-size: 15px;
+}
+.onb-opt .t .sub {
+  color: var(--muted);
+  font-size: 13px;
+  display: block;
+  margin-top: 3px;
+}
+.onb-tag {
+  color: var(--teal-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Segmented focus control */
+.onb-seg {
+  display: flex;
+  gap: 8px;
+}
+.onb-seg label {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  padding: 11px 0;
+  font-weight: 600;
+  font-size: 15px;
+  background: #fff;
+  cursor: pointer;
+}
+.onb-seg label.sel {
+  border-color: var(--teal);
+  background: var(--teal-wash);
+  color: var(--teal-ink);
+}
+
+/* Trial summary card */
+.onb-summary {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px 24px;
+  max-width: 460px;
+  display: grid;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+.onb-summary .ro {
+  display: flex;
+  justify-content: space-between;
+}
+.onb-summary .muted {
+  color: var(--muted);
+}
+.onb-summary .fine {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.onb-note {
+  margin-top: 14px;
+  font-size: 13px;
+}
+.onb-note.err {
+  color: #a12b2b;
+}
+.onb-note.muted {
+  color: #8a7f6a;
+}
+
+/* Step 7 — Ready (two-column, no rail) */
+.onb-ready {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  background: var(--ground);
+  font-family: var(--font-sans);
+  color: var(--ink);
+}
+.onb-ready h1,
+.onb-ready h2 {
+  font-family: var(--font-serif);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.onb-ready-main {
+  flex: 1;
+  min-width: 0;
+  padding: 56px 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.onb-ready-mark {
+  width: 62px;
+  height: 62px;
+  border-radius: 999px;
+  background: var(--teal);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 30px/1 var(--font-sans);
+  margin-bottom: 20px;
+}
+.onb-ready-side {
+  width: 380px;
+  flex: 0 0 380px;
+  background: #fff;
+  border-left: 1px solid var(--line);
+  padding: 48px 40px;
+}
+.onb-chk {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 15px;
+}
+.onb-chk:last-child {
+  border-bottom: none;
+}
+.onb-tick {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 15px/1 var(--font-sans);
+}
+.onb-tick.done {
+  background: var(--teal-wash);
+  color: var(--teal-ink);
+}
+.onb-tick.todo {
+  background: #f1ede2;
+  color: #8a7f6a;
+}
+
+@media (max-width: 880px) {
+  .onb {
+    flex-direction: column;
+  }
+  .onb-rail {
+    width: 100%;
+    flex: none;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 24px;
+  }
+  .onb-rail h1,
+  .onb-rail p,
+  .onb-rail .foot {
+    display: none;
+  }
+  .onb-pane {
+    padding: 28px 24px;
+    max-width: none;
+  }
+  .onb-ready {
+    flex-direction: column;
+  }
+  .onb-ready-side {
+    width: 100%;
+    flex: none;
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+}
