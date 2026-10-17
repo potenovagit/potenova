@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Console } from './App';
 import { Landing } from './product/Landing';
 import { Onboarding } from './product/Onboarding';
+import { Dashboard } from './product/Dashboard';
 
 /**
  * Minimal hash-based router — no router dependency, so no lockfile churn.
@@ -9,7 +10,7 @@ import { Onboarding } from './product/Onboarding';
  *   #/           → public landing page
  *   #/console    → the operator / QA console (the existing tabbed demo)
  *   #/signup     → caregiver onboarding (guided linear stepper)
- *   #/dashboard  → parent dashboard (placeholder until a later PR)
+ *   #/dashboard  → parent dashboard (derived progress + controls + safety/data)
  *   #/learn      → learner experience (placeholder until a later PR)
  */
 type Route = 'landing' | 'console' | 'signup' | 'dashboard' | 'learn';
@@ -76,7 +77,7 @@ export function Shell() {
     case 'signup':
       return <Onboarding />;
     case 'dashboard':
-      return <ComingSoon title="Parent dashboard" />;
+      return <Dashboard />;
     case 'learn':
       return <ComingSoon title="Learning session" />;
     case 'landing':

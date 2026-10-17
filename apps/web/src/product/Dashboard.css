@@ -1,0 +1,298 @@
+/* Parent dashboard — scoped under .dash. Progress-by-skill is the hero
+ * (full-width), with Controls and Safety & data as two tiles underneath. */
+.dash {
+  --ink: #17202a;
+  --muted: #5d6b79;
+  --line: #ebe7db;
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background: var(--ground);
+  display: flex;
+  flex-wrap: wrap;
+  min-height: 100vh;
+}
+.dash h1,
+.dash h2,
+.dash h3 {
+  font-family: var(--font-serif);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.dash a {
+  color: var(--teal-ink);
+}
+
+/* Sidebar */
+.dash-side {
+  width: 248px;
+  flex: 0 0 248px;
+  background: var(--dark);
+  color: #eaf4f3;
+  padding: 26px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+.dash-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: #fff;
+}
+.dash-brand .m {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--teal);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 17px/1 var(--font-serif);
+}
+.dash-viewing {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.dash-nav {
+  display: grid;
+  gap: 4px;
+}
+.dash-nav a {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 9px;
+  color: #cfe6e4;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 15px;
+}
+.dash-nav a.on {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-weight: 600;
+}
+.dash-acct {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 16px;
+  font-size: 13px;
+}
+.dash-acct .av {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #2f6e6b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 13px/1 var(--font-sans);
+}
+
+/* Main */
+.dash-main {
+  flex: 999 1 640px;
+  min-width: 0;
+  padding: 32px 40px;
+}
+.dash-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+.dash-muted {
+  color: var(--muted);
+}
+.dash-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 22px;
+}
+.dash-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.dash-tile {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 20px;
+}
+.dash-tile .k {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.dash-tile .v {
+  font: 700 26px/1.1 var(--font-serif);
+  margin-top: 8px;
+}
+
+/* Buttons */
+.dash-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font: 600 15px/1 var(--font-sans);
+  text-decoration: none;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  background: none;
+  color: inherit;
+}
+.dash-btn-p {
+  background: var(--teal);
+  color: #fff;
+}
+.dash-btn-g {
+  background: transparent;
+  border-color: #cfc9ba;
+  color: var(--ink);
+}
+.dash-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Pills */
+.dash-pill {
+  display: inline-flex;
+  align-items: center;
+  font: 700 12px/1 var(--font-sans);
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.p-mast {
+  background: #dff1ea;
+  color: #0b6160;
+}
+.p-dev {
+  background: #e6eef6;
+  color: #2c5c8a;
+}
+.p-chal {
+  background: #fbe6d9;
+  color: #a2502a;
+}
+.p-rev {
+  background: #fbeecd;
+  color: #7f5600;
+}
+.p-unk {
+  background: #ede9df;
+  color: #6b6252;
+}
+
+/* Skill rows */
+.dash-skill {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid #efeadd;
+}
+.dash-skill:last-child {
+  border-bottom: none;
+}
+.dash-subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--line-strong);
+}
+
+/* Up-next list */
+.dash-upnext {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.dash-upnext li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+}
+
+/* Controls + safety rows */
+.dash-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.dash-link {
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--teal-ink);
+  font-size: 14px;
+  padding: 0;
+}
+.dash-link.danger {
+  color: #a12b2b;
+}
+.dash-note {
+  color: var(--muted);
+  font-size: 12px;
+}
+.dash-tag {
+  font: 600 11px/1 var(--font-sans);
+  color: #8a7f6a;
+  background: #f1ede2;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+/* States */
+.dash-empty {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+  padding: 24px;
+}
+
+@media (max-width: 900px) {
+  .dash-side {
+    width: 100%;
+    flex: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+  }
+  .dash-acct {
+    display: none;
+  }
+  .dash-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dash-main {
+    padding: 24px 20px;
+  }
+}
