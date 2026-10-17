@@ -4,6 +4,11 @@
   Implemented: `@potenova/curriculum/lessons` (schema + authored DRAFT seed +
   `selectLesson`), `services/api` route `GET /learners/:alias/lessons/:skillId`,
   and the `apps/web` learner "Learn it" hub. Shipped in PR #12.
+  **Update (PR #14):** the selection key is now derived SERVER-SIDE — misconception
+  from the skill's authored KB (a client value honoured only when valid), and
+  representation from the child's own evidence (`deriveLessonKey`). Representation
+  became a ranking signal rather than a hard filter, so the misconception-specific
+  lesson is reachable without a representation argument.
 - **Date:** 2026-10-17
 - **Deciders:** Curriculum / AI Governance (owner: Cristian Miron)
 - **Requirement IDs:** AI-001 (content gate — LOCKED), LRN-007 (misconception →
@@ -82,9 +87,11 @@ screen only reads projections back.
 - Personalisation reuses the existing evidence/selection seam; adding breadth
   (more lessons, more misconception/representation keys) needs no new mechanism.
 - Content stays reviewable and gate-compatible field-by-field.
-- Current limit: the misconception is the one the client observed in the last
-  hint; server-side derivation from recent evidence, and per-representation
-  targeting, are follow-ups that do not change the selection seam.
+- Selection is derived server-side (PR #14): misconception from the authored KB,
+  representation from the child's evidence. Remaining limit: there is no
+  per-answer misconception classifier, so the misconception is KB-authoritative
+  for the skill, not inferred from the specific wrong answer — a classifier is a
+  future addition that would not change the selection seam.
 
 ## Reversal triggers
 
