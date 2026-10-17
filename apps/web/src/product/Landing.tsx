@@ -4,6 +4,9 @@ import './Landing.css';
 export function Landing() {
   return (
     <div className="landing">
+      <a className="ln-skip" href="#top">
+        Skip to content
+      </a>
       {/* NAV */}
       <header className="ln-nav">
         <div className="ln-wrap ln-nav-inner">
@@ -34,7 +37,13 @@ export function Landing() {
       </header>
 
       {/* HERO */}
-      <section id="top" className="ln-section" style={{ paddingTop: 64 }}>
+      <section
+        id="top"
+        className="ln-section"
+        tabIndex={-1}
+        aria-label="Main content"
+        style={{ paddingTop: 64 }}
+      >
         <div className="ln-wrap ln-hero">
           <div className="ln-hero-copy">
             <span className="ln-eyebrow">Math &amp; English · Grades 1–8</span>
