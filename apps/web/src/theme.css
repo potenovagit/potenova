@@ -10,7 +10,7 @@
   --teal-ink: #0b6160;
   --teal-dk: #094b4a;
   --teal-wash: #e3f1f0;
-  --coral: #e07a4e;
+  --coral: #d4663a; /* AA: ≥3:1 with white for the UI glyph/borders (was #e07a4e, 2.97) */
   --coral-ink: #a2502a;
   --dark: #0e3a39;
   --line: #ebe7db;
@@ -18,4 +18,18 @@
   --radius: 16px;
   --font-sans: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+}
+
+/* WCAG 2.3.3 — honour a reduced-motion preference everywhere: near-instant,
+ * non-animated transitions (progress/usage bars, hovers) without removing the
+ * end state. Applies to the whole app, product routes and legacy console. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

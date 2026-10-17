@@ -252,6 +252,12 @@ select.onb-inp {
   background: var(--teal-wash);
   color: var(--teal-ink);
 }
+/* The native radio is visually hidden, so surface keyboard focus on the label
+ * (WCAG 2.4.7) via :focus-within. */
+.onb-seg label:focus-within {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
 
 /* Trial summary card */
 .onb-summary {
@@ -285,7 +291,7 @@ select.onb-inp {
   color: #a12b2b;
 }
 .onb-note.muted {
-  color: #8a7f6a;
+  color: #726856;
 }
 
 /* Step 7 — Ready (two-column, no rail) */
@@ -357,7 +363,7 @@ select.onb-inp {
 }
 .onb-tick.todo {
   background: #f1ede2;
-  color: #8a7f6a;
+  color: #726856;
 }
 
 @media (max-width: 880px) {

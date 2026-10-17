@@ -246,7 +246,12 @@
   cursor: pointer;
   color: var(--teal-ink);
   font-size: 14px;
-  padding: 0;
+  /* WCAG 2.5.8: keep the hit target ≥24px tall even for these inline actions. */
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 2px;
 }
 .dash-link.danger {
   color: #a12b2b;
@@ -270,7 +275,7 @@
 }
 .dash-tag {
   font: 600 11px/1 var(--font-sans);
-  color: #8a7f6a;
+  color: #726856;
   background: #f1ede2;
   padding: 4px 8px;
   border-radius: 999px;

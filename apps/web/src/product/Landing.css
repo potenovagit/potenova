@@ -33,6 +33,31 @@
   margin: 0 auto;
   padding-inline: 24px;
 }
+/* Skip-to-content (WCAG 2.4.1): off-screen until keyboard-focused. */
+.ln-skip {
+  position: absolute;
+  left: 16px;
+  top: -48px;
+  z-index: 20;
+  background: var(--teal);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font: 600 15px/1 var(--font-sans);
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+.ln-skip:focus {
+  top: 12px;
+}
+/* The hero receives focus from the skip link but shouldn't show an outline box. */
+#top:focus {
+  outline: none;
+}
+#top:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 4px;
+}
 .ln-btn {
   display: inline-flex;
   align-items: center;
