@@ -18,6 +18,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - name: Dependency audit (production deps — block on critical, SEC-005)
+        run: npm audit --omit=dev --audit-level=critical
       - name: Format check
         run: npm run format:check
       - name: Typecheck (project references)

@@ -29,7 +29,7 @@
     "@potenova/policy": "*",
     "@potenova/safety": "*",
     "@potenova/persistence": "*",
-    "hono": "4.6.14",
+    "hono": "4.13.13",
     "jose": "5.9.6"
   }
 }
