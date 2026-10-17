@@ -18,6 +18,11 @@ describe('teaching library selection', () => {
     expect(l?.lessonId).toBe('LS-FR-compare-denom-bars');
   });
 
+  it('selects the misconception lesson even with no representation (rep is not a filter)', () => {
+    const l = selectLesson({ skillId: 'SK-FR-compare', misconceptionId: 'MC-FR-denom-size' });
+    expect(l?.lessonId).toBe('LS-FR-compare-denom-bars');
+  });
+
   it('falls back to the skill default when the misconception is unknown or absent', () => {
     const none = selectLesson({ skillId: 'SK-FR-compare' });
     expect(none?.lessonId).toBe('LS-FR-compare-default');

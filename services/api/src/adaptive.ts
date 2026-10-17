@@ -167,6 +167,88 @@ export function subjectOfSkill(skillId: string): Subject | null {
   return null;
 }
 
+/** The course that owns a skill (by coachable set, then graph membership). */
+export function courseOfSkill(skillId: string): CourseId | null {
+  for (const course of Object.keys(COURSES) as CourseId[]) {
+    if ((COURSES[course].coachableSkillIds as readonly string[]).includes(skillId)) return course;
+  }
+  for (const course of Object.keys(COURSES) as CourseId[]) {
+    try {
+      COURSES[course].buildGraph().getSkill(skillId);
+      return course;
+    } catch {
+      // not here
+    }
+  }
+  return null;
+}
+
+/** The misconception ids the KB maps to a skill (authored). */
+export function misconceptionIdsForSkill(course: CourseId, skillId: string): string[] {
+  return COURSES[course].misconceptions
+    .filter((m) => m.skillId === skillId)
+    .map((m) => m.misconceptionId);
+}
+
+export interface LessonKey {
+  misconceptionId: string | null;
+  representation: string | null;
+}
+
+/**
+ * Derive the teaching-library key for a skill SERVER-SIDE, so lesson selection
+ * never depends on a client-supplied value (ADR-0021 follow-up).
+ *
+ * - misconception: the skill's authored misconception from the KB (the same top
+ *   misconception the hint ladder surfaces). A client may pass one, but it is
+ *   honoured only when it is a valid misconception for this skill; otherwise the
+ *   KB value wins. There is no per-answer misconception classifier yet, so this
+ *   is authoritative-by-KB, not inferred from the wrong answer.
+ * - representation: the one the child most needs among the representations the
+ *   authored remediation for that misconception teaches in — i.e. the candidate
+ *   representation with the fewest CORRECT pieces of evidence (ties → the
+ *   authored primary). With no evidence, the primary. This is a ranking signal
+ *   only; it can never exclude the misconception's lesson, just pick among
+ *   same-misconception variants.
+ */
+export function deriveLessonKey(
+  course: CourseId,
+  skillId: string,
+  evidence: readonly { representation: string; correct: boolean }[],
+  misconceptionOverride?: string | null,
+): LessonKey {
+  const hint = hintFor(course, skillId);
+  if (!hint) return { misconceptionId: null, representation: null };
+
+  const valid = misconceptionIdsForSkill(course, skillId);
+  const misconceptionId =
+    misconceptionOverride && valid.includes(misconceptionOverride)
+      ? misconceptionOverride
+      : hint.misconceptionId;
+
+  // Representations the authored remediation for the CHOSEN misconception uses.
+  const forChosen = hint.ladder.filter((h) => h.misconceptionId === misconceptionId);
+  const candidateReps = [...new Set(forChosen.flatMap((h) => h.representations))];
+  const reps = candidateReps.length > 0 ? candidateReps : [...hint.representations];
+  if (reps.length === 0) return { misconceptionId, representation: null };
+
+  const correctByRep = new Map<string, number>();
+  for (const e of evidence) {
+    if (e.correct)
+      correctByRep.set(e.representation, (correctByRep.get(e.representation) ?? 0) + 1);
+  }
+  let weakest = reps[0];
+  let weakestCount = correctByRep.get(weakest) ?? 0;
+  for (const r of reps) {
+    const c = correctByRep.get(r) ?? 0;
+    if (c < weakestCount) {
+      weakest = r;
+      weakestCount = c;
+    }
+  }
+  return { misconceptionId, representation: weakest };
+}
+
 /**
  * Session item budget (ER-09): count this session's graded items and distinct
  * skills from the immutable ledger, then evaluate against the DRAFT policy. The

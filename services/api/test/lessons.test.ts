@@ -64,12 +64,28 @@ describe('learn-it lesson delivery', () => {
     expect(body.lesson.approvalRef).toBeTruthy();
   });
 
-  it('falls back to the skill default with no misconception', async () => {
+  it('derives the misconception server-side and serves the specific lesson with no query params', async () => {
     const app = await onboard();
     const body = await (
       await app.request('/learners/kid1/lessons/SK-FR-compare', json(child))
     ).json();
-    expect(body.lesson.lessonId).toBe('LS-FR-compare-default');
+    // No client params: the server resolves MC-FR-denom-size from the KB and the
+    // representation from (empty) evidence, so the specific lesson is chosen.
+    expect(body.lesson.lessonId).toBe('LS-FR-compare-denom-bars');
+    expect(body.selection.misconceptionId).toBe('MC-FR-denom-size');
+    expect(body.selection.representation).toBe('area-model');
+  });
+
+  it('ignores an invalid client-passed misconception and still serves from the KB', async () => {
+    const app = await onboard();
+    const body = await (
+      await app.request(
+        '/learners/kid1/lessons/SK-FR-compare?misconception=MC-XX-bogus',
+        json(child),
+      )
+    ).json();
+    expect(body.selection.misconceptionId).toBe('MC-FR-denom-size');
+    expect(body.lesson.lessonId).toBe('LS-FR-compare-denom-bars');
   });
 
   it('returns null lesson for a skill with no library entry', async () => {
