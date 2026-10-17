@@ -55,7 +55,7 @@ interface Learner {
 type Note = { kind: 'ok' | 'err'; text: string };
 type Tab = 'parent' | 'child' | 'operator';
 
-export function App() {
+export function Console() {
   const [tab, setTab] = useState<Tab>('parent');
   const [ready, setReady] = useState<{ text: string; ok: boolean | null }>({
     text: 'Connecting to the API…',
