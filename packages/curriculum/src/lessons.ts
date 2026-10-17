@@ -163,11 +163,14 @@ export interface LessonQuery {
 
 /**
  * Pick the most specific SERVABLE lesson for a query. A lesson is a candidate
- * only when it is approved with a signed ref and its skill matches, and each of
- * its fixed dimensions either equals the requested value or is ANY (a lesson for
- * a *different* misconception is never shown). Among candidates the most specific
- * wins — a matched misconception outranks a matched representation — with a
- * deterministic tiebreak by lessonId. Returns null when nothing is servable.
+ * only when it is approved with a signed ref, its skill matches, and its
+ * misconception is ANY or the requested one — a lesson for a *different*
+ * misconception is never shown. Representation is a ranking signal, not a filter:
+ * a lesson for the right misconception in another representation still beats the
+ * generic default, so the misconception-specific lesson is chosen even when no
+ * representation is supplied. Among candidates the most specific wins — a matched
+ * misconception outranks a matched representation — with a deterministic tiebreak
+ * by lessonId. Returns null when nothing is servable.
  */
 export function selectLesson(q: LessonQuery, library: readonly Lesson[] = LESSONS): Lesson | null {
   const wantMis = q.misconceptionId ?? null;
@@ -175,8 +178,11 @@ export function selectLesson(q: LessonQuery, library: readonly Lesson[] = LESSON
 
   const scored = library
     .filter((l) => l.approved && l.approvalRef !== null && l.skillId === q.skillId)
+    // Misconception is a HARD filter — never show a lesson authored for a
+    // different misconception. Representation is NOT: a lesson for the right
+    // misconception in another representation still beats the generic default,
+    // so representation only RANKS among same-misconception lessons.
     .filter((l) => l.misconceptionId === ANY || l.misconceptionId === wantMis)
-    .filter((l) => l.representation === ANY || l.representation === wantRep)
     .map((l) => ({
       l,
       score:
