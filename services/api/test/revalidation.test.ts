@@ -7,6 +7,7 @@ import {
   type PotenovaDb,
 } from '@potenova/persistence';
 import type { MasteryEvidence } from '@potenova/learner-state';
+import { seedMastered } from './support/seed';
 
 /**
  * REVALIDATION_REQUIRED flow: a once-mastered skill that is contradicted must
@@ -93,6 +94,17 @@ async function setup() {
       observedAt: '2026-10-05T09:00:00.000Z',
     }),
   );
+  // The other pilot fraction skills are mastered (recently, not review-due), so the
+  // only skill in play is equivalence (revalidation) and, once it clears, comparison.
+  for (const skillId of [
+    'SK-FR-partition',
+    'SK-FR-unit',
+    'SK-FR-nonunit',
+    'SK-FR-numberline',
+    'SK-FR-order',
+  ]) {
+    await seedMastered(db, skillId, '2026-10-16T00:00:00.000Z', `pre-${skillId}`);
+  }
   return app;
 }
 

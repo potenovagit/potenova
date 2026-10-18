@@ -83,16 +83,50 @@ const COURSES: Record<CourseId, CoursePlan> = {
   fractions: {
     subject: 'math',
     buildGraph: buildFractionsDraftGraph,
-    coachableSkillIds: ['SK-FR-equiv', 'SK-FR-compare'],
-    defaultTask: { 'SK-FR-compare': 'frac-cmp-1', 'SK-FR-equiv': 'frac-eq-1' },
+    // Full pilot progression, in teaching order. Prerequisite gating follows the
+    // approved DRAFT graph edges (partition→unit→non-unit→…→equiv→compare; order
+    // and number-line sit off the hard/strong path). The five skills added here
+    // are served from the deterministic generator (no static bank). Final
+    // ordering/mastery remains educator-gated (ER-03).
+    coachableSkillIds: [
+      'SK-FR-partition',
+      'SK-FR-unit',
+      'SK-FR-nonunit',
+      'SK-FR-numberline',
+      'SK-FR-equiv',
+      'SK-FR-compare',
+      'SK-FR-order',
+    ],
+    defaultTask: {
+      'SK-FR-partition': genCourseTask('SK-FR-partition', 0),
+      'SK-FR-unit': genCourseTask('SK-FR-unit', 0),
+      'SK-FR-nonunit': genCourseTask('SK-FR-nonunit', 0),
+      'SK-FR-numberline': genCourseTask('SK-FR-numberline', 0),
+      'SK-FR-equiv': 'frac-eq-1',
+      'SK-FR-compare': 'frac-cmp-1',
+      'SK-FR-order': genCourseTask('SK-FR-order', 0),
+    },
     practiceTasks: {
+      'SK-FR-partition': [0, 1, 2, 3].map((i) => genCourseTask('SK-FR-partition', i)),
+      'SK-FR-unit': [0, 1, 2, 3].map((i) => genCourseTask('SK-FR-unit', i)),
+      'SK-FR-nonunit': [0, 1, 2, 3].map((i) => genCourseTask('SK-FR-nonunit', i)),
+      'SK-FR-numberline': [0, 1, 2, 3].map((i) => genCourseTask('SK-FR-numberline', i)),
       'SK-FR-equiv': ['frac-eq-1', 'frac-eq-2', 'frac-eq-3', 'frac-eq-4'],
       'SK-FR-compare': ['frac-cmp-1', 'frac-cmp-2', 'frac-cmp-3', 'frac-cmp-4'],
+      'SK-FR-order': [0, 1, 2, 3].map((i) => genCourseTask('SK-FR-order', i)),
     },
     remediationReps: ['area-model', 'number-line', 'set', 'symbolic'],
     misconceptions: FRACTION_MISCONCEPTIONS,
     strategies: FRACTION_STRATEGIES,
-    transferTask: { 'SK-FR-compare': 'frac-xfer-cmp', 'SK-FR-equiv': 'frac-xfer-eq' },
+    transferTask: {
+      'SK-FR-partition': genCourseTask('SK-FR-partition', 4),
+      'SK-FR-unit': genCourseTask('SK-FR-unit', 4),
+      'SK-FR-nonunit': genCourseTask('SK-FR-nonunit', 4),
+      'SK-FR-numberline': genCourseTask('SK-FR-numberline', 4),
+      'SK-FR-equiv': 'frac-xfer-eq',
+      'SK-FR-compare': 'frac-xfer-cmp',
+      'SK-FR-order': genCourseTask('SK-FR-order', 4),
+    },
   },
   addition: {
     subject: 'math',

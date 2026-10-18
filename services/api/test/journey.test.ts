@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { createApp } from '../src/app';
 import { openDatabase, BillingRepository, type PotenovaDb } from '@potenova/persistence';
+import { seedMastered } from './support/seed';
 
 /**
  * Capstone: the G1 vertical slice end to end on synthetic data.
@@ -55,6 +56,19 @@ describe('G1 journey (capstone)', () => {
       tierId: 't1',
       updatedAt: '2026-10-13T00:00:00Z',
     });
+
+    // Precondition: the lower pilot fraction skills are already mastered, so this
+    // capstone exercises the equiv→compare remediation + advancement in isolation.
+    // (The full seven-skill walk from a blank slate lives in diagnostic-run.test.ts.)
+    for (const skillId of [
+      'SK-FR-partition',
+      'SK-FR-unit',
+      'SK-FR-nonunit',
+      'SK-FR-numberline',
+      'SK-FR-order',
+    ]) {
+      await seedMastered(db, skillId, '2026-10-13T00:00:00Z', `pre-${skillId}`);
+    }
 
     // Diagnostic selects what to probe first — it picks the foundational,
     // low-confidence fractions skill we then coach.

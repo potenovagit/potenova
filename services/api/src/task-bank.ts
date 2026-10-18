@@ -558,6 +558,76 @@ export function judge(task: Task, raw: string): boolean {
   return checkEnglishTask({ kind: 'noun_plural', word: task.word, claimedPlural: a }).correct;
 }
 
+/** The oracle's ground-truth answer token for a task — the canonical correct
+ *  response `judge` accepts. Deterministic; used by diagnostics and tests to
+ *  answer a (possibly generated) item without hardcoding per-item values. */
+export function correctAnswerFor(task: Task): string {
+  switch (task.kind) {
+    case 'fraction_comparison':
+      return trueRelation(task.left, task.right);
+    case 'fraction_equivalence':
+      return areEquivalent(task.left, task.right) ? 'yes' : 'no';
+    case 'integer_addition':
+      return String(task.a + task.b);
+    case 'fraction_partition':
+      return `${task.shaded}/${task.parts}`;
+    case 'fraction_unit':
+      return `1/${task.denominator}`;
+    case 'fraction_nonunit_build':
+      return `${task.count}/${task.unitDenominator}`;
+    case 'fraction_number_line':
+      return String(correctTick(task));
+    case 'fraction_order':
+      return correctOrder(task.fractions)
+        .map((i) => i + 1)
+        .join(',');
+    case 'regular_past_tense':
+      return pastTenseRegular(task.verb);
+    case 'comparative_adjective':
+      return comparativeRegular(task.adjective);
+    case 'noun_plural':
+      return pluralize(task.word);
+  }
+}
+
+/**
+ * A valid-but-incorrect answer token for a task — one `tokenValid` accepts and
+ * `judge` grades wrong. Deterministic; used by diagnostics/tests to drive a
+ * known-wrong turn on a (possibly generated) item without hardcoding per-item
+ * values. (A token that is merely malformed would be refused, not graded wrong.)
+ */
+export function wrongAnswerFor(task: Task): string {
+  switch (task.kind) {
+    case 'fraction_comparison':
+      return trueRelation(task.left, task.right) === 'lt' ? 'gt' : 'lt';
+    case 'fraction_equivalence':
+      return areEquivalent(task.left, task.right) ? 'no' : 'yes';
+    case 'integer_addition':
+      return String(task.a + task.b + 1);
+    case 'fraction_partition':
+      return `${task.shaded === 0 ? 1 : 0}/${task.parts}`;
+    case 'fraction_unit':
+      return `2/${task.denominator}`;
+    case 'fraction_nonunit_build':
+      return task.count > 1
+        ? `1/${task.unitDenominator}`
+        : `${task.count + 1}/${task.unitDenominator}`;
+    case 'fraction_number_line':
+      return correctTick(task) === 0 ? '1' : '0';
+    case 'fraction_order':
+      return correctOrder(task.fractions)
+        .map((i) => i + 1)
+        .reverse()
+        .join(',');
+    case 'regular_past_tense':
+      return task.verb;
+    case 'comparative_adjective':
+      return task.adjective;
+    case 'noun_plural':
+      return task.word;
+  }
+}
+
 /**
  * ============================================================================
  *  Generated-item provider — the deterministic item stream in the live loop
