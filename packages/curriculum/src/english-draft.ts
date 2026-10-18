@@ -37,6 +37,8 @@ const skill = (skillId: string, label: string): CanonicalSkill => ({
 export const ENGLISH_SKILLS: readonly CanonicalSkill[] = [
   skill('SK-EN-plural-base', 'Form regular plurals by adding -s'),
   skill('SK-EN-plural-sibilant', 'Form plurals with -es and consonant-y → -ies'),
+  skill('SK-EN-past-regular', 'Form the regular simple past (-ed, with doubling / drop-e / y→ied)'),
+  skill('SK-EN-comparative', 'Form the regular comparative (-er, with doubling / drop-e / y→ier)'),
 ];
 
 const edge = (

@@ -9,3 +9,4 @@ export * from './eval-evidence';
 export * from './pipeline';
 export * from './quarantine';
 export * from './item-generator';
+export * from './english-item-generator';
