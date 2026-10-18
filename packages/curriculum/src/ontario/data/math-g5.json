@@ -1,0 +1,325 @@
+{
+  "jurisdiction": "ontario",
+  "subject": "math",
+  "grade": 5,
+  "edition": "Ontario Mathematics (2020)",
+  "sourceUrl": "https://www.dcp.edu.gov.on.ca/en/curriculum/elementary-mathematics/grades/g5-math",
+  "extractedAt": "2026-10-18",
+  "reviewStatus": "draft",
+  "note": "Source-verified from the Ontario Ministry curriculum site. Strand A (Social-Emotional Learning) and C4 (Mathematical Modelling) carry no coded specific expectations and are not listed.",
+  "strands": [
+    { "code": "B", "name": "Number" },
+    { "code": "C", "name": "Algebra" },
+    { "code": "D", "name": "Data" },
+    { "code": "E", "name": "Spatial Sense" },
+    { "code": "F", "name": "Financial Literacy" }
+  ],
+  "expectations": [
+    {
+      "sourceCode": "B1.1",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "read, represent, compose, and decompose whole numbers up to and including 100 000, using appropriate tools and strategies, and describe various ways they are used in everyday life"
+    },
+    {
+      "sourceCode": "B1.2",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "compare and order whole numbers up to and including 100 000, in various contexts"
+    },
+    {
+      "sourceCode": "B1.3",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "represent equivalent fractions from halves to twelfths, including improper fractions and mixed numbers, using appropriate tools, in various contexts"
+    },
+    {
+      "sourceCode": "B1.4",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "compare and order fractions from halves to twelfths, including improper fractions and mixed numbers, in various contexts"
+    },
+    {
+      "sourceCode": "B1.5",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "read, represent, compare, and order decimal numbers up to hundredths, in various contexts"
+    },
+    {
+      "sourceCode": "B1.6",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "round decimal numbers to the nearest tenth, in various contexts"
+    },
+    {
+      "sourceCode": "B1.7",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "describe relationships and show equivalences among fractions, decimal numbers up to hundredths, and whole number percents, using appropriate tools and drawings, in various contexts"
+    },
+    {
+      "sourceCode": "B2.1",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "use the properties of operations, and the relationships between operations, to solve problems involving whole numbers and decimal numbers, including those requiring more than one operation, and check calculations"
+    },
+    {
+      "sourceCode": "B2.2",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "recall and demonstrate multiplication facts from 0 × 0 to 12 × 12, and related division facts"
+    },
+    {
+      "sourceCode": "B2.3",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "use mental math strategies to multiply whole numbers by 0.1 and 0.01 and estimate sums and differences of decimal numbers up to hundredths, and explain the strategies used"
+    },
+    {
+      "sourceCode": "B2.4",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent and solve problems involving the addition and subtraction of whole numbers that add up to no more than 100 000, and of decimal numbers up to hundredths, using appropriate tools, strategies, and algorithms"
+    },
+    {
+      "sourceCode": "B2.5",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "add and subtract fractions with like denominators, in various contexts"
+    },
+    {
+      "sourceCode": "B2.6",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent and solve problems involving the multiplication of two-digit whole numbers by two-digit whole numbers using the area model and using algorithms, and make connections between the two methods"
+    },
+    {
+      "sourceCode": "B2.7",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent and solve problems involving the division of three-digit whole numbers by two-digit whole numbers using the area model and using algorithms, and make connections between the two methods, while expressing any remainder appropriately"
+    },
+    {
+      "sourceCode": "B2.8",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "multiply and divide one-digit whole numbers by unit fractions, using appropriate tools and drawings"
+    },
+    {
+      "sourceCode": "B2.9",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent and create equivalent ratios and rates, using a variety of tools and models, in various contexts"
+    },
+    {
+      "sourceCode": "C1.1",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "identify and describe repeating, growing, and shrinking patterns, including patterns found in real-life contexts"
+    },
+    {
+      "sourceCode": "C1.2",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "create and translate growing and shrinking patterns using various representations, including tables of values and graphs"
+    },
+    {
+      "sourceCode": "C1.3",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "determine pattern rules and use them to extend patterns, make and justify predictions, and identify missing elements in repeating, growing, and shrinking patterns"
+    },
+    {
+      "sourceCode": "C1.4",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "create and describe patterns to illustrate relationships among whole numbers and decimal tenths and hundredths"
+    },
+    {
+      "sourceCode": "C2.1",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "translate among words, algebraic expressions, and visual representations that describe equivalent relationships"
+    },
+    {
+      "sourceCode": "C2.2",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "evaluate algebraic expressions that involve whole numbers"
+    },
+    {
+      "sourceCode": "C2.3",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "solve equations that involve whole numbers up to 100 in various contexts, and verify solutions"
+    },
+    {
+      "sourceCode": "C2.4",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "solve inequalities that involve one operation and whole numbers up to 50, and verify and graph the solutions"
+    },
+    {
+      "sourceCode": "C3.1",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "solve problems and create computational representations of mathematical situations by writing and executing code, including code that involves conditional statements and other control structures"
+    },
+    {
+      "sourceCode": "C3.2",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "read and alter existing code, including code that involves conditional statements and other control structures, and describe how changes to the code affect the outcomes"
+    },
+    {
+      "sourceCode": "D1.1",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "explain the importance of various sampling techniques for collecting a sample of data that is representative of a population"
+    },
+    {
+      "sourceCode": "D1.2",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "collect data, using appropriate sampling techniques as needed, to answer questions of interest about a population, and organize the data in relative-frequency tables"
+    },
+    {
+      "sourceCode": "D1.3",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "select from among a variety of graphs, including stacked-bar graphs, the type of graph best suited to represent various sets of data; display the data in the graphs with proper sources, titles, and labels, and appropriate scales; and justify their choice of graphs"
+    },
+    {
+      "sourceCode": "D1.4",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "create an infographic about a data set, representing the data in appropriate ways, including in relative-frequency tables and stacked-bar graphs, and incorporating any other relevant information that helps to tell a story about the data"
+    },
+    {
+      "sourceCode": "D1.5",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "determine the mean and the median and identify the mode(s), if any, for various data sets involving whole numbers and decimal numbers, and explain what each of these measures indicates about the data"
+    },
+    {
+      "sourceCode": "D1.6",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "analyse different sets of data presented in various ways, including in stacked-bar graphs and in misleading graphs, by asking and answering questions about the data, challenging preconceived notions, and drawing conclusions, then make convincing arguments and informed decisions"
+    },
+    {
+      "sourceCode": "D2.1",
+      "strand": "D",
+      "overallCode": "D2",
+      "text": "use fractions to express the probability of events happening, represent this probability on a probability line, and use it to make predictions and informed decisions"
+    },
+    {
+      "sourceCode": "D2.2",
+      "strand": "D",
+      "overallCode": "D2",
+      "text": "determine and compare the theoretical and experimental probabilities of an event happening"
+    },
+    {
+      "sourceCode": "E1.1",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "identify geometric properties of triangles, and construct different types of triangles when given side or angle measurements"
+    },
+    {
+      "sourceCode": "E1.2",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "identify and construct congruent triangles, rectangles, and parallelograms"
+    },
+    {
+      "sourceCode": "E1.3",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "draw top, front, and side views of objects, and match drawings with objects"
+    },
+    {
+      "sourceCode": "E1.4",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "plot and read coordinates in the first quadrant of a Cartesian plane using various scales, and describe the translations that move a point from one coordinate to another"
+    },
+    {
+      "sourceCode": "E1.5",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "describe and perform translations, reflections, and rotations up to 180° on a grid, and predict the results of these transformations"
+    },
+    {
+      "sourceCode": "E2.1",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "use appropriate metric units to estimate and measure length, area, mass, and capacity"
+    },
+    {
+      "sourceCode": "E2.2",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "solve problems that involve converting larger metric units into smaller ones, and describe the base ten relationships among metric units"
+    },
+    {
+      "sourceCode": "E2.3",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "compare angles and determine their relative size by matching them and by measuring them using appropriate non-standard units"
+    },
+    {
+      "sourceCode": "E2.4",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "explain how protractors work, use them to measure and construct angles up to 180°, and use benchmark angles to estimate the size of other angles"
+    },
+    {
+      "sourceCode": "E2.5",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "use the area relationships among rectangles, parallelograms, and triangles to develop the formulas for the area of a parallelogram and the area of a triangle, and solve related problems"
+    },
+    {
+      "sourceCode": "E2.6",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "show that two-dimensional shapes with the same area can have different perimeters, and solve related problems"
+    },
+    {
+      "sourceCode": "F1.1",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "describe several ways money can be transferred among individuals, organizations, and businesses"
+    },
+    {
+      "sourceCode": "F1.2",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "estimate and calculate the cost of transactions involving multiple items priced in dollars and cents, including sales tax, using various strategies"
+    },
+    {
+      "sourceCode": "F1.3",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "design sample basic budgets to manage finances for various earning and spending scenarios"
+    },
+    {
+      "sourceCode": "F1.4",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "explain the concepts of credit and debt, and describe how financial decisions may be impacted by each"
+    },
+    {
+      "sourceCode": "F1.5",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "calculate unit rates for various goods and services, and identify which rates offer the best value"
+    },
+    {
+      "sourceCode": "F1.6",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "describe the types of taxes that are collected by the different levels of government in Canada, and explain how tax revenue is used to provide services in the community"
+    }
+  ]
+}

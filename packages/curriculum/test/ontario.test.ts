@@ -37,6 +37,66 @@ describe('ontario curriculum catalogue', () => {
     expect(lang).toMatchObject({ strands: 4, expectations: 61, reviewStatus: 'draft' });
   });
 
+  it('loads Grade 3 math and language, all DRAFT with provenance', () => {
+    const cov = ontarioCoverage();
+    const math = cov.find((c) => c.subject === 'math' && c.grade === 3);
+    const lang = cov.find((c) => c.subject === 'language' && c.grade === 3);
+    expect(math).toMatchObject({ strands: 5, expectations: 46, reviewStatus: 'draft' });
+    expect(lang).toMatchObject({ strands: 4, expectations: 61, reviewStatus: 'draft' });
+  });
+
+  it('loads Grade 4 math and language, all DRAFT with provenance', () => {
+    const cov = ontarioCoverage();
+    const math = cov.find((c) => c.subject === 'math' && c.grade === 4);
+    const lang = cov.find((c) => c.subject === 'language' && c.grade === 4);
+    expect(math).toMatchObject({ strands: 5, expectations: 48, reviewStatus: 'draft' });
+    expect(lang).toMatchObject({ strands: 4, expectations: 59, reviewStatus: 'draft' });
+  });
+
+  it('loads Grade 5 math and language, all DRAFT with provenance', () => {
+    const cov = ontarioCoverage();
+    const math = cov.find((c) => c.subject === 'math' && c.grade === 5);
+    const lang = cov.find((c) => c.subject === 'language' && c.grade === 5);
+    expect(math).toMatchObject({ strands: 5, expectations: 51, reviewStatus: 'draft' });
+    expect(lang).toMatchObject({ strands: 4, expectations: 59, reviewStatus: 'draft' });
+  });
+
+  it('loads Grade 6 math and language, all DRAFT with provenance', () => {
+    const cov = ontarioCoverage();
+    const math = cov.find((c) => c.subject === 'math' && c.grade === 6);
+    const lang = cov.find((c) => c.subject === 'language' && c.grade === 6);
+    expect(math).toMatchObject({ strands: 5, expectations: 51, reviewStatus: 'draft' });
+    expect(lang).toMatchObject({ strands: 4, expectations: 59, reviewStatus: 'draft' });
+  });
+
+  it('loads Grade 7 math and language, all DRAFT with provenance', () => {
+    const cov = ontarioCoverage();
+    const math = cov.find((c) => c.subject === 'math' && c.grade === 7);
+    const lang = cov.find((c) => c.subject === 'language' && c.grade === 7);
+    expect(math).toMatchObject({ strands: 5, expectations: 52, reviewStatus: 'draft' });
+    expect(lang).toMatchObject({ strands: 4, expectations: 59, reviewStatus: 'draft' });
+  });
+
+  it('loads Grade 8 math and language, all DRAFT with provenance', () => {
+    const cov = ontarioCoverage();
+    const math = cov.find((c) => c.subject === 'math' && c.grade === 8);
+    const lang = cov.find((c) => c.subject === 'language' && c.grade === 8);
+    expect(math).toMatchObject({ strands: 5, expectations: 44, reviewStatus: 'draft' });
+    expect(lang).toMatchObject({ strands: 4, expectations: 59, reviewStatus: 'draft' });
+  });
+
+  it('covers the full G1–8 scope: both subjects, every grade, all DRAFT', () => {
+    const cov = ontarioCoverage();
+    // 2 subjects × 8 grades = 16 loaded datasets.
+    expect(cov).toHaveLength(16);
+    for (let grade = 1; grade <= 8; grade++) {
+      expect(cov.some((c) => c.subject === 'math' && c.grade === grade)).toBe(true);
+      expect(cov.some((c) => c.subject === 'language' && c.grade === grade)).toBe(true);
+    }
+    // Nothing is presented as validated coverage until educator review.
+    expect(cov.every((c) => c.reviewStatus === 'draft')).toBe(true);
+  });
+
   it('every dataset passes structural validation', () => {
     for (const d of ontarioDatasets()) {
       expect(() => validateOntarioData(d)).not.toThrow();
