@@ -56,7 +56,54 @@ export interface FractionEquivalenceTask {
   readonly claimedEquivalent: boolean;
 }
 
-export type MathTask = FractionComparisonTask | FractionEquivalenceTask;
+/** SK-FR-partition: a whole split into `parts` equal parts, `shaded` of them shaded;
+ *  the named fraction should equal shaded/parts. */
+export interface FractionPartitionTask {
+  readonly kind: 'fraction_partition';
+  readonly parts: number;
+  readonly shaded: number;
+  readonly claimedFraction: Fraction;
+}
+
+/** SK-FR-unit: the unit fraction for a whole split into `denominator` equal parts is 1/denominator. */
+export interface UnitFractionTask {
+  readonly kind: 'fraction_unit';
+  readonly denominator: number;
+  readonly claimedUnit: Fraction;
+}
+
+/** SK-FR-nonunit: `count` copies of the unit fraction 1/`unitDenominator` make count/unitDenominator. */
+export interface NonUnitBuildTask {
+  readonly kind: 'fraction_nonunit_build';
+  readonly count: number;
+  readonly unitDenominator: number;
+  readonly claimedFraction: Fraction;
+}
+
+/** SK-FR-numberline: place `fraction` on a 0..1 line of `intervals` equal steps; the tick
+ *  index is an integer iff the fraction lands on a tick. */
+export interface NumberLineTask {
+  readonly kind: 'fraction_number_line';
+  readonly fraction: Fraction;
+  readonly intervals: number;
+  readonly claimedTick: number;
+}
+
+/** SK-FR-order: `claimedOrder` is a permutation of the fraction indices claimed to be ascending. */
+export interface FractionOrderTask {
+  readonly kind: 'fraction_order';
+  readonly fractions: readonly Fraction[];
+  readonly claimedOrder: readonly number[];
+}
+
+export type MathTask =
+  | FractionComparisonTask
+  | FractionEquivalenceTask
+  | FractionPartitionTask
+  | UnitFractionTask
+  | NonUnitBuildTask
+  | NumberLineTask
+  | FractionOrderTask;
 
 export type MathCheckReason =
   | 'ANSWER_KEY_CORRECT'
@@ -91,6 +138,85 @@ export function checkMathTask(task: MathTask): MathCheckResult {
         return { correct: false, ran: false, reason: 'MALFORMED_TASK' };
       }
       const correct = areEquivalent(task.left, task.right) === task.claimedEquivalent;
+      return { correct, ran: true, reason: correct ? 'ANSWER_KEY_CORRECT' : 'ANSWER_KEY_WRONG' };
+    }
+    case 'fraction_partition': {
+      const okShape =
+        Number.isInteger(task.parts) &&
+        task.parts > 0 &&
+        Number.isInteger(task.shaded) &&
+        task.shaded >= 0 &&
+        task.shaded <= task.parts &&
+        isWellFormed(task.claimedFraction);
+      if (!okShape) return { correct: false, ran: false, reason: 'MALFORMED_TASK' };
+      // one part of a parts-partition = 1/parts; shaded of them = shaded/parts
+      const correct = areEquivalent(task.claimedFraction, {
+        numerator: task.shaded,
+        denominator: task.parts,
+      });
+      return { correct, ran: true, reason: correct ? 'ANSWER_KEY_CORRECT' : 'ANSWER_KEY_WRONG' };
+    }
+    case 'fraction_unit': {
+      const okShape =
+        Number.isInteger(task.denominator) &&
+        task.denominator > 0 &&
+        isWellFormed(task.claimedUnit);
+      if (!okShape) return { correct: false, ran: false, reason: 'MALFORMED_TASK' };
+      // the unit fraction is exactly 1/denominator (naming, not an equivalent form)
+      const correct =
+        task.claimedUnit.numerator === 1 && task.claimedUnit.denominator === task.denominator;
+      return { correct, ran: true, reason: correct ? 'ANSWER_KEY_CORRECT' : 'ANSWER_KEY_WRONG' };
+    }
+    case 'fraction_nonunit_build': {
+      const okShape =
+        Number.isInteger(task.count) &&
+        task.count >= 0 &&
+        Number.isInteger(task.unitDenominator) &&
+        task.unitDenominator > 0 &&
+        isWellFormed(task.claimedFraction);
+      if (!okShape) return { correct: false, ran: false, reason: 'MALFORMED_TASK' };
+      const correct = areEquivalent(task.claimedFraction, {
+        numerator: task.count,
+        denominator: task.unitDenominator,
+      });
+      return { correct, ran: true, reason: correct ? 'ANSWER_KEY_CORRECT' : 'ANSWER_KEY_WRONG' };
+    }
+    case 'fraction_number_line': {
+      const okShape =
+        isWellFormed(task.fraction) &&
+        Number.isInteger(task.intervals) &&
+        task.intervals > 0 &&
+        Number.isInteger(task.claimedTick) &&
+        task.fraction.numerator <= task.fraction.denominator; // on [0,1]
+      if (!okShape) return { correct: false, ran: false, reason: 'MALFORMED_TASK' };
+      // the fraction lands on tick t iff t/intervals == p/q, i.e. t*q == p*intervals (exact)
+      const lands = task.fraction.numerator * task.intervals;
+      if (lands % task.fraction.denominator !== 0) {
+        // not representable on this line — a malformed item, never "correct"
+        return { correct: false, ran: false, reason: 'MALFORMED_TASK' };
+      }
+      const correct = task.claimedTick * task.fraction.denominator === lands;
+      return { correct, ran: true, reason: correct ? 'ANSWER_KEY_CORRECT' : 'ANSWER_KEY_WRONG' };
+    }
+    case 'fraction_order': {
+      const n = task.fractions.length;
+      const okShape =
+        n >= 2 &&
+        task.fractions.every(isWellFormed) &&
+        task.claimedOrder.length === n &&
+        new Set(task.claimedOrder).size === n &&
+        task.claimedOrder.every((i) => Number.isInteger(i) && i >= 0 && i < n);
+      if (!okShape) return { correct: false, ran: false, reason: 'MALFORMED_TASK' };
+      // claimed order is correct iff consecutive pairs are non-decreasing (exact, no floats)
+      let correct = true;
+      for (let i = 0; i + 1 < n; i++) {
+        const a = task.fractions[task.claimedOrder[i]!]!;
+        const b = task.fractions[task.claimedOrder[i + 1]!]!;
+        if (trueRelation(a, b) === 'gt') {
+          correct = false;
+          break;
+        }
+      }
       return { correct, ran: true, reason: correct ? 'ANSWER_KEY_CORRECT' : 'ANSWER_KEY_WRONG' };
     }
     default: {

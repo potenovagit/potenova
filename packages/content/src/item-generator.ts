@@ -28,10 +28,10 @@ import { validateCandidate, validationRecordRef, type ValidationRecord } from '.
  *    generated item is correct by construction — but it is still validated
  *    independently, because trust is not a substitute for the check.
  *
- * Scope: the fractions pilot skills that have a deterministic oracle today —
- * SK-FR-compare (comparison) and SK-FR-equiv (equivalence). Other overlay skills
- * (partition, unit, non-unit, number-line, order) need their own oracle kinds
- * before they can be generated; they are reported UNSUPPORTED rather than faked.
+ * Scope: the full fractions pilot path — partition, unit, non-unit, number-line,
+ * compare, equivalence, and order — each with its own deterministic oracle kind
+ * in `math-check`. A skill without an oracle kind is reported UNSUPPORTED rather
+ * than faked. English generation is a later slice on the same pattern.
  */
 
 export type Difficulty = 'intro' | 'core' | 'stretch';
@@ -57,11 +57,37 @@ export const GENERATOR_ID = 'item-gen:fractions-deterministic@0.1';
 
 const COMPARE_SKILL = 'SK-FR-compare';
 const EQUIV_SKILL = 'SK-FR-equiv';
+const PARTITION_SKILL = 'SK-FR-partition';
+const UNIT_SKILL = 'SK-FR-unit';
+const NONUNIT_SKILL = 'SK-FR-nonunit';
+const NUMBERLINE_SKILL = 'SK-FR-numberline';
+const ORDER_SKILL = 'SK-FR-order';
 
-/** Skills this generator can produce items for today. */
+/** Every fraction pilot skill now has a deterministic oracle + generator. */
+const SUPPORTED: ReadonlySet<string> = new Set([
+  COMPARE_SKILL,
+  EQUIV_SKILL,
+  PARTITION_SKILL,
+  UNIT_SKILL,
+  NONUNIT_SKILL,
+  NUMBERLINE_SKILL,
+  ORDER_SKILL,
+]);
+
+/** Skills this generator can produce items for. */
 export function supportsSkill(skillId: string): boolean {
-  return skillId === COMPARE_SKILL || skillId === EQUIV_SKILL;
+  return SUPPORTED.has(skillId);
 }
+
+const REPRESENTATION: Record<string, string> = {
+  [COMPARE_SKILL]: 'number-line',
+  [EQUIV_SKILL]: 'area-model',
+  [PARTITION_SKILL]: 'area-model',
+  [UNIT_SKILL]: 'area-model',
+  [NONUNIT_SKILL]: 'area-model',
+  [NUMBERLINE_SKILL]: 'number-line',
+  [ORDER_SKILL]: 'number-line',
+};
 
 /** Seeded PRNG (mulberry32) — deterministic, no Math.random. */
 function rng(seed: number): () => number {
@@ -85,27 +111,121 @@ const DENOMS: Record<Difficulty, readonly number[]> = {
 const pick = <T>(r: () => number, xs: readonly T[]): T => xs[Math.floor(r() * xs.length)]!;
 const f = (numerator: number, denominator: number): Fraction => ({ numerator, denominator });
 
-function genComparison(r: () => number, d: Difficulty): { left: Fraction; right: Fraction } {
-  const dl = pick(r, DENOMS[d]);
-  const dr = d === 'intro' ? pick(r, DENOMS[d]) : pick(r, DENOMS[d]);
-  // proper fractions; numerator in [1, denom-1]
-  const nl = 1 + Math.floor(r() * (dl - 1));
-  const nr = 1 + Math.floor(r() * (dr - 1));
-  return { left: f(nl, dl), right: f(nr, dr) };
+const fracKey = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
+
+/** One well-formed candidate task + its dedupe key, for a given skill. Answer
+ *  keys are set to the oracle's ground truth; returns null to skip a bad draw. */
+function buildTask(
+  skillId: string,
+  r: () => number,
+  d: Difficulty,
+): { task: MathTask; dedupeKey: string } | null {
+  switch (skillId) {
+    case COMPARE_SKILL: {
+      const left = f(1 + Math.floor(r() * (pick(r, DENOMS[d]) - 1)), pick(r, DENOMS[d]));
+      const right = f(1 + Math.floor(r() * (pick(r, DENOMS[d]) - 1)), pick(r, DENOMS[d]));
+      if (!isWellFormed(left) || !isWellFormed(right)) return null;
+      return {
+        task: {
+          kind: 'fraction_comparison',
+          left,
+          right,
+          claimedAnswer: trueRelation(left, right),
+        },
+        dedupeKey: `c:${fracKey(left)}:${fracKey(right)}`,
+      };
+    }
+    case EQUIV_SKILL: {
+      const base = f(1 + Math.floor(r() * 2), pick(r, DENOMS[d]));
+      let right: Fraction;
+      if (r() < 0.5) {
+        const k = 2 + Math.floor(r() * (d === 'stretch' ? 4 : 2));
+        right = f(base.numerator * k, base.denominator * k);
+      } else {
+        const dr = pick(r, DENOMS[d]);
+        right = f(1 + Math.floor(r() * (dr - 1)), dr);
+      }
+      if (!isWellFormed(base) || !isWellFormed(right)) return null;
+      return {
+        task: {
+          kind: 'fraction_equivalence',
+          left: base,
+          right,
+          claimedEquivalent: areEquivalent(base, right),
+        },
+        dedupeKey: `e:${fracKey(base)}:${fracKey(right)}`,
+      };
+    }
+    case PARTITION_SKILL: {
+      const parts = pick(r, DENOMS[d]);
+      const shaded = 1 + Math.floor(r() * (parts - 1)); // 1..parts-1
+      return {
+        task: {
+          kind: 'fraction_partition',
+          parts,
+          shaded,
+          claimedFraction: f(shaded, parts),
+        },
+        dedupeKey: `p:${shaded}/${parts}`,
+      };
+    }
+    case UNIT_SKILL: {
+      const denominator = pick(r, DENOMS[d]);
+      return {
+        task: { kind: 'fraction_unit', denominator, claimedUnit: f(1, denominator) },
+        dedupeKey: `u:${denominator}`,
+      };
+    }
+    case NONUNIT_SKILL: {
+      const unitDenominator = pick(r, DENOMS[d]);
+      const count = 2 + Math.floor(r() * (unitDenominator - 1)); // 2..unitDenominator
+      return {
+        task: {
+          kind: 'fraction_nonunit_build',
+          count,
+          unitDenominator,
+          claimedFraction: f(count, unitDenominator),
+        },
+        dedupeKey: `n:${count}x1/${unitDenominator}`,
+      };
+    }
+    case NUMBERLINE_SKILL: {
+      // choose intervals = denominator so the fraction always lands on a tick
+      const intervals = pick(r, DENOMS[d]);
+      const num = 1 + Math.floor(r() * (intervals - 1)); // proper fraction num/intervals
+      const fraction = f(num, intervals);
+      // tick index is exact: num * intervals / intervals = num
+      return {
+        task: { kind: 'fraction_number_line', fraction, intervals, claimedTick: num },
+        dedupeKey: `nl:${fracKey(fraction)}@${intervals}`,
+      };
+    }
+    case ORDER_SKILL: {
+      const denom = pick(r, DENOMS[d]);
+      const n = 3; // order three proper fractions over a common denominator
+      const nums = new Set<number>();
+      let g = 0;
+      while (nums.size < n && g++ < 50) nums.add(1 + Math.floor(r() * (denom - 1)));
+      if (nums.size < n) return null;
+      const fractions = [...nums].map((num) => f(num, denom));
+      // ascending order over a common denominator is numerator order
+      const claimedOrder = fractions
+        .map((_, i) => i)
+        .sort((a, b) => trueRelationSign(fractions[a]!, fractions[b]!));
+      return {
+        task: { kind: 'fraction_order', fractions, claimedOrder },
+        dedupeKey: `o:${fractions.map(fracKey).join(',')}`,
+      };
+    }
+    default:
+      return null;
+  }
 }
 
-function genEquivalence(r: () => number, d: Difficulty): { left: Fraction; right: Fraction } {
-  const base = f(1 + Math.floor(r() * 2), pick(r, DENOMS[d])); // small base fraction
-  if (r() < 0.5) {
-    // an equivalent pair: scale the base by k
-    const k = 2 + Math.floor(r() * (d === 'stretch' ? 4 : 2));
-    return { left: base, right: f(base.numerator * k, base.denominator * k) };
-  }
-  // a non-equivalent pair: a different proper fraction
-  const dr = pick(r, DENOMS[d]);
-  const nr = 1 + Math.floor(r() * (dr - 1));
-  return { left: base, right: f(nr, dr) };
-}
+const trueRelationSign = (a: Fraction, b: Fraction): number => {
+  const rel = trueRelation(a, b);
+  return rel === 'lt' ? -1 : rel === 'gt' ? 1 : 0;
+};
 
 /**
  * Generate `count` distinct items for a skill, deterministically from `seed`.
@@ -125,35 +245,19 @@ export function generateItems(
   const items: GeneratedItem[] = [];
   const seen = new Set<string>();
   let guard = 0;
-  while (items.length < count && guard++ < count * 50) {
-    let task: MathTask;
-    let dedupeKey: string;
-    if (skillId === COMPARE_SKILL) {
-      const { left, right } = genComparison(r, difficulty);
-      if (!isWellFormed(left) || !isWellFormed(right)) continue;
-      task = { kind: 'fraction_comparison', left, right, claimedAnswer: trueRelation(left, right) };
-      dedupeKey = `c:${left.numerator}/${left.denominator}:${right.numerator}/${right.denominator}`;
-    } else {
-      const { left, right } = genEquivalence(r, difficulty);
-      if (!isWellFormed(left) || !isWellFormed(right)) continue;
-      task = {
-        kind: 'fraction_equivalence',
-        left,
-        right,
-        claimedEquivalent: areEquivalent(left, right),
-      };
-      dedupeKey = `e:${left.numerator}/${left.denominator}:${right.numerator}/${right.denominator}`;
-    }
-    if (seen.has(dedupeKey)) continue;
-    seen.add(dedupeKey);
+  while (items.length < count && guard++ < count * 80) {
+    const built = buildTask(skillId, r, difficulty);
+    if (!built) continue;
+    if (seen.has(built.dedupeKey)) continue;
+    seen.add(built.dedupeKey);
     const index = items.length;
     items.push({
       candidateId: `gen:${skillId}:${seed}:${difficulty}:${index}`,
       skillId,
       subject: 'math',
       difficulty,
-      representationHint: skillId === COMPARE_SKILL ? 'number-line' : 'area-model',
-      task,
+      representationHint: REPRESENTATION[skillId] ?? 'area-model',
+      task: built.task,
       generatorId: GENERATOR_ID,
     });
   }
