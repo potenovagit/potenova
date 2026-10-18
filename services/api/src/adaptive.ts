@@ -49,7 +49,14 @@ import type { Deps } from './deps';
  */
 
 export type Subject = 'math' | 'english';
-export type CourseId = 'fractions' | 'addition' | 'plurals';
+export type CourseId = 'fractions' | 'addition' | 'plurals' | 'past-tense' | 'comparative';
+
+/** Fixed seed for a generated-only course's default/practice items: the planner
+ *  and diagnostic reference stable generated task ids, resolved deterministically
+ *  by the task layer (gen:<skill>:<seed>:core:<index>). */
+const GEN_COURSE_SEED = 7;
+const genCourseTask = (skillId: string, index: number): string =>
+  `gen:${skillId}:${GEN_COURSE_SEED}:core:${index}`;
 
 interface CoursePlan {
   readonly subject: Subject;
@@ -115,6 +122,34 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: ENGLISH_STRATEGIES,
     transferTask: { 'SK-EN-plural-base': 'eng-xfer-base', 'SK-EN-plural-sibilant': 'eng-xfer-sib' },
   },
+  // Generated-only English courses: items come from the deterministic generator
+  // (no static bank), referenced here as stable generated task ids.
+  'past-tense': {
+    subject: 'english',
+    buildGraph: buildEnglishDraftGraph,
+    coachableSkillIds: ['SK-EN-past-regular'],
+    defaultTask: { 'SK-EN-past-regular': genCourseTask('SK-EN-past-regular', 0) },
+    practiceTasks: {
+      'SK-EN-past-regular': [0, 1, 2, 3].map((i) => genCourseTask('SK-EN-past-regular', i)),
+    },
+    remediationReps: ['spoken', 'written'],
+    misconceptions: [],
+    strategies: ENGLISH_STRATEGIES,
+    transferTask: { 'SK-EN-past-regular': genCourseTask('SK-EN-past-regular', 4) },
+  },
+  comparative: {
+    subject: 'english',
+    buildGraph: buildEnglishDraftGraph,
+    coachableSkillIds: ['SK-EN-comparative'],
+    defaultTask: { 'SK-EN-comparative': genCourseTask('SK-EN-comparative', 0) },
+    practiceTasks: {
+      'SK-EN-comparative': [0, 1, 2, 3].map((i) => genCourseTask('SK-EN-comparative', i)),
+    },
+    remediationReps: ['spoken', 'written'],
+    misconceptions: [],
+    strategies: ENGLISH_STRATEGIES,
+    transferTask: { 'SK-EN-comparative': genCourseTask('SK-EN-comparative', 4) },
+  },
 };
 
 /** The default course for each subject (preserves single-strand behaviour). */
@@ -122,7 +157,7 @@ export const DEFAULT_COURSE: Record<Subject, CourseId> = { math: 'fractions', en
 /** Courses a subject offers, for the parent strand-focus control. */
 export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
   math: ['fractions', 'addition'],
-  english: ['plurals'],
+  english: ['plurals', 'past-tense', 'comparative'],
 };
 
 /** Resolve the course a session runs: an explicit, subject-valid strand or the default. */

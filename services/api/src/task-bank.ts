@@ -5,6 +5,8 @@ import {
   checkEnglishTask,
   checkAdditionTask,
   pluralize,
+  pastTenseRegular,
+  comparativeRegular,
   trueRelation,
   areEquivalent,
   validateCandidate,
@@ -39,6 +41,8 @@ export const NUMBERLINE = 'SK-FR-numberline';
 export const ORDER = 'SK-FR-order';
 export const PLURAL_BASE = 'SK-EN-plural-base';
 export const PLURAL_SIB = 'SK-EN-plural-sibilant';
+export const PAST = 'SK-EN-past-regular';
+export const COMP = 'SK-EN-comparative';
 export const ADD_10 = 'SK-NS-add-within10';
 export const ADD_20 = 'SK-NS-add-within20';
 
@@ -111,6 +115,20 @@ interface OrderTask {
   readonly kind: 'fraction_order';
   readonly fractions: readonly Fraction[];
 }
+interface PastTenseTask {
+  readonly subject: 'english';
+  readonly course: 'past-tense';
+  readonly skillId: typeof PAST;
+  readonly kind: 'regular_past_tense';
+  readonly verb: string;
+}
+interface ComparativeTask {
+  readonly subject: 'english';
+  readonly course: 'comparative';
+  readonly skillId: typeof COMP;
+  readonly kind: 'comparative_adjective';
+  readonly adjective: string;
+}
 export type Task =
   | CompareTask
   | EquivTask
@@ -120,7 +138,9 @@ export type Task =
   | UnitTask
   | NonUnitTask
   | NumberLineTask
-  | OrderTask;
+  | OrderTask
+  | PastTenseTask
+  | ComparativeTask;
 
 const f = (numerator: number, denominator: number): Fraction => ({ numerator, denominator });
 const cmp = (left: Fraction, right: Fraction): CompareTask => ({
@@ -191,6 +211,20 @@ const order = (fractions: readonly Fraction[]): OrderTask => ({
   skillId: ORDER,
   kind: 'fraction_order',
   fractions,
+});
+const pastTask = (verb: string): PastTenseTask => ({
+  subject: 'english',
+  course: 'past-tense',
+  skillId: PAST,
+  kind: 'regular_past_tense',
+  verb,
+});
+const compTask = (adjective: string): ComparativeTask => ({
+  subject: 'english',
+  course: 'comparative',
+  skillId: COMP,
+  kind: 'comparative_adjective',
+  adjective,
 });
 
 export const TASK_BANK: Readonly<Record<string, Task>> = {
@@ -319,6 +353,15 @@ export function present(task: Task): { question: string; options: readonly strin
       options: [],
     };
   }
+  if (task.kind === 'regular_past_tense') {
+    return { question: `What is the past tense of "${task.verb}"? Type the word.`, options: [] };
+  }
+  if (task.kind === 'comparative_adjective') {
+    return {
+      question: `Write the comparative (the "-er" form) of "${task.adjective}". Type the word.`,
+      options: [],
+    };
+  }
   return {
     question: `What is the plural of "${task.word}"? Type the word.`,
     options: [], // free text
@@ -387,6 +430,20 @@ export function answerKeyValid(task: Task): boolean {
       kind: 'fraction_order',
       fractions: task.fractions,
       claimedOrder: correctOrder(task.fractions),
+    }).correct;
+  }
+  if (task.kind === 'regular_past_tense') {
+    return checkEnglishTask({
+      kind: 'regular_past_tense',
+      verb: task.verb,
+      claimedPast: pastTenseRegular(task.verb),
+    }).correct;
+  }
+  if (task.kind === 'comparative_adjective') {
+    return checkEnglishTask({
+      kind: 'comparative_adjective',
+      adjective: task.adjective,
+      claimedComparative: comparativeRegular(task.adjective),
     }).correct;
   }
   return checkEnglishTask({
@@ -487,6 +544,17 @@ export function judge(task: Task, raw: string): boolean {
       claimedOrder: parseOrder(a),
     }).correct;
   }
+  if (task.kind === 'regular_past_tense') {
+    return checkEnglishTask({ kind: 'regular_past_tense', verb: task.verb, claimedPast: a })
+      .correct;
+  }
+  if (task.kind === 'comparative_adjective') {
+    return checkEnglishTask({
+      kind: 'comparative_adjective',
+      adjective: task.adjective,
+      claimedComparative: a,
+    }).correct;
+  }
   return checkEnglishTask({ kind: 'noun_plural', word: task.word, claimedPlural: a }).correct;
 }
 
@@ -521,6 +589,8 @@ export const GEN_SERVABLE: Readonly<Record<string, { subject: Subject; course: T
     [ORDER]: { subject: 'math', course: 'fractions' },
     [PLURAL_BASE]: { subject: 'english', course: 'plurals' },
     [PLURAL_SIB]: { subject: 'english', course: 'plurals' },
+    [PAST]: { subject: 'english', course: 'past-tense' },
+    [COMP]: { subject: 'english', course: 'comparative' },
   };
 
 /** Stable 32-bit seed from a session id so a session's generated stream is
@@ -586,6 +656,8 @@ function resolveGeneratedTask(taskId: string): Task {
   if (item.task.kind === 'noun_plural') {
     return plural(skillId as PluralTask['skillId'], item.task.word);
   }
+  if (item.task.kind === 'regular_past_tense') return pastTask(item.task.verb);
+  if (item.task.kind === 'comparative_adjective') return compTask(item.task.adjective);
   throw new DomainError('POLICY_BLOCKED', 'generated english kind not servable in the loop yet');
 }
 
