@@ -37,6 +37,14 @@ describe('ontario curriculum catalogue', () => {
     expect(lang).toMatchObject({ strands: 4, expectations: 61, reviewStatus: 'draft' });
   });
 
+  it('loads Grade 3 math and language, all DRAFT with provenance', () => {
+    const cov = ontarioCoverage();
+    const math = cov.find((c) => c.subject === 'math' && c.grade === 3);
+    const lang = cov.find((c) => c.subject === 'language' && c.grade === 3);
+    expect(math).toMatchObject({ strands: 5, expectations: 46, reviewStatus: 'draft' });
+    expect(lang).toMatchObject({ strands: 4, expectations: 61, reviewStatus: 'draft' });
+  });
+
   it('every dataset passes structural validation', () => {
     for (const d of ontarioDatasets()) {
       expect(() => validateOntarioData(d)).not.toThrow();
