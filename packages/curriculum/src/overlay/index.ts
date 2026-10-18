@@ -16,15 +16,21 @@
  *  - It sets NO mastery thresholds, evidence weights, or benchmarks — those are
  *    the educator's to decide (ER-03/NFR-07/NFR-08) and live nowhere in here.
  *
- * Scope today: the fractions pilot path only, anchored to the REAL Ontario
- * expectation codes now in the catalogue. The remaining expectations are mapped
- * under the educator gate, grade/strand by grade/strand — this module is the
- * mechanism and the first worked example, not full coverage.
+ * Scope today: three worked DRAFT domains anchored to REAL Ontario codes — the
+ * fractions pilot path, the addition number-facts path, and the English
+ * word-formation path (plurals / regular past / comparative). These cover only
+ * the skills the engine already coaches; the rest of the 849-expectation
+ * catalogue is authored under the educator gate, grade/strand by grade/strand.
+ * `buildOverlayWorksheet` emits the full per-expectation gap list (proposed-or-
+ * blank) that drives that human authoring — this module is the mechanism and the
+ * worked examples, not full coverage.
  */
 
 import type { CanonicalSkill, SkillDependency } from '../entities';
 import { CurriculumGraph } from '../graph';
 import { FRACTION_SKILLS, FRACTION_DEPENDENCIES } from '../fractions-draft';
+import { ADDITION_SKILLS, ADDITION_DEPENDENCIES } from '../addition-draft';
+import { ENGLISH_SKILLS, ENGLISH_DEPENDENCIES } from '../english-draft';
 import { ontarioDatasets, ontarioExpectations, type OntarioSubject } from '../ontario';
 
 /** A proposed link from one official Ontario expectation to one teachable skill.
@@ -300,3 +306,267 @@ export function overlayCoverage(
     mappedDraft: mappedByKey.get(`${d.subject}|${d.grade}`)?.size ?? 0,
   }));
 }
+
+/* ==========================================================================
+ *  Multi-domain overlay registry
+ * ==========================================================================
+ * Each worked domain bundles its teachable skills, its PROPOSED prerequisite
+ * edges, and its expectation→skill mappings. Every domain is DRAFT/unsigned —
+ * the registry is the mechanism for authoring more domains, not a claim of
+ * validated coverage. The fractions domain above is the first; addition and
+ * English word-formation follow, mapping the skills the engine already coaches
+ * to the real catalogue codes they serve. The rest of the catalogue stays
+ * unmapped until an educator authors it (see `buildOverlayWorksheet`). */
+
+/** A self-contained DRAFT overlay for one strand/skill family. */
+export interface DomainOverlay {
+  readonly domainId: string;
+  readonly skills: readonly CanonicalSkill[];
+  readonly dependencies: readonly SkillDependency[];
+  readonly mappings: readonly ProposedSkillMapping[];
+}
+
+/**
+ * DRAFT addition overlay — the number-facts skills ↔ real Ontario Math (2020)
+ * codes. Proposals for the educator to confirm/refine/reject; none is signed.
+ */
+export const ADDITION_OVERLAY: readonly ProposedSkillMapping[] = [
+  link(
+    'math',
+    1,
+    'B2.2',
+    'SK-NS-add-within10',
+    'full',
+    'Recall of addition facts to 10 is exactly within-10 fluency.',
+  ),
+  link(
+    'math',
+    1,
+    'B2.4',
+    'SK-NS-add-within10',
+    'partial',
+    'Representing and solving addition situations within 10 with objects/equations.',
+  ),
+  link(
+    'math',
+    1,
+    'B2.3',
+    'SK-NS-add-within10',
+    'partial',
+    'Mental strategies to add within 10 (part of a broader add/subtract expectation).',
+  ),
+  link(
+    'math',
+    2,
+    'B2.2',
+    'SK-NS-add-within20',
+    'full',
+    'Recall of addition facts to 20 (crossing ten) is within-20 fluency.',
+  ),
+  link(
+    'math',
+    2,
+    'B2.4',
+    'SK-NS-add-within20',
+    'partial',
+    'Representing and solving addition situations within 20 with objects/equations.',
+  ),
+  link(
+    'math',
+    2,
+    'B2.3',
+    'SK-NS-add-within20',
+    'partial',
+    'Mental strategies to add within 20 (part of a broader add/subtract expectation).',
+  ),
+];
+
+/**
+ * DRAFT English word-formation overlay — plural / regular-past / comparative
+ * skills ↔ real Ontario Language (2023) codes. The relevant codes are the
+ * morphology/spelling expectations (bases + suffixes) and the parts-of-speech
+ * expectations; each link is partial because those expectations span far more
+ * than any one skill. Proposals for the educator; none is signed.
+ */
+export const ENGLISH_OVERLAY: readonly ProposedSkillMapping[] = [
+  link(
+    'language',
+    1,
+    'B2.6',
+    'SK-EN-plural-base',
+    'partial',
+    'Using base + suffix morphology to spell words includes the regular plural -s.',
+  ),
+  link(
+    'language',
+    2,
+    'B2.3',
+    'SK-EN-plural-base',
+    'partial',
+    'Continued morpheme/suffix spelling knowledge covers the regular plural -s.',
+  ),
+  link(
+    'language',
+    2,
+    'B2.3',
+    'SK-EN-plural-sibilant',
+    'partial',
+    'Suffix spelling for sibilant stems (-es) and consonant-y → -ies.',
+  ),
+  link(
+    'language',
+    3,
+    'B2.3',
+    'SK-EN-plural-sibilant',
+    'partial',
+    'Consolidated suffix spelling for -es / consonant-y → -ies plurals.',
+  ),
+  link(
+    'language',
+    2,
+    'B3.2',
+    'SK-EN-past-regular',
+    'partial',
+    'Functions of parts of speech include verb tense; the regular past is the -ed inflection.',
+  ),
+  link(
+    'language',
+    3,
+    'B2.3',
+    'SK-EN-past-regular',
+    'partial',
+    'Suffix spelling (-ed, with doubling / drop-e / y→ied) for the regular past tense.',
+  ),
+  link(
+    'language',
+    3,
+    'B2.3',
+    'SK-EN-comparative',
+    'partial',
+    'Suffix spelling (-er, with doubling / drop-e / y→ier) for the regular comparative.',
+  ),
+  link(
+    'language',
+    3,
+    'B3.2',
+    'SK-EN-comparative',
+    'partial',
+    'Functions of parts of speech include comparative adjectives (the -er form).',
+  ),
+];
+
+/** Every worked DRAFT domain. Authoring a new strand adds a domain here. */
+export const OVERLAYS: readonly DomainOverlay[] = [
+  {
+    domainId: 'fractions',
+    skills: FRACTION_SKILLS,
+    dependencies: FRACTION_DEPENDENCIES,
+    mappings: FRACTIONS_OVERLAY,
+  },
+  {
+    domainId: 'addition',
+    skills: ADDITION_SKILLS,
+    dependencies: ADDITION_DEPENDENCIES,
+    mappings: ADDITION_OVERLAY,
+  },
+  {
+    domainId: 'english',
+    skills: ENGLISH_SKILLS,
+    dependencies: ENGLISH_DEPENDENCIES,
+    mappings: ENGLISH_OVERLAY,
+  },
+];
+
+/** Every proposed mapping across all domains (flattened). */
+export function allOverlayMappings(): readonly ProposedSkillMapping[] {
+  return OVERLAYS.flatMap((o) => o.mappings);
+}
+
+/** Every teachable skill referenced by any domain. */
+export function allOverlaySkills(): readonly CanonicalSkill[] {
+  return OVERLAYS.flatMap((o) => o.skills);
+}
+
+/**
+ * Validate every domain against its own skill set and the catalogue, and assert
+ * mapping ids are unique across all domains. Throws on any structural problem so
+ * an unsound registry can never load. Pedagogical correctness is still the
+ * educator's (links stay unsigned). Pure; used at load and in tests.
+ */
+export function validateAllOverlays(
+  overlays: readonly DomainOverlay[] = OVERLAYS,
+  catalogueIds: ReadonlySet<string> = catalogueExpectationIds(),
+): void {
+  const seen = new Set<string>();
+  for (const o of overlays) {
+    validateOverlay(o.mappings, o.skills, catalogueIds);
+    for (const m of o.mappings) {
+      if (seen.has(m.mappingId))
+        throw new Error(`overlay: mapping id ${m.mappingId} reused across domains`);
+      seen.add(m.mappingId);
+    }
+  }
+}
+
+/** One row of the educator coverage worksheet: a catalogue expectation with its
+ *  DRAFT proposal(s), or blank where nothing is proposed yet. */
+export interface OverlayWorksheetRow {
+  readonly subject: string;
+  readonly grade: number;
+  readonly strand: string;
+  readonly overallCode: string;
+  readonly sourceCode: string;
+  readonly expectationId: string;
+  readonly text: string;
+  readonly proposedSkillIds: string; // comma-joined; '' when unmapped
+  readonly coverage: string; // comma-joined; '' when unmapped
+  readonly proposedBy: string; // '' when unmapped
+  readonly rationale: string; // ' | '-joined; '' when unmapped
+  readonly status: 'PROPOSED (unsigned)' | 'UNMAPPED';
+}
+
+/**
+ * The full G1–8 coverage/gap worksheet: one row per catalogue expectation across
+ * every loaded dataset, joined with the DRAFT proposals. Every proposed row is
+ * explicitly unsigned; every unmapped row is a gap for an educator to author.
+ * This is the input artifact to the human authoring track (NFR-10 tracking) —
+ * it asserts NO validated coverage. Pure/deterministic from catalogue + overlays.
+ */
+export function buildOverlayWorksheet(
+  overlays: readonly DomainOverlay[] = OVERLAYS,
+): readonly OverlayWorksheetRow[] {
+  const byExpectation = new Map<string, ProposedSkillMapping[]>();
+  for (const o of overlays)
+    for (const m of o.mappings)
+      (
+        byExpectation.get(m.expectationId) ??
+        byExpectation.set(m.expectationId, []).get(m.expectationId)!
+      ).push(m);
+
+  const rows: OverlayWorksheetRow[] = [];
+  for (const d of ontarioDatasets()) {
+    const strandName = new Map(d.strands.map((s) => [s.code, s.name]));
+    for (const e of d.expectations) {
+      const expectationId = `EXP-ONT-${d.subject.toUpperCase()}-G${d.grade}-${e.sourceCode}`;
+      const proposals = byExpectation.get(expectationId) ?? [];
+      rows.push({
+        subject: d.subject,
+        grade: d.grade,
+        strand: strandName.get(e.strand) ?? e.strand,
+        overallCode: e.overallCode,
+        sourceCode: e.sourceCode,
+        expectationId,
+        text: e.text,
+        proposedSkillIds: proposals.map((m) => m.skillId).join(', '),
+        coverage: proposals.map((m) => m.coverage).join(', '),
+        proposedBy: proposals.length ? proposals[0]!.proposedBy : '',
+        rationale: proposals.map((m) => m.rationale).join(' | '),
+        status: proposals.length ? 'PROPOSED (unsigned)' : 'UNMAPPED',
+      });
+    }
+  }
+  return rows;
+}
+
+// Load-time guard: every domain must be structurally sound.
+validateAllOverlays();

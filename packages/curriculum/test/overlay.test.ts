@@ -1,11 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import {
   FRACTIONS_OVERLAY,
+  ADDITION_OVERLAY,
+  ENGLISH_OVERLAY,
+  OVERLAYS,
   OVERLAY_SKILLS,
   validateOverlay,
+  validateAllOverlays,
+  allOverlayMappings,
+  allOverlaySkills,
   buildProposedOverlayGraph,
+  buildOverlayWorksheet,
   skillsForExpectation,
   overlayCoverage,
+  ontarioDatasets,
   type ProposedSkillMapping,
 } from '@potenova/curriculum';
 
@@ -91,5 +99,87 @@ describe('teachable-skill overlay', () => {
     expect(cov.some((c) => c.subject === 'math' && c.mappedDraft > 0)).toBe(true);
     // mappedDraft never exceeds the grade's expectation count
     expect(cov.every((c) => c.mappedDraft <= c.expectations)).toBe(true);
+  });
+});
+
+describe('multi-domain overlay registry', () => {
+  it('registers three worked domains, all unsigned', () => {
+    expect(OVERLAYS.map((o) => o.domainId)).toEqual(['fractions', 'addition', 'english']);
+    for (const o of OVERLAYS) {
+      expect(o.mappings.length).toBeGreaterThan(0);
+      expect(o.mappings.every((m) => m.reviewedBy === null)).toBe(true);
+    }
+    expect(() => validateAllOverlays()).not.toThrow();
+  });
+
+  it('mapping ids are globally unique across domains', () => {
+    const all = allOverlayMappings();
+    expect(all.length).toBe(
+      FRACTIONS_OVERLAY.length + ADDITION_OVERLAY.length + ENGLISH_OVERLAY.length,
+    );
+    expect(new Set(all.map((m) => m.mappingId)).size).toBe(all.length);
+  });
+
+  it('addition + English links resolve to real catalogue codes and known skills', () => {
+    expect(() => validateOverlay(ADDITION_OVERLAY, allOverlaySkills())).not.toThrow();
+    expect(() => validateOverlay(ENGLISH_OVERLAY, allOverlaySkills())).not.toThrow();
+    const add10 = ADDITION_OVERLAY.find((m) => m.sourceCode === 'B2.2' && m.grade === 1)!;
+    expect(add10.expectationId).toBe('EXP-ONT-MATH-G1-B2.2');
+    expect(add10.skillId).toBe('SK-NS-add-within10');
+    const pluralBase = ENGLISH_OVERLAY.find((m) => m.grade === 1)!;
+    expect(pluralBase.expectationId).toBe('EXP-ONT-LANGUAGE-G1-B2.6');
+    expect(pluralBase.skillId).toBe('SK-EN-plural-base');
+  });
+
+  it('combined coverage now reaches language grades (fractions default stays fractions-only)', () => {
+    const combined = overlayCoverage(allOverlayMappings());
+    expect(combined.some((c) => c.subject === 'language' && c.mappedDraft > 0)).toBe(true);
+    // the no-arg default is unchanged (back-compat): fractions pilot only
+    expect(overlayCoverage().some((c) => c.subject === 'language' && c.mappedDraft > 0)).toBe(
+      false,
+    );
+  });
+
+  it('a per-domain proposed graph is acyclic and non-canonical (English)', () => {
+    const english = OVERLAYS.find((o) => o.domainId === 'english')!;
+    const g = buildProposedOverlayGraph(english.skills, english.dependencies);
+    expect(g.skillCount()).toBe(english.skills.length);
+    expect(g.hasCycle()).toBe(false);
+    for (const s of english.skills) expect(g.directPrerequisites(s.skillId)).toEqual([]);
+  });
+});
+
+describe('educator coverage worksheet', () => {
+  const rows = buildOverlayWorksheet();
+  const totalExpectations = ontarioDatasets().reduce((n, d) => n + d.expectations.length, 0);
+
+  it('has exactly one row per catalogue expectation', () => {
+    expect(rows.length).toBe(totalExpectations);
+    expect(new Set(rows.map((r) => r.expectationId)).size).toBe(rows.length);
+  });
+
+  it('every row is either a DRAFT proposal or an explicit gap — never validated', () => {
+    for (const r of rows) {
+      expect(r.status === 'PROPOSED (unsigned)' || r.status === 'UNMAPPED').toBe(true);
+      if (r.status === 'UNMAPPED') {
+        expect(r.proposedSkillIds).toBe('');
+      } else {
+        expect(r.proposedSkillIds.length).toBeGreaterThan(0);
+      }
+    }
+    // the mapped rows equal the distinct expectations the overlays propose
+    const mappedRows = rows.filter((r) => r.status === 'PROPOSED (unsigned)').length;
+    expect(mappedRows).toBe(new Set(allOverlayMappings().map((m) => m.expectationId)).size);
+    // the overwhelming majority remains unmapped — this is a gap list, not coverage
+    expect(rows.filter((r) => r.status === 'UNMAPPED').length).toBeGreaterThan(mappedRows);
+  });
+
+  it('a worked proposal and a known gap both appear', () => {
+    const proposed = rows.find((r) => r.expectationId === 'EXP-ONT-MATH-G3-B2.8')!;
+    expect(proposed.proposedSkillIds).toContain('SK-FR-nonunit');
+    expect(proposed.status).toBe('PROPOSED (unsigned)');
+    // a Grade 8 language expectation is unmapped (no overlay touches it yet)
+    const gap = rows.find((r) => r.subject === 'language' && r.grade === 8)!;
+    expect(gap.status).toBe('UNMAPPED');
   });
 });
