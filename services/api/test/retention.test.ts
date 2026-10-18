@@ -86,6 +86,17 @@ async function setupWithDecayedMastery() {
   // 21-day decay window) → comparison is review-due.
   await seedMastered(db, 'SK-FR-equiv', new Date(now - DAY).toISOString(), 'eq');
   await seedMastered(db, 'SK-FR-compare', new Date(now - 30 * DAY).toISOString(), 'cmp');
+  // The other pilot skills are mastered recently (not review-due), so comparison is
+  // the only skill past the decay window and the planner surfaces it for review.
+  for (const skillId of [
+    'SK-FR-partition',
+    'SK-FR-unit',
+    'SK-FR-nonunit',
+    'SK-FR-numberline',
+    'SK-FR-order',
+  ]) {
+    await seedMastered(db, skillId, new Date(now - DAY).toISOString(), `pre-${skillId}`);
+  }
 
   const started = await (
     await app.request(

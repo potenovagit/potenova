@@ -1,12 +1,18 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { createApp } from '../src/app';
 import { openDatabase, BillingRepository, type PotenovaDb } from '@potenova/persistence';
+import { seedMastered } from './support/seed';
 
 /**
  * Stall handling (AT-08): after stallAttempts (DRAFT = 2) consecutive wrong
  * answers on a skill, the strategy MUST change — the engine drops to a weak
  * coachable prerequisite, or switches to a concrete representation — never just
  * re-serves the same task.
+ *
+ * The fractions course now coaches all seven pilot skills, so `unit` and `nonunit`
+ * are seeded mastered: comparison then drops to its remaining open prerequisite
+ * (equivalence), and equivalence — whose own prerequisites are satisfied — has no
+ * prerequisite to drop to and must switch representation instead.
  */
 
 const env = { APP_ENV: 'staging', PRIMARY_REGION: 'ca-central', DR_REGION: 'ca-east' };
@@ -52,6 +58,9 @@ async function startSession() {
     tierId: 't1',
     updatedAt: '2026-10-13T00:00:00Z',
   });
+  // Unit and non-unit fractions already mastered (see file header).
+  await seedMastered(db, 'SK-FR-unit', '2026-10-13T00:00:00Z', 'unit');
+  await seedMastered(db, 'SK-FR-nonunit', '2026-10-13T00:00:00Z', 'nonunit');
   const started = await (
     await app.request(
       '/learners/kid1/sessions',

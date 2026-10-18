@@ -37,7 +37,7 @@ const json = (headers: Record<string, string>, body?: unknown) => ({
 
 const REPS = ['symbolic', 'area-model', 'number-line'];
 
-async function seedMastered(db: PotenovaDb, skillId: string, tag: string) {
+async function seedMastered(db: PotenovaDb, skillId: string, tag: string, transferable = false) {
   const repo = new EvidenceRepository(db);
   const at = new Date().toISOString();
   for (let i = 0; i < REPS.length; i++) {
@@ -55,6 +55,23 @@ async function seedMastered(db: PotenovaDb, skillId: string, tag: string) {
       schemaVersion: 'evt-0.1',
     };
     await repo.appendEvidence(ev);
+  }
+  if (transferable) {
+    // A correct unaided transfer_check lifts the skill to TRANSFERABLE, so it is
+    // no longer a transfer candidate the planner would offer.
+    await repo.appendEvidence({
+      eventId: `seed-${tag}-xfer`,
+      learnerAlias: 'kid1',
+      skillId,
+      mode: 'transfer_check',
+      assistanceBand: 'A0',
+      correct: true,
+      representation: 'symbolic',
+      recognitionConfidence: 1,
+      observedAt: at,
+      curriculumReleaseId: 'REL-ONT-MATH-2020-draft',
+      schemaVersion: 'evt-0.1',
+    });
   }
 }
 
@@ -82,9 +99,20 @@ describe('TRANSFERABLE via transfer tasks', () => {
       updatedAt: '2026-10-13T00:00:00Z',
     });
 
-    // Both skills already mastered (recent) → the planner offers a transfer check.
+    // Equivalence and comparison are mastered (recent) → the planner offers a
+    // transfer check. The other pilot skills are already TRANSFERABLE, so they are
+    // not transfer candidates and comparison's transfer task is the one offered.
     await seedMastered(db, 'SK-FR-equiv', 'eq');
     await seedMastered(db, 'SK-FR-compare', 'cmp');
+    for (const skillId of [
+      'SK-FR-partition',
+      'SK-FR-unit',
+      'SK-FR-nonunit',
+      'SK-FR-numberline',
+      'SK-FR-order',
+    ]) {
+      await seedMastered(db, skillId, `pre-${skillId}`, true);
+    }
 
     const started = await (
       await app.request(

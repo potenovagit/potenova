@@ -1,6 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { createApp } from '../src/app';
 import { openDatabase, type PotenovaDb } from '@potenova/persistence';
+import { resolveTask, correctAnswerFor, wrongAnswerFor } from '../src/task-bank';
+import { seedMastered } from './support/seed';
 
 /**
  * Adaptive diagnostic run: the SERVER picks each probe by information gain +
@@ -31,27 +33,11 @@ const json = (headers: Record<string, string>, body?: unknown) => ({
   ...(body === undefined ? {} : { body: JSON.stringify(body) }),
 });
 
-// The fixed synthetic fractions bank, by task id.
-const CORRECT: Record<string, string> = {
-  'frac-eq-1': 'yes',
-  'frac-eq-2': 'no',
-  'frac-eq-3': 'yes',
-  'frac-eq-4': 'no',
-  'frac-cmp-1': 'gt',
-  'frac-cmp-2': 'eq',
-  'frac-cmp-3': 'lt',
-  'frac-cmp-4': 'lt',
-};
-const WRONG: Record<string, string> = {
-  'frac-eq-1': 'no',
-  'frac-eq-2': 'yes',
-  'frac-eq-3': 'no',
-  'frac-eq-4': 'yes',
-  'frac-cmp-1': 'lt',
-  'frac-cmp-2': 'lt',
-  'frac-cmp-3': 'gt',
-  'frac-cmp-4': 'gt',
-};
+// The diagnostic now probes every pilot fraction skill (static and generated),
+// so answers are derived from the delivered task by the oracle — no hardcoded,
+// per-item answer map. `resolveTask` reconstructs the exact item from its id.
+const CORRECT = (taskId: string): string => correctAnswerFor(resolveTask(taskId));
+const WRONG = (taskId: string): string => wrongAnswerFor(resolveTask(taskId));
 
 async function onboard() {
   const db = openDatabase();
@@ -69,6 +55,20 @@ async function onboard() {
     '/families/fam1/consent',
     json(owner, { grantId: 'cg1', purpose: 'child_learning', modality: 'text', version: 'v1' }),
   );
+  // The fractions course now ranges over all seven pilot skills. A blank-slate run
+  // across all seven can hit the DRAFT attention-budget ceiling before every skill
+  // resolves; to keep these tests focused on the equivalence→comparison path, the
+  // five lower/sibling skills are seeded as already placed (independent-check
+  // evidence is admissible placement evidence), leaving equiv + compare to probe.
+  for (const skillId of [
+    'SK-FR-partition',
+    'SK-FR-unit',
+    'SK-FR-nonunit',
+    'SK-FR-numberline',
+    'SK-FR-order',
+  ]) {
+    await seedMastered(db, skillId, '2026-10-16T00:00:00.000Z', `pre-${skillId}`);
+  }
   return app;
 }
 
@@ -80,7 +80,8 @@ describe('adaptive diagnostic run', () => {
       await app.request('/learners/kid1/diagnostic/runs', json(child, { subject: 'math' }))
     ).json();
     expect(start.state).toBe('ACTIVE');
-    // Equivalence is the prerequisite of comparison → highest foundational weight.
+    // Among the unresolved skills, equivalence is comparison's prerequisite →
+    // highest foundational weight, so it is probed first.
     expect(start.next.skillId).toBe('SK-FR-equiv');
     const runId = start.runId as string;
 
@@ -95,7 +96,7 @@ describe('adaptive diagnostic run', () => {
           json(child, {
             clientSubmissionId: `p${i}`,
             taskId: next.taskId,
-            answer: CORRECT[next.taskId],
+            answer: CORRECT(next.taskId),
           }),
         )
       ).json();
@@ -137,7 +138,7 @@ describe('adaptive diagnostic run', () => {
           json(child, {
             clientSubmissionId: `w${i}`,
             taskId: next.taskId,
-            answer: WRONG[next.taskId],
+            answer: WRONG(next.taskId),
           }),
         )
       ).json();
@@ -179,7 +180,7 @@ describe('adaptive diagnostic run', () => {
       json(child, {
         clientSubmissionId: 'a0',
         taskId: r1.next.taskId,
-        answer: CORRECT[r1.next.taskId],
+        answer: CORRECT(r1.next.taskId),
       }),
     );
     const r3 = await (

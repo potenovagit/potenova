@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { createApp } from '../src/app';
 import { openDatabase, BillingRepository, type PotenovaDb } from '@potenova/persistence';
+import { seedMastered } from './support/seed';
 
 /**
  * Diagnostic → placement: a learner who demonstrates the prerequisite in the
@@ -87,6 +88,18 @@ const demonstrateEquiv = (runId: string) =>
 describe('diagnostic → placement', () => {
   it('places the learner past a prerequisite demonstrated in the diagnostic', async () => {
     const app = await onboard();
+    // Comparison's other prerequisites (below equivalence) are already mastered, so
+    // demonstrating equivalence in the diagnostic leaves comparison as the entry.
+    const db = dbs[dbs.length - 1]!;
+    for (const skillId of [
+      'SK-FR-partition',
+      'SK-FR-unit',
+      'SK-FR-nonunit',
+      'SK-FR-numberline',
+      'SK-FR-order',
+    ]) {
+      await seedMastered(db, skillId, '2026-10-16T00:00:00Z', `pre-${skillId}`);
+    }
 
     const probeRes = await app.request(
       '/learners/kid1/diagnostic/probes',

@@ -1,12 +1,19 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { createApp } from '../src/app';
 import { openDatabase, BillingRepository, type PotenovaDb } from '@potenova/persistence';
+import { seedMastered } from './support/seed';
 
 /**
  * Adaptive planner + remediation (API level). The planner — not a fixed task
  * order — picks the next skill from derived mastery over the canonical graph:
  * a fresh learner is remediated to the prerequisite (SK-FR-equiv), and once that
  * is independent the planner advances to the dependent skill (SK-FR-compare).
+ *
+ * The fractions course now coaches all seven pilot skills. To exercise the
+ * equiv→compare remediation narrative in isolation (and let the session complete
+ * after just those two), these tests seed the other five skills as already
+ * mastered — a legitimate precondition. The full seven-skill progression from a
+ * blank slate is covered end to end in diagnostic-run.test.ts.
  */
 
 const env = { APP_ENV: 'staging', PRIMARY_REGION: 'ca-central', DR_REGION: 'ca-east' };
@@ -52,6 +59,18 @@ async function startSession() {
     tierId: 't1',
     updatedAt: '2026-10-13T00:00:00Z',
   });
+  // Precondition: every pilot fraction skill except equivalence and comparison is
+  // already mastered, leaving equivalence as comparison's sole open prerequisite
+  // (keeps the equiv→compare narrative and lets the session complete after both).
+  for (const skillId of [
+    'SK-FR-partition',
+    'SK-FR-unit',
+    'SK-FR-nonunit',
+    'SK-FR-numberline',
+    'SK-FR-order',
+  ]) {
+    await seedMastered(db, skillId, '2026-10-13T00:00:00Z', `pre-${skillId}`);
+  }
   const started = await (
     await app.request(
       '/learners/kid1/sessions',
