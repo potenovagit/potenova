@@ -15,56 +15,311 @@
     { "code": "F", "name": "Financial Literacy" }
   ],
   "expectations": [
-    { "sourceCode": "B1.1", "strand": "B", "overallCode": "B1", "text": "read and represent whole numbers up to and including one million, using appropriate tools and strategies, and describe various ways they are used in everyday life" },
-    { "sourceCode": "B1.2", "strand": "B", "overallCode": "B1", "text": "read and represent integers, using a variety of tools and strategies, including horizontal and vertical number lines" },
-    { "sourceCode": "B1.3", "strand": "B", "overallCode": "B1", "text": "compare and order integers, decimal numbers, and fractions, separately and in combination, in various contexts" },
-    { "sourceCode": "B1.4", "strand": "B", "overallCode": "B1", "text": "read, represent, compare, and order decimal numbers up to thousandths, in various contexts" },
-    { "sourceCode": "B1.5", "strand": "B", "overallCode": "B1", "text": "round decimal numbers, both terminating and repeating, to the nearest tenth, hundredth, or whole number, as applicable, in various contexts" },
-    { "sourceCode": "B1.6", "strand": "B", "overallCode": "B1", "text": "describe relationships and show equivalences among fractions and decimal numbers up to thousandths, using appropriate tools and drawings, in various contexts" },
-    { "sourceCode": "B2.1", "strand": "B", "overallCode": "B2", "text": "use the properties of operations, and the relationships between operations, to solve problems involving whole numbers, decimal numbers, fractions, ratios, rates, and whole number percents, including those requiring multiple steps or multiple operations" },
-    { "sourceCode": "B2.2", "strand": "B", "overallCode": "B2", "text": "understand the divisibility rules and use them to determine whether numbers are divisible by 2, 3, 4, 5, 6, 8, 9, and 10" },
-    { "sourceCode": "B2.3", "strand": "B", "overallCode": "B2", "text": "use mental math strategies to calculate percents of whole numbers, including 1%, 5%, 10%, 15%, 25%, and 50%, and explain the strategies used" },
-    { "sourceCode": "B2.4", "strand": "B", "overallCode": "B2", "text": "represent and solve problems involving the addition and subtraction of whole numbers and decimal numbers, using estimation and algorithms" },
-    { "sourceCode": "B2.5", "strand": "B", "overallCode": "B2", "text": "add and subtract fractions with like and unlike denominators, using appropriate tools, in various contexts" },
-    { "sourceCode": "B2.6", "strand": "B", "overallCode": "B2", "text": "represent composite numbers as a product of their prime factors, including through the use of factor trees" },
-    { "sourceCode": "B2.7", "strand": "B", "overallCode": "B2", "text": "represent and solve problems involving the multiplication of three-digit whole numbers by decimal tenths, using algorithms" },
-    { "sourceCode": "B2.8", "strand": "B", "overallCode": "B2", "text": "represent and solve problems involving the division of three-digit whole numbers by decimal tenths, using appropriate tools, strategies, and algorithms, and expressing remainders as appropriate" },
-    { "sourceCode": "B2.9", "strand": "B", "overallCode": "B2", "text": "multiply whole numbers by proper fractions, using appropriate tools and strategies" },
-    { "sourceCode": "B2.10", "strand": "B", "overallCode": "B2", "text": "divide whole numbers by proper fractions, using appropriate tools and strategies" },
-    { "sourceCode": "B2.11", "strand": "B", "overallCode": "B2", "text": "represent and solve problems involving the division of decimal numbers up to thousandths by whole numbers up to 10, using appropriate tools and strategies" },
-    { "sourceCode": "B2.12", "strand": "B", "overallCode": "B2", "text": "solve problems involving ratios, including percents and rates, using appropriate tools and strategies" },
-    { "sourceCode": "C1.1", "strand": "C", "overallCode": "C1", "text": "identify and describe repeating, growing, and shrinking patterns, including patterns found in real-life contexts, and specify which growing patterns are linear" },
-    { "sourceCode": "C1.2", "strand": "C", "overallCode": "C1", "text": "create and translate repeating, growing, and shrinking patterns using various representations, including tables of values, graphs, and, for linear growing patterns, algebraic expressions and equations" },
-    { "sourceCode": "C1.3", "strand": "C", "overallCode": "C1", "text": "determine pattern rules and use them to extend patterns, make and justify predictions, and identify missing elements in repeating, growing, and shrinking patterns, and use algebraic representations of the pattern rules to solve for unknown values in linear growing patterns" },
-    { "sourceCode": "C1.4", "strand": "C", "overallCode": "C1", "text": "create and describe patterns to illustrate relationships among whole numbers and decimal numbers" },
-    { "sourceCode": "C2.1", "strand": "C", "overallCode": "C2", "text": "add monomials with a degree of 1 that involve whole numbers, using tools" },
-    { "sourceCode": "C2.2", "strand": "C", "overallCode": "C2", "text": "evaluate algebraic expressions that involve whole numbers and decimal tenths" },
-    { "sourceCode": "C2.3", "strand": "C", "overallCode": "C2", "text": "solve equations that involve multiple terms and whole numbers in various contexts, and verify solutions" },
-    { "sourceCode": "C2.4", "strand": "C", "overallCode": "C2", "text": "solve inequalities that involve two operations and whole numbers up to 100 and verify and graph the solutions" },
-    { "sourceCode": "C3.1", "strand": "C", "overallCode": "C3", "text": "solve problems and create computational representations of mathematical situations by writing and executing efficient code, including code that involves conditional statements and other control structures" },
-    { "sourceCode": "C3.2", "strand": "C", "overallCode": "C3", "text": "read and alter existing code, including code that involves conditional statements and other control structures, and describe how changes to the code affect the outcomes and the efficiency of the code" },
-    { "sourceCode": "D1.1", "strand": "D", "overallCode": "D1", "text": "describe the difference between discrete and continuous data, and provide examples of each" },
-    { "sourceCode": "D1.2", "strand": "D", "overallCode": "D1", "text": "collect qualitative data and discrete and continuous quantitative data to answer questions of interest about a population, and organize the sets of data as appropriate, including using intervals" },
-    { "sourceCode": "D1.3", "strand": "D", "overallCode": "D1", "text": "select from among a variety of graphs, including histograms and broken-line graphs, the type of graph best suited to represent various sets of data; display the data in the graphs with proper sources, titles, and labels, and appropriate scales; and justify their choice of graphs" },
-    { "sourceCode": "D1.4", "strand": "D", "overallCode": "D1", "text": "create an infographic about a data set, representing the data in appropriate ways, including in tables, histograms, and broken-line graphs, and incorporating any other relevant information that helps to tell a story about the data" },
-    { "sourceCode": "D1.5", "strand": "D", "overallCode": "D1", "text": "determine the range as a measure of spread and the measures of central tendency for various data sets, and use this information to compare two or more data sets" },
-    { "sourceCode": "D1.6", "strand": "D", "overallCode": "D1", "text": "analyse different sets of data presented in various ways, including in histograms and broken-line graphs and in misleading graphs, by asking and answering questions about the data, challenging preconceived notions, and drawing conclusions, then make convincing arguments and informed decisions" },
-    { "sourceCode": "D2.1", "strand": "D", "overallCode": "D2", "text": "use fractions, decimals, and percents to express the probability of events happening, represent this probability on a probability line, and use it to make predictions and informed decisions" },
-    { "sourceCode": "D2.2", "strand": "D", "overallCode": "D2", "text": "determine and compare the theoretical and experimental probabilities of two independent events happening" },
-    { "sourceCode": "E1.1", "strand": "E", "overallCode": "E1", "text": "create lists of the geometric properties of various types of quadrilaterals, including the properties of the diagonals, rotational symmetry, and line symmetry" },
-    { "sourceCode": "E1.2", "strand": "E", "overallCode": "E1", "text": "construct three-dimensional objects when given their top, front, and side views" },
-    { "sourceCode": "E1.3", "strand": "E", "overallCode": "E1", "text": "plot and read coordinates in all four quadrants of a Cartesian plane, and describe the translations that move a point from one coordinate to another" },
-    { "sourceCode": "E1.4", "strand": "E", "overallCode": "E1", "text": "describe and perform combinations of translations, reflections, and rotations up to 360° on a grid, and predict the results of these transformations" },
-    { "sourceCode": "E2.1", "strand": "E", "overallCode": "E2", "text": "measure length, area, mass, and capacity using the appropriate metric units, and solve problems that require converting smaller units to larger ones and vice versa" },
-    { "sourceCode": "E2.2", "strand": "E", "overallCode": "E2", "text": "use a protractor to measure and construct angles up to 360°, and state the relationship between angles that are measured clockwise and those that are measured counterclockwise" },
-    { "sourceCode": "E2.3", "strand": "E", "overallCode": "E2", "text": "use the properties of supplementary angles, complementary angles, opposite angles, and interior and exterior angles to solve for unknown angle measures" },
-    { "sourceCode": "E2.4", "strand": "E", "overallCode": "E2", "text": "determine the areas of trapezoids, rhombuses, kites, and composite polygons by decomposing them into shapes with known areas" },
-    { "sourceCode": "E2.5", "strand": "E", "overallCode": "E2", "text": "create and use nets to demonstrate the relationship between the faces of prisms and pyramids and their surface areas" },
-    { "sourceCode": "E2.6", "strand": "E", "overallCode": "E2", "text": "determine the surface areas of prisms and pyramids by calculating the areas of their two-dimensional faces and adding them together" },
-    { "sourceCode": "F1.1", "strand": "F", "overallCode": "F1", "text": "describe the advantages and disadvantages of various methods of payment that can be used to purchase goods and services" },
-    { "sourceCode": "F1.2", "strand": "F", "overallCode": "F1", "text": "identify different types of financial goals, including earning and saving goals, and outline some key steps in achieving them" },
-    { "sourceCode": "F1.3", "strand": "F", "overallCode": "F1", "text": "identify and describe various factors that may help or interfere with reaching financial goals" },
-    { "sourceCode": "F1.4", "strand": "F", "overallCode": "F1", "text": "explain the concept of interest rates, and identify types of interest rates and fees associated with different accounts and loans offered by various banks and other financial institutions" },
-    { "sourceCode": "F1.5", "strand": "F", "overallCode": "F1", "text": "describe trading, lending, borrowing, and donating as different ways to distribute financial and other resources among individuals and organizations" }
+    {
+      "sourceCode": "B1.1",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "read and represent whole numbers up to and including one million, using appropriate tools and strategies, and describe various ways they are used in everyday life"
+    },
+    {
+      "sourceCode": "B1.2",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "read and represent integers, using a variety of tools and strategies, including horizontal and vertical number lines"
+    },
+    {
+      "sourceCode": "B1.3",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "compare and order integers, decimal numbers, and fractions, separately and in combination, in various contexts"
+    },
+    {
+      "sourceCode": "B1.4",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "read, represent, compare, and order decimal numbers up to thousandths, in various contexts"
+    },
+    {
+      "sourceCode": "B1.5",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "round decimal numbers, both terminating and repeating, to the nearest tenth, hundredth, or whole number, as applicable, in various contexts"
+    },
+    {
+      "sourceCode": "B1.6",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "describe relationships and show equivalences among fractions and decimal numbers up to thousandths, using appropriate tools and drawings, in various contexts"
+    },
+    {
+      "sourceCode": "B2.1",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "use the properties of operations, and the relationships between operations, to solve problems involving whole numbers, decimal numbers, fractions, ratios, rates, and whole number percents, including those requiring multiple steps or multiple operations"
+    },
+    {
+      "sourceCode": "B2.2",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "understand the divisibility rules and use them to determine whether numbers are divisible by 2, 3, 4, 5, 6, 8, 9, and 10"
+    },
+    {
+      "sourceCode": "B2.3",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "use mental math strategies to calculate percents of whole numbers, including 1%, 5%, 10%, 15%, 25%, and 50%, and explain the strategies used"
+    },
+    {
+      "sourceCode": "B2.4",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent and solve problems involving the addition and subtraction of whole numbers and decimal numbers, using estimation and algorithms"
+    },
+    {
+      "sourceCode": "B2.5",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "add and subtract fractions with like and unlike denominators, using appropriate tools, in various contexts"
+    },
+    {
+      "sourceCode": "B2.6",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent composite numbers as a product of their prime factors, including through the use of factor trees"
+    },
+    {
+      "sourceCode": "B2.7",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent and solve problems involving the multiplication of three-digit whole numbers by decimal tenths, using algorithms"
+    },
+    {
+      "sourceCode": "B2.8",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent and solve problems involving the division of three-digit whole numbers by decimal tenths, using appropriate tools, strategies, and algorithms, and expressing remainders as appropriate"
+    },
+    {
+      "sourceCode": "B2.9",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "multiply whole numbers by proper fractions, using appropriate tools and strategies"
+    },
+    {
+      "sourceCode": "B2.10",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "divide whole numbers by proper fractions, using appropriate tools and strategies"
+    },
+    {
+      "sourceCode": "B2.11",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent and solve problems involving the division of decimal numbers up to thousandths by whole numbers up to 10, using appropriate tools and strategies"
+    },
+    {
+      "sourceCode": "B2.12",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "solve problems involving ratios, including percents and rates, using appropriate tools and strategies"
+    },
+    {
+      "sourceCode": "C1.1",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "identify and describe repeating, growing, and shrinking patterns, including patterns found in real-life contexts, and specify which growing patterns are linear"
+    },
+    {
+      "sourceCode": "C1.2",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "create and translate repeating, growing, and shrinking patterns using various representations, including tables of values, graphs, and, for linear growing patterns, algebraic expressions and equations"
+    },
+    {
+      "sourceCode": "C1.3",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "determine pattern rules and use them to extend patterns, make and justify predictions, and identify missing elements in repeating, growing, and shrinking patterns, and use algebraic representations of the pattern rules to solve for unknown values in linear growing patterns"
+    },
+    {
+      "sourceCode": "C1.4",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "create and describe patterns to illustrate relationships among whole numbers and decimal numbers"
+    },
+    {
+      "sourceCode": "C2.1",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "add monomials with a degree of 1 that involve whole numbers, using tools"
+    },
+    {
+      "sourceCode": "C2.2",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "evaluate algebraic expressions that involve whole numbers and decimal tenths"
+    },
+    {
+      "sourceCode": "C2.3",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "solve equations that involve multiple terms and whole numbers in various contexts, and verify solutions"
+    },
+    {
+      "sourceCode": "C2.4",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "solve inequalities that involve two operations and whole numbers up to 100 and verify and graph the solutions"
+    },
+    {
+      "sourceCode": "C3.1",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "solve problems and create computational representations of mathematical situations by writing and executing efficient code, including code that involves conditional statements and other control structures"
+    },
+    {
+      "sourceCode": "C3.2",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "read and alter existing code, including code that involves conditional statements and other control structures, and describe how changes to the code affect the outcomes and the efficiency of the code"
+    },
+    {
+      "sourceCode": "D1.1",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "describe the difference between discrete and continuous data, and provide examples of each"
+    },
+    {
+      "sourceCode": "D1.2",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "collect qualitative data and discrete and continuous quantitative data to answer questions of interest about a population, and organize the sets of data as appropriate, including using intervals"
+    },
+    {
+      "sourceCode": "D1.3",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "select from among a variety of graphs, including histograms and broken-line graphs, the type of graph best suited to represent various sets of data; display the data in the graphs with proper sources, titles, and labels, and appropriate scales; and justify their choice of graphs"
+    },
+    {
+      "sourceCode": "D1.4",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "create an infographic about a data set, representing the data in appropriate ways, including in tables, histograms, and broken-line graphs, and incorporating any other relevant information that helps to tell a story about the data"
+    },
+    {
+      "sourceCode": "D1.5",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "determine the range as a measure of spread and the measures of central tendency for various data sets, and use this information to compare two or more data sets"
+    },
+    {
+      "sourceCode": "D1.6",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "analyse different sets of data presented in various ways, including in histograms and broken-line graphs and in misleading graphs, by asking and answering questions about the data, challenging preconceived notions, and drawing conclusions, then make convincing arguments and informed decisions"
+    },
+    {
+      "sourceCode": "D2.1",
+      "strand": "D",
+      "overallCode": "D2",
+      "text": "use fractions, decimals, and percents to express the probability of events happening, represent this probability on a probability line, and use it to make predictions and informed decisions"
+    },
+    {
+      "sourceCode": "D2.2",
+      "strand": "D",
+      "overallCode": "D2",
+      "text": "determine and compare the theoretical and experimental probabilities of two independent events happening"
+    },
+    {
+      "sourceCode": "E1.1",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "create lists of the geometric properties of various types of quadrilaterals, including the properties of the diagonals, rotational symmetry, and line symmetry"
+    },
+    {
+      "sourceCode": "E1.2",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "construct three-dimensional objects when given their top, front, and side views"
+    },
+    {
+      "sourceCode": "E1.3",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "plot and read coordinates in all four quadrants of a Cartesian plane, and describe the translations that move a point from one coordinate to another"
+    },
+    {
+      "sourceCode": "E1.4",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "describe and perform combinations of translations, reflections, and rotations up to 360° on a grid, and predict the results of these transformations"
+    },
+    {
+      "sourceCode": "E2.1",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "measure length, area, mass, and capacity using the appropriate metric units, and solve problems that require converting smaller units to larger ones and vice versa"
+    },
+    {
+      "sourceCode": "E2.2",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "use a protractor to measure and construct angles up to 360°, and state the relationship between angles that are measured clockwise and those that are measured counterclockwise"
+    },
+    {
+      "sourceCode": "E2.3",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "use the properties of supplementary angles, complementary angles, opposite angles, and interior and exterior angles to solve for unknown angle measures"
+    },
+    {
+      "sourceCode": "E2.4",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "determine the areas of trapezoids, rhombuses, kites, and composite polygons by decomposing them into shapes with known areas"
+    },
+    {
+      "sourceCode": "E2.5",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "create and use nets to demonstrate the relationship between the faces of prisms and pyramids and their surface areas"
+    },
+    {
+      "sourceCode": "E2.6",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "determine the surface areas of prisms and pyramids by calculating the areas of their two-dimensional faces and adding them together"
+    },
+    {
+      "sourceCode": "F1.1",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "describe the advantages and disadvantages of various methods of payment that can be used to purchase goods and services"
+    },
+    {
+      "sourceCode": "F1.2",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "identify different types of financial goals, including earning and saving goals, and outline some key steps in achieving them"
+    },
+    {
+      "sourceCode": "F1.3",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "identify and describe various factors that may help or interfere with reaching financial goals"
+    },
+    {
+      "sourceCode": "F1.4",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "explain the concept of interest rates, and identify types of interest rates and fees associated with different accounts and loans offered by various banks and other financial institutions"
+    },
+    {
+      "sourceCode": "F1.5",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "describe trading, lending, borrowing, and donating as different ways to distribute financial and other resources among individuals and organizations"
+    }
   ]
 }

@@ -15,53 +15,293 @@
     { "code": "F", "name": "Financial Literacy" }
   ],
   "expectations": [
-    { "sourceCode": "B1.1", "strand": "B", "overallCode": "B1", "text": "read, represent, compose, and decompose whole numbers up to and including 10 000, using appropriate tools and strategies, and describe various ways they are used in everyday life" },
-    { "sourceCode": "B1.2", "strand": "B", "overallCode": "B1", "text": "compare and order whole numbers up to and including 10 000, in various contexts" },
-    { "sourceCode": "B1.3", "strand": "B", "overallCode": "B1", "text": "round whole numbers to the nearest ten, hundred, or thousand, in various contexts" },
-    { "sourceCode": "B1.4", "strand": "B", "overallCode": "B1", "text": "represent fractions from halves to tenths using drawings, tools, and standard fractional notation, and explain the meanings of the denominator and the numerator" },
-    { "sourceCode": "B1.5", "strand": "B", "overallCode": "B1", "text": "use drawings and models to represent, compare, and order fractions representing the individual portions that result from two different fair-share scenarios involving any combination of 2, 3, 4, 5, 6, 8, and 10 sharers" },
-    { "sourceCode": "B1.6", "strand": "B", "overallCode": "B1", "text": "count to 10 by halves, thirds, fourths, fifths, sixths, eighths, and tenths, with and without the use of tools" },
-    { "sourceCode": "B1.7", "strand": "B", "overallCode": "B1", "text": "read, represent, compare, and order decimal tenths, in various contexts" },
-    { "sourceCode": "B1.8", "strand": "B", "overallCode": "B1", "text": "round decimal numbers to the nearest whole number, in various contexts" },
-    { "sourceCode": "B1.9", "strand": "B", "overallCode": "B1", "text": "describe relationships and show equivalences among fractions and decimal tenths, in various contexts" },
-    { "sourceCode": "B2.1", "strand": "B", "overallCode": "B2", "text": "use the properties of operations, and the relationships between addition, subtraction, multiplication, and division, to solve problems involving whole numbers, including those requiring more than one operation, and check calculations" },
-    { "sourceCode": "B2.2", "strand": "B", "overallCode": "B2", "text": "recall and demonstrate multiplication facts for 1 × 1 to 10 × 10, and related division facts" },
-    { "sourceCode": "B2.3", "strand": "B", "overallCode": "B2", "text": "use mental math strategies to multiply whole numbers by 10, 100, and 1000, divide whole numbers by 10, and add and subtract decimal tenths, and explain the strategies used" },
-    { "sourceCode": "B2.4", "strand": "B", "overallCode": "B2", "text": "represent and solve problems involving the addition and subtraction of whole numbers that add up to no more than 10 000 and of decimal tenths, using appropriate tools and strategies, including algorithms" },
-    { "sourceCode": "B2.5", "strand": "B", "overallCode": "B2", "text": "represent and solve problems involving the multiplication of two- or three-digit whole numbers by one-digit whole numbers and by 10, 100, and 1000, using appropriate tools, including arrays" },
-    { "sourceCode": "B2.6", "strand": "B", "overallCode": "B2", "text": "represent and solve problems involving the division of two- or three-digit whole numbers by one-digit whole numbers, expressing any remainder as a fraction when appropriate, using appropriate tools, including arrays" },
-    { "sourceCode": "B2.7", "strand": "B", "overallCode": "B2", "text": "represent the relationship between the repeated addition of a unit fraction and the multiplication of that unit fraction by a whole number, using tools, drawings, and standard fractional notation" },
-    { "sourceCode": "B2.8", "strand": "B", "overallCode": "B2", "text": "show simple multiplicative relationships involving whole-number rates, using various tools and drawings" },
-    { "sourceCode": "C1.1", "strand": "C", "overallCode": "C1", "text": "identify and describe repeating and growing patterns, including patterns found in real-life contexts" },
-    { "sourceCode": "C1.2", "strand": "C", "overallCode": "C1", "text": "create and translate repeating and growing patterns using various representations, including tables of values and graphs" },
-    { "sourceCode": "C1.3", "strand": "C", "overallCode": "C1", "text": "determine pattern rules and use them to extend patterns, make and justify predictions, and identify missing elements in repeating and growing patterns" },
-    { "sourceCode": "C1.4", "strand": "C", "overallCode": "C1", "text": "create and describe patterns to illustrate relationships among whole numbers and decimal tenths" },
-    { "sourceCode": "C2.1", "strand": "C", "overallCode": "C2", "text": "identify and use symbols as variables in expressions and equations" },
-    { "sourceCode": "C2.2", "strand": "C", "overallCode": "C2", "text": "solve equations that involve whole numbers up to 50 in various contexts, and verify solutions" },
-    { "sourceCode": "C2.3", "strand": "C", "overallCode": "C2", "text": "solve inequalities that involve addition and subtraction of whole numbers up to 20, and verify and graph the solutions" },
-    { "sourceCode": "C3.1", "strand": "C", "overallCode": "C3", "text": "solve problems and create computational representations of mathematical situations by writing and executing code, including code that involves sequential, concurrent, repeating, and nested events" },
-    { "sourceCode": "C3.2", "strand": "C", "overallCode": "C3", "text": "read and alter existing code, including code that involves sequential, concurrent, repeating, and nested events, and describe how changes to the code affect the outcomes" },
-    { "sourceCode": "D1.1", "strand": "D", "overallCode": "D1", "text": "describe the difference between qualitative and quantitative data, and describe situations where each would be used" },
-    { "sourceCode": "D1.2", "strand": "D", "overallCode": "D1", "text": "collect data from different primary and secondary sources to answer questions of interest that involve comparing two or more sets of data, and organize the data in frequency tables and stem-and-leaf plots" },
-    { "sourceCode": "D1.3", "strand": "D", "overallCode": "D1", "text": "select from among a variety of graphs, including multiple-bar graphs, the type of graph best suited to represent various sets of data; display the data in the graphs with proper sources, titles, and labels, and appropriate scales; and justify their choice of graphs" },
-    { "sourceCode": "D1.4", "strand": "D", "overallCode": "D1", "text": "create an infographic about a data set, representing the data in appropriate ways, including in frequency tables, stem-and-leaf plots, and multiple-bar graphs, and incorporating any other relevant information that helps to tell a story about the data" },
-    { "sourceCode": "D1.5", "strand": "D", "overallCode": "D1", "text": "determine the mean and the median and identify the mode(s), if any, for various data sets involving whole numbers, and explain what each of these measures indicates about the data" },
-    { "sourceCode": "D1.6", "strand": "D", "overallCode": "D1", "text": "analyse different sets of data presented in various ways, including in stem-and-leaf plots and multiple-bar graphs, by asking and answering questions about the data and drawing conclusions, then make convincing arguments and informed decisions" },
-    { "sourceCode": "D2.1", "strand": "D", "overallCode": "D2", "text": "use mathematical language, including the terms “impossible”, “unlikely”, “equally likely”, “likely”, and “certain”, to describe the likelihood of events happening, represent this likelihood on a probability line, and use it to make predictions and informed decisions" },
-    { "sourceCode": "D2.2", "strand": "D", "overallCode": "D2", "text": "make and test predictions about the likelihood that the mean, median, and mode(s) of a data set will be the same for data collected from different populations" },
-    { "sourceCode": "E1.1", "strand": "E", "overallCode": "E1", "text": "identify geometric properties of rectangles, including the number of right angles, parallel and perpendicular sides, and lines of symmetry" },
-    { "sourceCode": "E1.2", "strand": "E", "overallCode": "E1", "text": "plot and read coordinates in the first quadrant of a Cartesian plane, and describe the translations that move a point from one coordinate to another" },
-    { "sourceCode": "E1.3", "strand": "E", "overallCode": "E1", "text": "describe and perform translations and reflections on a grid, and predict the results of these transformations" },
-    { "sourceCode": "E2.1", "strand": "E", "overallCode": "E2", "text": "explain the relationships between grams and kilograms as metric units of mass, and between litres and millilitres as metric units of capacity, and use benchmarks for these units to estimate mass and capacity" },
-    { "sourceCode": "E2.2", "strand": "E", "overallCode": "E2", "text": "use metric prefixes to describe the relative size of different metric units, and choose appropriate units and tools to measure length, mass, and capacity" },
-    { "sourceCode": "E2.3", "strand": "E", "overallCode": "E2", "text": "solve problems involving elapsed time by applying the relationships between different units of time" },
-    { "sourceCode": "E2.4", "strand": "E", "overallCode": "E2", "text": "identify angles and classify them as right, straight, acute, or obtuse" },
-    { "sourceCode": "E2.5", "strand": "E", "overallCode": "E2", "text": "use the row and column structure of an array to measure the areas of rectangles and to show that the area of any rectangle can be found by multiplying its side lengths" },
-    { "sourceCode": "E2.6", "strand": "E", "overallCode": "E2", "text": "apply the formula for the area of a rectangle to find the unknown measurement when given two of the three" },
-    { "sourceCode": "F1.1", "strand": "F", "overallCode": "F1", "text": "identify various methods of payment that can be used to purchase goods and services" },
-    { "sourceCode": "F1.2", "strand": "F", "overallCode": "F1", "text": "estimate and calculate the cost of transactions involving multiple items priced in whole-dollar amounts, not including sales tax, and the amount of change needed when payment is made in cash, using mental math" },
-    { "sourceCode": "F1.3", "strand": "F", "overallCode": "F1", "text": "explain the concepts of spending, saving, earning, investing, and donating, and identify key factors to consider when making basic decisions related to each" },
-    { "sourceCode": "F1.4", "strand": "F", "overallCode": "F1", "text": "explain the relationship between spending and saving, and describe how spending and saving behaviours may differ from one person to another" },
-    { "sourceCode": "F1.5", "strand": "F", "overallCode": "F1", "text": "describe some ways of determining whether something is reasonably priced and therefore a good purchase" }
+    {
+      "sourceCode": "B1.1",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "read, represent, compose, and decompose whole numbers up to and including 10 000, using appropriate tools and strategies, and describe various ways they are used in everyday life"
+    },
+    {
+      "sourceCode": "B1.2",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "compare and order whole numbers up to and including 10 000, in various contexts"
+    },
+    {
+      "sourceCode": "B1.3",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "round whole numbers to the nearest ten, hundred, or thousand, in various contexts"
+    },
+    {
+      "sourceCode": "B1.4",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "represent fractions from halves to tenths using drawings, tools, and standard fractional notation, and explain the meanings of the denominator and the numerator"
+    },
+    {
+      "sourceCode": "B1.5",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "use drawings and models to represent, compare, and order fractions representing the individual portions that result from two different fair-share scenarios involving any combination of 2, 3, 4, 5, 6, 8, and 10 sharers"
+    },
+    {
+      "sourceCode": "B1.6",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "count to 10 by halves, thirds, fourths, fifths, sixths, eighths, and tenths, with and without the use of tools"
+    },
+    {
+      "sourceCode": "B1.7",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "read, represent, compare, and order decimal tenths, in various contexts"
+    },
+    {
+      "sourceCode": "B1.8",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "round decimal numbers to the nearest whole number, in various contexts"
+    },
+    {
+      "sourceCode": "B1.9",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "describe relationships and show equivalences among fractions and decimal tenths, in various contexts"
+    },
+    {
+      "sourceCode": "B2.1",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "use the properties of operations, and the relationships between addition, subtraction, multiplication, and division, to solve problems involving whole numbers, including those requiring more than one operation, and check calculations"
+    },
+    {
+      "sourceCode": "B2.2",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "recall and demonstrate multiplication facts for 1 × 1 to 10 × 10, and related division facts"
+    },
+    {
+      "sourceCode": "B2.3",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "use mental math strategies to multiply whole numbers by 10, 100, and 1000, divide whole numbers by 10, and add and subtract decimal tenths, and explain the strategies used"
+    },
+    {
+      "sourceCode": "B2.4",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent and solve problems involving the addition and subtraction of whole numbers that add up to no more than 10 000 and of decimal tenths, using appropriate tools and strategies, including algorithms"
+    },
+    {
+      "sourceCode": "B2.5",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent and solve problems involving the multiplication of two- or three-digit whole numbers by one-digit whole numbers and by 10, 100, and 1000, using appropriate tools, including arrays"
+    },
+    {
+      "sourceCode": "B2.6",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent and solve problems involving the division of two- or three-digit whole numbers by one-digit whole numbers, expressing any remainder as a fraction when appropriate, using appropriate tools, including arrays"
+    },
+    {
+      "sourceCode": "B2.7",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent the relationship between the repeated addition of a unit fraction and the multiplication of that unit fraction by a whole number, using tools, drawings, and standard fractional notation"
+    },
+    {
+      "sourceCode": "B2.8",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "show simple multiplicative relationships involving whole-number rates, using various tools and drawings"
+    },
+    {
+      "sourceCode": "C1.1",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "identify and describe repeating and growing patterns, including patterns found in real-life contexts"
+    },
+    {
+      "sourceCode": "C1.2",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "create and translate repeating and growing patterns using various representations, including tables of values and graphs"
+    },
+    {
+      "sourceCode": "C1.3",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "determine pattern rules and use them to extend patterns, make and justify predictions, and identify missing elements in repeating and growing patterns"
+    },
+    {
+      "sourceCode": "C1.4",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "create and describe patterns to illustrate relationships among whole numbers and decimal tenths"
+    },
+    {
+      "sourceCode": "C2.1",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "identify and use symbols as variables in expressions and equations"
+    },
+    {
+      "sourceCode": "C2.2",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "solve equations that involve whole numbers up to 50 in various contexts, and verify solutions"
+    },
+    {
+      "sourceCode": "C2.3",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "solve inequalities that involve addition and subtraction of whole numbers up to 20, and verify and graph the solutions"
+    },
+    {
+      "sourceCode": "C3.1",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "solve problems and create computational representations of mathematical situations by writing and executing code, including code that involves sequential, concurrent, repeating, and nested events"
+    },
+    {
+      "sourceCode": "C3.2",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "read and alter existing code, including code that involves sequential, concurrent, repeating, and nested events, and describe how changes to the code affect the outcomes"
+    },
+    {
+      "sourceCode": "D1.1",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "describe the difference between qualitative and quantitative data, and describe situations where each would be used"
+    },
+    {
+      "sourceCode": "D1.2",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "collect data from different primary and secondary sources to answer questions of interest that involve comparing two or more sets of data, and organize the data in frequency tables and stem-and-leaf plots"
+    },
+    {
+      "sourceCode": "D1.3",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "select from among a variety of graphs, including multiple-bar graphs, the type of graph best suited to represent various sets of data; display the data in the graphs with proper sources, titles, and labels, and appropriate scales; and justify their choice of graphs"
+    },
+    {
+      "sourceCode": "D1.4",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "create an infographic about a data set, representing the data in appropriate ways, including in frequency tables, stem-and-leaf plots, and multiple-bar graphs, and incorporating any other relevant information that helps to tell a story about the data"
+    },
+    {
+      "sourceCode": "D1.5",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "determine the mean and the median and identify the mode(s), if any, for various data sets involving whole numbers, and explain what each of these measures indicates about the data"
+    },
+    {
+      "sourceCode": "D1.6",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "analyse different sets of data presented in various ways, including in stem-and-leaf plots and multiple-bar graphs, by asking and answering questions about the data and drawing conclusions, then make convincing arguments and informed decisions"
+    },
+    {
+      "sourceCode": "D2.1",
+      "strand": "D",
+      "overallCode": "D2",
+      "text": "use mathematical language, including the terms “impossible”, “unlikely”, “equally likely”, “likely”, and “certain”, to describe the likelihood of events happening, represent this likelihood on a probability line, and use it to make predictions and informed decisions"
+    },
+    {
+      "sourceCode": "D2.2",
+      "strand": "D",
+      "overallCode": "D2",
+      "text": "make and test predictions about the likelihood that the mean, median, and mode(s) of a data set will be the same for data collected from different populations"
+    },
+    {
+      "sourceCode": "E1.1",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "identify geometric properties of rectangles, including the number of right angles, parallel and perpendicular sides, and lines of symmetry"
+    },
+    {
+      "sourceCode": "E1.2",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "plot and read coordinates in the first quadrant of a Cartesian plane, and describe the translations that move a point from one coordinate to another"
+    },
+    {
+      "sourceCode": "E1.3",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "describe and perform translations and reflections on a grid, and predict the results of these transformations"
+    },
+    {
+      "sourceCode": "E2.1",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "explain the relationships between grams and kilograms as metric units of mass, and between litres and millilitres as metric units of capacity, and use benchmarks for these units to estimate mass and capacity"
+    },
+    {
+      "sourceCode": "E2.2",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "use metric prefixes to describe the relative size of different metric units, and choose appropriate units and tools to measure length, mass, and capacity"
+    },
+    {
+      "sourceCode": "E2.3",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "solve problems involving elapsed time by applying the relationships between different units of time"
+    },
+    {
+      "sourceCode": "E2.4",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "identify angles and classify them as right, straight, acute, or obtuse"
+    },
+    {
+      "sourceCode": "E2.5",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "use the row and column structure of an array to measure the areas of rectangles and to show that the area of any rectangle can be found by multiplying its side lengths"
+    },
+    {
+      "sourceCode": "E2.6",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "apply the formula for the area of a rectangle to find the unknown measurement when given two of the three"
+    },
+    {
+      "sourceCode": "F1.1",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "identify various methods of payment that can be used to purchase goods and services"
+    },
+    {
+      "sourceCode": "F1.2",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "estimate and calculate the cost of transactions involving multiple items priced in whole-dollar amounts, not including sales tax, and the amount of change needed when payment is made in cash, using mental math"
+    },
+    {
+      "sourceCode": "F1.3",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "explain the concepts of spending, saving, earning, investing, and donating, and identify key factors to consider when making basic decisions related to each"
+    },
+    {
+      "sourceCode": "F1.4",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "explain the relationship between spending and saving, and describe how spending and saving behaviours may differ from one person to another"
+    },
+    {
+      "sourceCode": "F1.5",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "describe some ways of determining whether something is reasonably priced and therefore a good purchase"
+    }
   ]
 }
