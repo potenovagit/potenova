@@ -9,8 +9,11 @@ import {
   areEquivalent,
   validateCandidate,
   validationRecordRef,
+  generateItems,
+  generateEnglishItems,
   type Fraction,
   type FractionRelation,
+  type Difficulty,
 } from '@potenova/content';
 import { type Subject } from './adaptive';
 
@@ -254,16 +257,113 @@ export function judge(task: Task, raw: string): boolean {
 }
 
 /**
- * Run the content gate for a task before it reaches a child: its answer key is
- * validated by the subject's INDEPENDENT oracle (AI-001). Throws if the task is
- * unknown or fails validation; returns the task otherwise.
+ * ============================================================================
+ *  Generated-item provider — the deterministic item stream in the live loop
+ * ============================================================================
+ * The task layer serves two kinds of task id:
+ *   - a static TASK_BANK key (e.g. "frac-cmp-1"), or
+ *   - a GENERATED id "gen:<skillId>:<seed>:<difficulty>:<index>".
+ * A generated id fully determines its item (the generators are seeded and pure),
+ * so `resolveTask` reconstructs the exact item for grading WITHOUT any stored
+ * state — the task→answer round-trip stays keyed by id, as before. Only the
+ * skills whose answer the loop already knows how to present and grade are servable
+ * this way (fraction compare/equivalence, regular plurals); an id for any other
+ * generated kind is refused, never faked. Every resolved task still passes the
+ * same content gate below.
  */
-export function gateTask(taskId: string): Task {
+
+/** Skills the coaching/diagnostic loop can serve generated items for today, with
+ *  the session course each belongs to. Other generatable skills (the remaining
+ *  fraction kinds, English past/comparative) need a presentation/course binding
+ *  first and are intentionally NOT servable yet. */
+export const GEN_SERVABLE: Readonly<Record<string, { subject: Subject; course: Task['course'] }>> =
+  {
+    [COMPARE]: { subject: 'math', course: 'fractions' },
+    [EQUIV]: { subject: 'math', course: 'fractions' },
+    [PLURAL_BASE]: { subject: 'english', course: 'plurals' },
+    [PLURAL_SIB]: { subject: 'english', course: 'plurals' },
+  };
+
+/** Stable 32-bit seed from a session id so a session's generated stream is
+ *  reproducible (and graded deterministically) without storing the items. */
+export function seedFromSession(sessionId: string): number {
+  let h = 2166136261 >>> 0; // FNV-1a
+  for (let i = 0; i < sessionId.length; i++) {
+    h ^= sessionId.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h >>> 0;
+}
+
+/** The generated task id for a skill at a given stream index. */
+export function generatedTaskId(
+  skillId: string,
+  index: number,
+  seed: number,
+  difficulty: Difficulty = 'core',
+): string {
+  return `gen:${skillId}:${seed}:${difficulty}:${index}`;
+}
+
+const isGeneratedId = (taskId: string): boolean => taskId.startsWith('gen:');
+
+/** Reconstruct a generated item as a gradable Task. Pure/deterministic from the id. */
+function resolveGeneratedTask(taskId: string): Task {
+  const parts = taskId.split(':'); // gen : skillId : seed : difficulty : index
+  if (parts.length !== 5) throw new DomainError('NOT_FOUND', 'malformed generated task id');
+  const [, skillId, seedStr, difficulty, indexStr] = parts as [
+    string,
+    string,
+    string,
+    string,
+    string,
+  ];
+  const servable = GEN_SERVABLE[skillId];
+  if (!servable) throw new DomainError('POLICY_BLOCKED', 'skill is not servable in the loop yet');
+  const seed = Number(seedStr);
+  const index = Number(indexStr);
+  if (!Number.isInteger(seed) || !Number.isInteger(index) || index < 0) {
+    throw new DomainError('NOT_FOUND', 'malformed generated task id');
+  }
+  const d = difficulty as Difficulty;
+
+  if (servable.subject === 'math') {
+    const item = generateItems(skillId, index + 1, seed, d)[index];
+    if (!item) throw new DomainError('NOT_FOUND', 'generated item index out of range');
+    if (item.task.kind === 'fraction_comparison') return cmp(item.task.left, item.task.right);
+    if (item.task.kind === 'fraction_equivalence') return eq(item.task.left, item.task.right);
+    throw new DomainError('POLICY_BLOCKED', 'generated math kind not servable in the loop yet');
+  }
+  const item = generateEnglishItems(skillId, index + 1, seed, d)[index];
+  if (!item) throw new DomainError('NOT_FOUND', 'generated item index out of range');
+  if (item.task.kind === 'noun_plural') {
+    return plural(skillId as PluralTask['skillId'], item.task.word);
+  }
+  throw new DomainError('POLICY_BLOCKED', 'generated english kind not servable in the loop yet');
+}
+
+/** Resolve any task id — static bank or generated — to a gradable Task. */
+export function resolveTask(taskId: string): Task {
+  if (isGeneratedId(taskId)) return resolveGeneratedTask(taskId);
   const task = TASK_BANK[taskId];
   if (!task) throw new DomainError('NOT_FOUND', 'task not found');
+  return task;
+}
+
+/**
+ * Run the content gate for a task before it reaches a child: its answer key is
+ * validated by the subject's INDEPENDENT oracle (AI-001). Throws if the task is
+ * unknown or fails validation; returns the task otherwise. Works for both static
+ * and generated ids (a generated id is reconstructed deterministically first).
+ */
+export function gateTask(taskId: string): Task {
+  const task = resolveTask(taskId);
+  const generatorId = isGeneratedId(taskId)
+    ? `item-gen:${task.subject}`
+    : `content-author:${task.subject}-bank`;
   const record = validateCandidate({
     candidateId: `task:${taskId}`,
-    generatorId: `content-author:${task.subject}-bank`,
+    generatorId,
     validatorId: `oracle:${task.subject}`,
     validatorVersion: 'v1',
     math: { ran: true, correct: answerKeyValid(task) },

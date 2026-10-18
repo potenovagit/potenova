@@ -28,7 +28,6 @@ import {
   type CourseId,
 } from '../adaptive';
 import {
-  TASK_BANK,
   TRANSFER_TASKS,
   RELEASE_BY_SUBJECT,
   present,
@@ -36,6 +35,10 @@ import {
   judge,
   representationOf,
   gateTask,
+  resolveTask,
+  generatedTaskId,
+  seedFromSession,
+  GEN_SERVABLE,
   type Task,
 } from '../task-bank';
 
@@ -168,9 +171,29 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     const alias = c.req.param('alias');
     const { course } = await requireActiveSession(deps, c.req.param('sessionId'), alias);
 
-    const taskId = c.req.query('taskId') ?? 'frac-cmp-1';
-    const task = TASK_BANK[taskId];
-    if (!task) throw new DomainError('NOT_FOUND', 'task not found');
+    // A skillId serves the next item from the deterministic GENERATED stream for
+    // that skill; a taskId serves a specific item (static bank or generated). The
+    // generated stream is seeded from the session so it is reproducible and graded
+    // without stored state. `n` is the stream index the client is on.
+    const skillId = c.req.query('skillId');
+    let taskId: string;
+    if (skillId) {
+      if (!GEN_SERVABLE[skillId]) {
+        throw new DomainError('POLICY_BLOCKED', 'skill is not servable in the loop yet');
+      }
+      const n = Number(c.req.query('n') ?? '0');
+      const difficulty = (c.req.query('difficulty') ?? 'core') as 'intro' | 'core' | 'stretch';
+      taskId = generatedTaskId(
+        skillId,
+        Number.isInteger(n) && n >= 0 ? n : 0,
+        seedFromSession(c.req.param('sessionId')),
+        difficulty,
+      );
+    } else {
+      taskId = c.req.query('taskId') ?? 'frac-cmp-1';
+    }
+
+    const task = resolveTask(taskId);
     if (task.course !== course) {
       throw new DomainError('POLICY_BLOCKED', 'task is not for this session course');
     }
@@ -211,8 +234,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       return c.json({ graded: false, safety: { handling, ...escalation } });
     }
 
-    const task = TASK_BANK[b.taskId ?? ''];
-    if (!task) throw new DomainError('NOT_FOUND', 'task not found');
+    const task = resolveTask(b.taskId ?? '');
     if (task.course !== course) {
       throw new DomainError('POLICY_BLOCKED', 'task is not for this session course');
     }
@@ -340,8 +362,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
       throw new DomainError('REGION_DISALLOWED', 'recognition ran outside the Canadian region');
     }
 
-    const task = TASK_BANK[b.taskId ?? ''];
-    if (!task) throw new DomainError('NOT_FOUND', 'task not found');
+    const task = resolveTask(b.taskId ?? '');
     if (task.course !== course) {
       throw new DomainError('POLICY_BLOCKED', 'task is not for this session course');
     }
