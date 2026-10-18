@@ -28,7 +28,7 @@ import {
   type CourseId,
 } from '../adaptive';
 import {
-  TRANSFER_TASKS,
+  isTransferTask,
   RELEASE_BY_SUBJECT,
   present,
   tokenValid,
@@ -256,7 +256,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     // Turn mode: a review turn resolves RETAINED; a transfer task resolves
     // TRANSFERABLE; otherwise a normal independent check.
     const review = await reviewDueFor(deps, alias, task.skillId);
-    const isTransfer = TRANSFER_TASKS.has(b.taskId ?? '');
+    const isTransfer = isTransferTask(b.taskId ?? '');
     const graded = await gradeAndRecord(deps, {
       alias,
       sessionId,
@@ -389,7 +389,7 @@ export function registerCoaching(app: Hono, deps: Deps): void {
     }
 
     const review = await reviewDueFor(deps, alias, task.skillId);
-    const isTransfer = TRANSFER_TASKS.has(b.taskId ?? '');
+    const isTransfer = isTransferTask(b.taskId ?? '');
     const graded = await gradeAndRecord(deps, {
       alias,
       sessionId,

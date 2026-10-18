@@ -57,6 +57,9 @@ export type CourseId = 'fractions' | 'addition' | 'plurals' | 'past-tense' | 'co
 const GEN_COURSE_SEED = 7;
 const genCourseTask = (skillId: string, index: number): string =>
   `gen:${skillId}:${GEN_COURSE_SEED}:core:${index}`;
+/** A generated-course transfer probe: a novel-context (stretch) item the loop grades
+ *  as transfer_check, so a generated-only skill can reach TRANSFERABLE (AT-12). */
+const genTransferTask = (skillId: string): string => `gen:${skillId}:${GEN_COURSE_SEED}:transfer:0`;
 
 interface CoursePlan {
   readonly subject: Subject;
@@ -119,13 +122,13 @@ const COURSES: Record<CourseId, CoursePlan> = {
     misconceptions: FRACTION_MISCONCEPTIONS,
     strategies: FRACTION_STRATEGIES,
     transferTask: {
-      'SK-FR-partition': genCourseTask('SK-FR-partition', 4),
-      'SK-FR-unit': genCourseTask('SK-FR-unit', 4),
-      'SK-FR-nonunit': genCourseTask('SK-FR-nonunit', 4),
-      'SK-FR-numberline': genCourseTask('SK-FR-numberline', 4),
+      'SK-FR-partition': genTransferTask('SK-FR-partition'),
+      'SK-FR-unit': genTransferTask('SK-FR-unit'),
+      'SK-FR-nonunit': genTransferTask('SK-FR-nonunit'),
+      'SK-FR-numberline': genTransferTask('SK-FR-numberline'),
       'SK-FR-equiv': 'frac-xfer-eq',
       'SK-FR-compare': 'frac-xfer-cmp',
-      'SK-FR-order': genCourseTask('SK-FR-order', 4),
+      'SK-FR-order': genTransferTask('SK-FR-order'),
     },
   },
   addition: {
@@ -169,7 +172,7 @@ const COURSES: Record<CourseId, CoursePlan> = {
     remediationReps: ['spoken', 'written'],
     misconceptions: [],
     strategies: ENGLISH_STRATEGIES,
-    transferTask: { 'SK-EN-past-regular': genCourseTask('SK-EN-past-regular', 4) },
+    transferTask: { 'SK-EN-past-regular': genTransferTask('SK-EN-past-regular') },
   },
   comparative: {
     subject: 'english',
@@ -182,7 +185,7 @@ const COURSES: Record<CourseId, CoursePlan> = {
     remediationReps: ['spoken', 'written'],
     misconceptions: [],
     strategies: ENGLISH_STRATEGIES,
-    transferTask: { 'SK-EN-comparative': genCourseTask('SK-EN-comparative', 4) },
+    transferTask: { 'SK-EN-comparative': genTransferTask('SK-EN-comparative') },
   },
 };
 
