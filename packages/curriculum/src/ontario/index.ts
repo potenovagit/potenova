@@ -26,6 +26,8 @@ import mathG5 from './data/math-g5.json';
 import languageG5 from './data/language-g5.json';
 import mathG6 from './data/math-g6.json';
 import languageG6 from './data/language-g6.json';
+import mathG7 from './data/math-g7.json';
+import languageG7 from './data/language-g7.json';
 
 /** Shape of a grade+subject data file (source-verified extraction). */
 export interface OntarioCurriculumData {
@@ -62,6 +64,8 @@ const DATASETS: readonly OntarioCurriculumData[] = [
   languageG5 as OntarioCurriculumData,
   mathG6 as OntarioCurriculumData,
   languageG6 as OntarioCurriculumData,
+  mathG7 as OntarioCurriculumData,
+  languageG7 as OntarioCurriculumData,
 ];
 
 const releaseId = (subject: string, grade: number): string =>
