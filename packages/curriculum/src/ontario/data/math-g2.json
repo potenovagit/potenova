@@ -1,0 +1,253 @@
+{
+  "jurisdiction": "ontario",
+  "subject": "math",
+  "grade": 2,
+  "edition": "Ontario Mathematics (2020)",
+  "sourceUrl": "https://www.dcp.edu.gov.on.ca/en/curriculum/elementary-mathematics/grades/g2-math",
+  "extractedAt": "2026-10-18",
+  "reviewStatus": "draft",
+  "note": "Source-verified from the Ontario Ministry curriculum site. Strand A (Social-Emotional Learning) and C4 (Mathematical Modelling) carry no coded specific expectations and are not listed.",
+  "strands": [
+    { "code": "B", "name": "Number" },
+    { "code": "C", "name": "Algebra" },
+    { "code": "D", "name": "Data" },
+    { "code": "E", "name": "Spatial Sense" },
+    { "code": "F", "name": "Financial Literacy" }
+  ],
+  "expectations": [
+    {
+      "sourceCode": "B1.1",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "read, represent, compose, and decompose whole numbers up to and including 200, using a variety of tools and strategies, and describe various ways they are used in everyday life"
+    },
+    {
+      "sourceCode": "B1.2",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "compare and order whole numbers up to and including 200, in various contexts"
+    },
+    {
+      "sourceCode": "B1.3",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "estimate the number of objects in collections of up to 200 and verify their estimates by counting"
+    },
+    {
+      "sourceCode": "B1.4",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "count to 200, including by 20s, 25s, and 50s, using a variety of tools and strategies"
+    },
+    {
+      "sourceCode": "B1.5",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "describe what makes a number even or odd"
+    },
+    {
+      "sourceCode": "B1.6",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "use drawings to represent, solve, and compare the results of fair-share problems that involve sharing up to 10 items among 2, 3, 4, and 6 sharers, including problems that result in whole numbers, mixed numbers, and fractional amounts"
+    },
+    {
+      "sourceCode": "B1.7",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "recognize that one third and two sixths of the same whole are equal, in fair-sharing contexts"
+    },
+    {
+      "sourceCode": "B2.1",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "use the properties of addition and subtraction, and the relationships between addition and multiplication and between subtraction and division, to solve problems and check calculations"
+    },
+    {
+      "sourceCode": "B2.2",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "recall and demonstrate addition facts for numbers up to 20, and related subtraction facts"
+    },
+    {
+      "sourceCode": "B2.3",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "use mental math strategies, including estimation, to add and subtract whole numbers that add up to no more than 50, and explain the strategies used"
+    },
+    {
+      "sourceCode": "B2.4",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "use objects, diagrams, and equations to represent, describe, and solve situations involving addition and subtraction of whole numbers that add up to no more than 100"
+    },
+    {
+      "sourceCode": "B2.5",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent multiplication as repeated equal groups, including groups of one half and one fourth, and solve related problems, using various tools and drawings"
+    },
+    {
+      "sourceCode": "B2.6",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent division of up to 12 items as the equal sharing of a quantity, and solve related problems, using various tools and drawings"
+    },
+    {
+      "sourceCode": "C1.1",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "identify and describe a variety of patterns involving geometric designs, including patterns found in real-life contexts"
+    },
+    {
+      "sourceCode": "C1.2",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "create and translate patterns using various representations, including shapes and numbers"
+    },
+    {
+      "sourceCode": "C1.3",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "determine pattern rules and use them to extend patterns, make and justify predictions, and identify missing elements in patterns represented with shapes and numbers"
+    },
+    {
+      "sourceCode": "C1.4",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "create and describe patterns to illustrate relationships among whole numbers up to 100"
+    },
+    {
+      "sourceCode": "C2.1",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "identify when symbols are being used as variables, and describe how they are being used"
+    },
+    {
+      "sourceCode": "C2.2",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "determine what needs to be added to or subtracted from addition and subtraction expressions to make them equivalent"
+    },
+    {
+      "sourceCode": "C2.3",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "identify and use equivalent relationships for whole numbers up to 100, in various contexts"
+    },
+    {
+      "sourceCode": "C3.1",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "solve problems and create computational representations of mathematical situations by writing and executing code, including code that involves sequential and concurrent events"
+    },
+    {
+      "sourceCode": "C3.2",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "read and alter existing code, including code that involves sequential and concurrent events, and describe how changes to the code affect the outcomes"
+    },
+    {
+      "sourceCode": "D1.1",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "sort sets of data about people or things according to two attributes, using tables and logic diagrams, including Venn and Carroll diagrams"
+    },
+    {
+      "sourceCode": "D1.2",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "collect data through observations, experiments, and interviews to answer questions of interest that focus on two pieces of information, and organize the data in two-way tally tables"
+    },
+    {
+      "sourceCode": "D1.3",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "display sets of data, using one-to-one correspondence, in concrete graphs, pictographs, line plots, and bar graphs with proper sources, titles, and labels"
+    },
+    {
+      "sourceCode": "D1.4",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "identify the mode(s), if any, for various data sets presented in concrete graphs, pictographs, line plots, bar graphs, and tables, and explain what this measure indicates about the data"
+    },
+    {
+      "sourceCode": "D1.5",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "analyse different sets of data presented in various ways, including in logic diagrams, line plots, and bar graphs, by asking and answering questions about the data and drawing conclusions, then make convincing arguments and informed decisions"
+    },
+    {
+      "sourceCode": "D2.1",
+      "strand": "D",
+      "overallCode": "D2",
+      "text": "use mathematical language, including the terms “impossible”, “possible”, and “certain”, to describe the likelihood of complementary events happening, and use that likelihood to make predictions and informed decisions"
+    },
+    {
+      "sourceCode": "D2.2",
+      "strand": "D",
+      "overallCode": "D2",
+      "text": "make and test predictions about the likelihood that the mode(s) of a data set from one population will be the same for data collected from a different population"
+    },
+    {
+      "sourceCode": "E1.1",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "sort and identify two-dimensional shapes by comparing number of sides, side lengths, angles, and number of lines of symmetry"
+    },
+    {
+      "sourceCode": "E1.2",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "compose and decompose two-dimensional shapes, and show that the area of a shape remains constant regardless of how its parts are rearranged"
+    },
+    {
+      "sourceCode": "E1.3",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "identify congruent lengths and angles in two-dimensional shapes by mentally and physically matching them, and determine if the shapes are congruent"
+    },
+    {
+      "sourceCode": "E1.4",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "create and interpret simple maps of familiar places"
+    },
+    {
+      "sourceCode": "E1.5",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "describe the relative positions of several objects and the movements needed to get from one object to another"
+    },
+    {
+      "sourceCode": "E2.1",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "choose and use non-standard units appropriately to measure lengths, and describe the inverse relationship between the size of a unit and the number of units needed"
+    },
+    {
+      "sourceCode": "E2.2",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "explain the relationship between centimetres and metres as units of length, and use benchmarks for these units to estimate lengths"
+    },
+    {
+      "sourceCode": "E2.3",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "measure and draw lengths in centimetres and metres, using a measuring tool, and recognize the impact of starting at points other than zero"
+    },
+    {
+      "sourceCode": "E2.4",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "use units of time, including seconds, minutes, hours, and non-standard units, to describe the duration of various events"
+    },
+    {
+      "sourceCode": "F1.1",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "identify different ways of representing the same amount of money up to Canadian 200¢ using various combinations of coins, and up to $200 using various combinations of $1 and $2 coins and $5, $10, $20, $50, and $100 bills"
+    }
+  ]
+}
