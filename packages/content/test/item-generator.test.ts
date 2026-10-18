@@ -40,9 +40,48 @@ describe('item generator', () => {
     }
   });
 
-  it('throws for an unsupported skill rather than faking items', () => {
-    expect(supportsSkill('SK-FR-partition')).toBe(false);
-    expect(() => generateItems('SK-FR-partition', 5)).toThrow(/unsupported/);
+  it('covers the whole fractions pilot path, each gated to DELIVER', () => {
+    const skills = [
+      'SK-FR-partition',
+      'SK-FR-unit',
+      'SK-FR-nonunit',
+      'SK-FR-numberline',
+      'SK-FR-compare',
+      'SK-FR-equiv',
+      'SK-FR-order',
+    ];
+    for (const skillId of skills) {
+      expect(supportsSkill(skillId)).toBe(true);
+      const gated = gateGeneratedItems(generateItems(skillId, 8, 5));
+      expect(gated.length).toBeGreaterThan(0);
+      expect(gated.every((g) => g.outcome.kind === 'DELIVER')).toBe(true);
+      expect(gated.every((g) => g.record.verdict === 'PASS')).toBe(true);
+    }
+  });
+
+  it('throws for a skill with no oracle kind rather than faking items', () => {
+    expect(supportsSkill('SK-FR-mystery')).toBe(false);
+    expect(() => generateItems('SK-FR-mystery', 5)).toThrow(/unsupported/);
+  });
+
+  it('number-line items always land on an integer tick (oracle ground truth)', () => {
+    for (const i of generateItems('SK-FR-numberline', 20, 4)) {
+      if (i.task.kind === 'fraction_number_line') {
+        const lands = i.task.fraction.numerator * i.task.intervals;
+        expect(lands % i.task.fraction.denominator).toBe(0);
+        expect(i.task.claimedTick * i.task.fraction.denominator).toBe(lands);
+      }
+    }
+  });
+
+  it('order items are claimed in genuinely ascending order', () => {
+    const items = generateItems('SK-FR-order', 10, 6);
+    expect(items.length).toBeGreaterThan(0);
+    for (const i of items) {
+      if (i.task.kind === 'fraction_order') {
+        expect(new Set(i.task.claimedOrder).size).toBe(i.task.fractions.length);
+      }
+    }
   });
 
   it('gates every generated item to DELIVER with a signed record', () => {
