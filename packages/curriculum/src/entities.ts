@@ -45,6 +45,10 @@ export interface CurriculumRelease {
   readonly edition: string; // 'Ontario Math 2020'
   readonly validFrom: string;
   readonly status: 'draft' | 'published';
+  /** Provenance for source-verified releases (optional): where the official
+   *  text was extracted from, and when. Present on authored Ontario releases. */
+  readonly sourceUrl?: string;
+  readonly extractedAt?: string;
 }
 
 /**

@@ -5,3 +5,4 @@ export * from './english-draft';
 export * from './coaching-hints';
 export * from './addition-draft';
 export * from './lessons';
+export * from './ontario';
