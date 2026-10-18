@@ -15,51 +15,281 @@
     { "code": "F", "name": "Financial Literacy" }
   ],
   "expectations": [
-    { "sourceCode": "B1.1", "strand": "B", "overallCode": "B1", "text": "read, represent, compose, and decompose whole numbers up to and including 1000, using a variety of tools and strategies, and describe various ways they are used in everyday life" },
-    { "sourceCode": "B1.2", "strand": "B", "overallCode": "B1", "text": "compare and order whole numbers up to and including 1000, in various contexts" },
-    { "sourceCode": "B1.3", "strand": "B", "overallCode": "B1", "text": "round whole numbers to the nearest ten or hundred, in various contexts" },
-    { "sourceCode": "B1.4", "strand": "B", "overallCode": "B1", "text": "count to 1000, including by 50s, 100s, and 200s, using a variety of tools and strategies" },
-    { "sourceCode": "B1.5", "strand": "B", "overallCode": "B1", "text": "use place value when describing and representing multi-digit numbers in a variety of ways, including with base ten materials" },
-    { "sourceCode": "B1.6", "strand": "B", "overallCode": "B1", "text": "use drawings to represent, solve, and compare the results of fair-share problems that involve sharing up to 20 items among 2, 3, 4, 5, 6, 8, and 10 sharers, including problems that result in whole numbers, mixed numbers, and fractional amounts" },
-    { "sourceCode": "B1.7", "strand": "B", "overallCode": "B1", "text": "represent and solve fair-share problems that focus on determining and using equivalent fractions, including problems that involve halves, fourths, and eighths; thirds and sixths; and fifths and tenths" },
-    { "sourceCode": "B2.1", "strand": "B", "overallCode": "B2", "text": "use the properties of operations, and the relationships between multiplication and division, to solve problems and check calculations" },
-    { "sourceCode": "B2.2", "strand": "B", "overallCode": "B2", "text": "recall and demonstrate multiplication facts of 2, 5, and 10, and related division facts" },
-    { "sourceCode": "B2.3", "strand": "B", "overallCode": "B2", "text": "use mental math strategies, including estimation, to add and subtract whole numbers that add up to no more than 1000, and explain the strategies used" },
-    { "sourceCode": "B2.4", "strand": "B", "overallCode": "B2", "text": "demonstrate an understanding of algorithms for adding and subtracting whole numbers by making connections to and describing the way other tools and strategies are used to add and subtract" },
-    { "sourceCode": "B2.5", "strand": "B", "overallCode": "B2", "text": "represent and solve problems involving the addition and subtraction of whole numbers that add up to no more than 1000, using various tools and algorithms" },
-    { "sourceCode": "B2.6", "strand": "B", "overallCode": "B2", "text": "represent multiplication of numbers up to 10 × 10 and division up to 100 ÷ 10, using a variety of tools and drawings, including arrays" },
-    { "sourceCode": "B2.7", "strand": "B", "overallCode": "B2", "text": "represent and solve problems involving multiplication and division, including problems that involve groups of one half, one fourth, and one third, using tools and drawings" },
-    { "sourceCode": "B2.8", "strand": "B", "overallCode": "B2", "text": "represent the connection between the numerator of a fraction and the repeated addition of the unit fraction with the same denominator using various tools and drawings, and standard fractional notation" },
-    { "sourceCode": "B2.9", "strand": "B", "overallCode": "B2", "text": "use the ratios of 1 to 2, 1 to 5, and 1 to 10 to scale up numbers and to solve problems" },
-    { "sourceCode": "C1.1", "strand": "C", "overallCode": "C1", "text": "identify and describe repeating elements and operations in a variety of patterns, including patterns found in real-life contexts" },
-    { "sourceCode": "C1.2", "strand": "C", "overallCode": "C1", "text": "create and translate patterns that have repeating elements, movements, or operations using various representations, including shapes, numbers, and tables of values" },
-    { "sourceCode": "C1.3", "strand": "C", "overallCode": "C1", "text": "determine pattern rules and use them to extend patterns, make and justify predictions, and identify missing elements in patterns that have repeating elements, movements, or operations" },
-    { "sourceCode": "C1.4", "strand": "C", "overallCode": "C1", "text": "create and describe patterns to illustrate relationships among whole numbers up to 1000" },
-    { "sourceCode": "C2.1", "strand": "C", "overallCode": "C2", "text": "describe how variables are used, and use them in various contexts as appropriate" },
-    { "sourceCode": "C2.2", "strand": "C", "overallCode": "C2", "text": "determine whether given sets of addition, subtraction, multiplication, and division expressions are equivalent or not" },
-    { "sourceCode": "C2.3", "strand": "C", "overallCode": "C2", "text": "identify and use equivalent relationships for whole numbers up to 1000, in various contexts" },
-    { "sourceCode": "C3.1", "strand": "C", "overallCode": "C3", "text": "solve problems and create computational representations of mathematical situations by writing and executing code, including code that involves sequential, concurrent, and repeating events" },
-    { "sourceCode": "C3.2", "strand": "C", "overallCode": "C3", "text": "read and alter existing code, including code that involves sequential, concurrent, and repeating events, and describe how changes to the code affect the outcomes" },
-    { "sourceCode": "D1.1", "strand": "D", "overallCode": "D1", "text": "sort sets of data about people or things according to two and three attributes, using tables and logic diagrams, including Venn, Carroll, and tree diagrams, as appropriate" },
-    { "sourceCode": "D1.2", "strand": "D", "overallCode": "D1", "text": "collect data through observations, experiments, and interviews to answer questions of interest that focus on qualitative and quantitative data, and organize the data using frequency tables" },
-    { "sourceCode": "D1.3", "strand": "D", "overallCode": "D1", "text": "display sets of data, using many-to-one correspondence, in pictographs and bar graphs with proper sources, titles, and labels, and appropriate scales" },
-    { "sourceCode": "D1.4", "strand": "D", "overallCode": "D1", "text": "determine the mean and identify the mode(s), if any, for various data sets involving whole numbers, and explain what each of these measures indicates about the data" },
-    { "sourceCode": "D1.5", "strand": "D", "overallCode": "D1", "text": "analyse different sets of data presented in various ways, including in frequency tables and in graphs with different scales, by asking and answering questions about the data and drawing conclusions, then make convincing arguments and informed decisions" },
-    { "sourceCode": "D2.1", "strand": "D", "overallCode": "D2", "text": "use mathematical language, including the terms “impossible”, “unlikely”, “equally likely”, “likely”, and “certain”, to describe the likelihood of events happening, and use that likelihood to make predictions and informed decisions" },
-    { "sourceCode": "D2.2", "strand": "D", "overallCode": "D2", "text": "make and test predictions about the likelihood that the mean and the mode(s) of a data set will be the same for data collected from different populations" },
-    { "sourceCode": "E1.1", "strand": "E", "overallCode": "E1", "text": "sort, construct, and identify cubes, prisms, pyramids, cylinders, and cones by comparing their faces, edges, vertices, and angles" },
-    { "sourceCode": "E1.2", "strand": "E", "overallCode": "E1", "text": "compose and decompose various structures, and identify the two-dimensional shapes and three-dimensional objects that these structures contain" },
-    { "sourceCode": "E1.3", "strand": "E", "overallCode": "E1", "text": "identify congruent lengths, angles, and faces of three-dimensional objects by mentally and physically matching them, and determine if the objects are congruent" },
-    { "sourceCode": "E1.4", "strand": "E", "overallCode": "E1", "text": "give and follow multistep instructions involving movement from one location to another, including distances and half- and quarter-turns" },
-    { "sourceCode": "E2.1", "strand": "E", "overallCode": "E2", "text": "use appropriate units of length to estimate, measure, and compare the perimeters of polygons and curved shapes, and construct polygons with a given perimeter" },
-    { "sourceCode": "E2.2", "strand": "E", "overallCode": "E2", "text": "explain the relationships between millimetres, centimetres, metres, and kilometres as metric units of length, and use benchmarks for these units to estimate lengths" },
-    { "sourceCode": "E2.3", "strand": "E", "overallCode": "E2", "text": "use non-standard units appropriately to estimate, measure, and compare capacity, and explain the effect that overfilling or underfilling, and gaps between units, have on accuracy" },
-    { "sourceCode": "E2.4", "strand": "E", "overallCode": "E2", "text": "compare, estimate, and measure the mass of various objects, using a pan balance and non-standard units" },
-    { "sourceCode": "E2.5", "strand": "E", "overallCode": "E2", "text": "use various units of different sizes to measure the same attribute of a given item, and demonstrate that even though using different-sized units produces a different count, the size of the attribute remains the same" },
-    { "sourceCode": "E2.6", "strand": "E", "overallCode": "E2", "text": "use analog and digital clocks and timers to tell time in hours, minutes, and seconds" },
-    { "sourceCode": "E2.7", "strand": "E", "overallCode": "E2", "text": "compare the areas of two-dimensional shapes by matching, covering, or decomposing and recomposing the shapes, and demonstrate that different shapes can have the same area" },
-    { "sourceCode": "E2.8", "strand": "E", "overallCode": "E2", "text": "use appropriate non-standard units to measure area, and explain the effect that gaps and overlaps have on accuracy" },
-    { "sourceCode": "E2.9", "strand": "E", "overallCode": "E2", "text": "use square centimetres (cm2) and square metres (m2) to estimate, measure, and compare the areas of various two-dimensional shapes, including those with curved sides" },
-    { "sourceCode": "F1.1", "strand": "F", "overallCode": "F1", "text": "estimate and calculate the change required for various simple cash transactions involving whole-dollar amounts and amounts of less than one dollar" }
+    {
+      "sourceCode": "B1.1",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "read, represent, compose, and decompose whole numbers up to and including 1000, using a variety of tools and strategies, and describe various ways they are used in everyday life"
+    },
+    {
+      "sourceCode": "B1.2",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "compare and order whole numbers up to and including 1000, in various contexts"
+    },
+    {
+      "sourceCode": "B1.3",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "round whole numbers to the nearest ten or hundred, in various contexts"
+    },
+    {
+      "sourceCode": "B1.4",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "count to 1000, including by 50s, 100s, and 200s, using a variety of tools and strategies"
+    },
+    {
+      "sourceCode": "B1.5",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "use place value when describing and representing multi-digit numbers in a variety of ways, including with base ten materials"
+    },
+    {
+      "sourceCode": "B1.6",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "use drawings to represent, solve, and compare the results of fair-share problems that involve sharing up to 20 items among 2, 3, 4, 5, 6, 8, and 10 sharers, including problems that result in whole numbers, mixed numbers, and fractional amounts"
+    },
+    {
+      "sourceCode": "B1.7",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "represent and solve fair-share problems that focus on determining and using equivalent fractions, including problems that involve halves, fourths, and eighths; thirds and sixths; and fifths and tenths"
+    },
+    {
+      "sourceCode": "B2.1",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "use the properties of operations, and the relationships between multiplication and division, to solve problems and check calculations"
+    },
+    {
+      "sourceCode": "B2.2",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "recall and demonstrate multiplication facts of 2, 5, and 10, and related division facts"
+    },
+    {
+      "sourceCode": "B2.3",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "use mental math strategies, including estimation, to add and subtract whole numbers that add up to no more than 1000, and explain the strategies used"
+    },
+    {
+      "sourceCode": "B2.4",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "demonstrate an understanding of algorithms for adding and subtracting whole numbers by making connections to and describing the way other tools and strategies are used to add and subtract"
+    },
+    {
+      "sourceCode": "B2.5",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent and solve problems involving the addition and subtraction of whole numbers that add up to no more than 1000, using various tools and algorithms"
+    },
+    {
+      "sourceCode": "B2.6",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent multiplication of numbers up to 10 × 10 and division up to 100 ÷ 10, using a variety of tools and drawings, including arrays"
+    },
+    {
+      "sourceCode": "B2.7",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent and solve problems involving multiplication and division, including problems that involve groups of one half, one fourth, and one third, using tools and drawings"
+    },
+    {
+      "sourceCode": "B2.8",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "represent the connection between the numerator of a fraction and the repeated addition of the unit fraction with the same denominator using various tools and drawings, and standard fractional notation"
+    },
+    {
+      "sourceCode": "B2.9",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "use the ratios of 1 to 2, 1 to 5, and 1 to 10 to scale up numbers and to solve problems"
+    },
+    {
+      "sourceCode": "C1.1",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "identify and describe repeating elements and operations in a variety of patterns, including patterns found in real-life contexts"
+    },
+    {
+      "sourceCode": "C1.2",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "create and translate patterns that have repeating elements, movements, or operations using various representations, including shapes, numbers, and tables of values"
+    },
+    {
+      "sourceCode": "C1.3",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "determine pattern rules and use them to extend patterns, make and justify predictions, and identify missing elements in patterns that have repeating elements, movements, or operations"
+    },
+    {
+      "sourceCode": "C1.4",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "create and describe patterns to illustrate relationships among whole numbers up to 1000"
+    },
+    {
+      "sourceCode": "C2.1",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "describe how variables are used, and use them in various contexts as appropriate"
+    },
+    {
+      "sourceCode": "C2.2",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "determine whether given sets of addition, subtraction, multiplication, and division expressions are equivalent or not"
+    },
+    {
+      "sourceCode": "C2.3",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "identify and use equivalent relationships for whole numbers up to 1000, in various contexts"
+    },
+    {
+      "sourceCode": "C3.1",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "solve problems and create computational representations of mathematical situations by writing and executing code, including code that involves sequential, concurrent, and repeating events"
+    },
+    {
+      "sourceCode": "C3.2",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "read and alter existing code, including code that involves sequential, concurrent, and repeating events, and describe how changes to the code affect the outcomes"
+    },
+    {
+      "sourceCode": "D1.1",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "sort sets of data about people or things according to two and three attributes, using tables and logic diagrams, including Venn, Carroll, and tree diagrams, as appropriate"
+    },
+    {
+      "sourceCode": "D1.2",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "collect data through observations, experiments, and interviews to answer questions of interest that focus on qualitative and quantitative data, and organize the data using frequency tables"
+    },
+    {
+      "sourceCode": "D1.3",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "display sets of data, using many-to-one correspondence, in pictographs and bar graphs with proper sources, titles, and labels, and appropriate scales"
+    },
+    {
+      "sourceCode": "D1.4",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "determine the mean and identify the mode(s), if any, for various data sets involving whole numbers, and explain what each of these measures indicates about the data"
+    },
+    {
+      "sourceCode": "D1.5",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "analyse different sets of data presented in various ways, including in frequency tables and in graphs with different scales, by asking and answering questions about the data and drawing conclusions, then make convincing arguments and informed decisions"
+    },
+    {
+      "sourceCode": "D2.1",
+      "strand": "D",
+      "overallCode": "D2",
+      "text": "use mathematical language, including the terms “impossible”, “unlikely”, “equally likely”, “likely”, and “certain”, to describe the likelihood of events happening, and use that likelihood to make predictions and informed decisions"
+    },
+    {
+      "sourceCode": "D2.2",
+      "strand": "D",
+      "overallCode": "D2",
+      "text": "make and test predictions about the likelihood that the mean and the mode(s) of a data set will be the same for data collected from different populations"
+    },
+    {
+      "sourceCode": "E1.1",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "sort, construct, and identify cubes, prisms, pyramids, cylinders, and cones by comparing their faces, edges, vertices, and angles"
+    },
+    {
+      "sourceCode": "E1.2",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "compose and decompose various structures, and identify the two-dimensional shapes and three-dimensional objects that these structures contain"
+    },
+    {
+      "sourceCode": "E1.3",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "identify congruent lengths, angles, and faces of three-dimensional objects by mentally and physically matching them, and determine if the objects are congruent"
+    },
+    {
+      "sourceCode": "E1.4",
+      "strand": "E",
+      "overallCode": "E1",
+      "text": "give and follow multistep instructions involving movement from one location to another, including distances and half- and quarter-turns"
+    },
+    {
+      "sourceCode": "E2.1",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "use appropriate units of length to estimate, measure, and compare the perimeters of polygons and curved shapes, and construct polygons with a given perimeter"
+    },
+    {
+      "sourceCode": "E2.2",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "explain the relationships between millimetres, centimetres, metres, and kilometres as metric units of length, and use benchmarks for these units to estimate lengths"
+    },
+    {
+      "sourceCode": "E2.3",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "use non-standard units appropriately to estimate, measure, and compare capacity, and explain the effect that overfilling or underfilling, and gaps between units, have on accuracy"
+    },
+    {
+      "sourceCode": "E2.4",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "compare, estimate, and measure the mass of various objects, using a pan balance and non-standard units"
+    },
+    {
+      "sourceCode": "E2.5",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "use various units of different sizes to measure the same attribute of a given item, and demonstrate that even though using different-sized units produces a different count, the size of the attribute remains the same"
+    },
+    {
+      "sourceCode": "E2.6",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "use analog and digital clocks and timers to tell time in hours, minutes, and seconds"
+    },
+    {
+      "sourceCode": "E2.7",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "compare the areas of two-dimensional shapes by matching, covering, or decomposing and recomposing the shapes, and demonstrate that different shapes can have the same area"
+    },
+    {
+      "sourceCode": "E2.8",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "use appropriate non-standard units to measure area, and explain the effect that gaps and overlaps have on accuracy"
+    },
+    {
+      "sourceCode": "E2.9",
+      "strand": "E",
+      "overallCode": "E2",
+      "text": "use square centimetres (cm2) and square metres (m2) to estimate, measure, and compare the areas of various two-dimensional shapes, including those with curved sides"
+    },
+    {
+      "sourceCode": "F1.1",
+      "strand": "F",
+      "overallCode": "F1",
+      "text": "estimate and calculate the change required for various simple cash transactions involving whole-dollar amounts and amounts of less than one dollar"
+    }
   ]
 }
