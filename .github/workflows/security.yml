@@ -1,0 +1,44 @@
+name: security
+
+# SEC-005 (CI security gates) — scanning beyond the production dependency audit,
+# which is a BLOCKING step in the `ci` workflow. The scans here are REPORT-ONLY
+# for now (continue-on-error): they run on every push/PR and surface findings in
+# the job log, but do not block the pipeline until the owner has reviewed the
+# first runs and chosen to enforce them. SAST (CodeQL) is intentionally not wired
+# here because it needs GitHub Advanced Security on a private repo — that's an
+# owner/licensing decision recorded in evidence/G2/SEC-010.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Secret scan (gitleaks, report-only)
+        continue-on-error: true
+        run: |
+          VER=8.21.2
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_linux_x64.tar.gz" -o gitleaks.tgz
+          tar -xzf gitleaks.tgz gitleaks
+          ./gitleaks detect --no-git --redact -v || echo "gitleaks reported findings (report-only)"
+
+      - name: IaC scan — Bicep (checkov, report-only)
+        continue-on-error: true
+        run: |
+          python -m pip install --quiet checkov==3.2.257
+          checkov -d infra/azure --compact --quiet || echo "checkov reported findings (report-only)"
+
+      - name: Note
+        run: echo "Report-only scans complete. Blocking production dependency audit runs in the 'ci' workflow."
