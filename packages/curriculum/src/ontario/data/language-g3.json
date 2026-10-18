@@ -1,0 +1,384 @@
+{
+  "jurisdiction": "ontario",
+  "subject": "language",
+  "grade": 3,
+  "edition": "Ontario Language (2023)",
+  "sourceUrl": "https://www.dcp.edu.gov.on.ca/en/curriculum/elementary-language/grades/grade-3",
+  "extractedAt": "2026-10-18",
+  "reviewStatus": "draft",
+  "note": "Source-verified from the Ontario Ministry curriculum site.",
+  "strands": [
+    { "code": "A", "name": "Literacy Connections and Applications" },
+    { "code": "B", "name": "Foundations of Language" },
+    { "code": "C", "name": "Comprehension: Understanding and Responding to Texts" },
+    { "code": "D", "name": "Composition: Expressing Ideas and Creating Texts" }
+  ],
+  "expectations": [
+    {
+      "sourceCode": "A1.1",
+      "strand": "A",
+      "overallCode": "A1",
+      "text": "identify how transferable skills can be used to support communication in various cultural, social, linguistic, and domain-specific contexts, and apply them when reading, listening to, viewing, and creating texts of various forms"
+    },
+    {
+      "sourceCode": "A1.2",
+      "strand": "A",
+      "overallCode": "A1",
+      "text": "demonstrate an understanding of how transferable skills help them to express their voice and be engaged in their learning"
+    },
+    {
+      "sourceCode": "A2.1",
+      "strand": "A",
+      "overallCode": "A2",
+      "text": "demonstrate an understanding of their rights and responsibilities when interacting online with appropriate permission, and make decisions that contribute positively to the development of their digital identity and those of their communities"
+    },
+    {
+      "sourceCode": "A2.2",
+      "strand": "A",
+      "overallCode": "A2",
+      "text": "demonstrate an understanding of how to navigate online environments safely, manage their privacy, and interact in a way that supports their well-being and that of others, including seeking appropriate permission"
+    },
+    {
+      "sourceCode": "A2.3",
+      "strand": "A",
+      "overallCode": "A2",
+      "text": "gather, evaluate, and use information, considering various perspectives, to construct knowledge and demonstrate learning"
+    },
+    {
+      "sourceCode": "A2.4",
+      "strand": "A",
+      "overallCode": "A2",
+      "text": "demonstrate an understanding of the forms, conventions, and techniques of digital and media texts, and apply this understanding when analyzing texts"
+    },
+    {
+      "sourceCode": "A2.5",
+      "strand": "A",
+      "overallCode": "A2",
+      "text": "demonstrate an understanding of the interrelationships between the form, message, and context of a text, the audience, and the creator"
+    },
+    {
+      "sourceCode": "A2.6",
+      "strand": "A",
+      "overallCode": "A2",
+      "text": "use digital and media tools to support stages of the design process and to develop creative solutions to authentic, real-world problems"
+    },
+    {
+      "sourceCode": "A2.7",
+      "strand": "A",
+      "overallCode": "A2",
+      "text": "communicate and collaborate with various communities in a safe, respectful, responsible, and inclusive manner when using online platforms and environments, including digital and media tools, and demonstrate cultural awareness with members of the community"
+    },
+    {
+      "sourceCode": "A3.1",
+      "strand": "A",
+      "overallCode": "A3",
+      "text": "apply the knowledge and skills developed in this grade to support learning in various subject areas and identify some ways this learning can be used in everyday life"
+    },
+    {
+      "sourceCode": "A3.2",
+      "strand": "A",
+      "overallCode": "A3",
+      "text": "demonstrate an understanding of the contributions, lived experiences, and perspectives of a diversity of individuals and communities, including those in Canada, by exploring the concepts of identity, self, and sense of belonging in culturally responsive and relevant texts"
+    },
+    {
+      "sourceCode": "A3.3",
+      "strand": "A",
+      "overallCode": "A3",
+      "text": "identify themes explored in First Nations, Métis, and Inuit cultures to demonstrate an understanding of the varied identities, perspectives, relationships, legacies, truths, and ways of knowing, being, and doing"
+    },
+    {
+      "sourceCode": "B1.1",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "use effective listening skills, including asking questions to clarify information and ideas, in formal and informal contexts and for various purposes, including in small- and large-group conversations and various classroom activities"
+    },
+    {
+      "sourceCode": "B1.2",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "select and use a variety of listening strategies before, during, and after listening to comprehend information communicated orally and non-verbally, recognize when a message is difficult to understand, and develop an appropriate response"
+    },
+    {
+      "sourceCode": "B1.3",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "identify the purpose and audience for speaking in formal and informal contexts, and use appropriate speaking strategies, including establishing a rapport with the audience, to communicate clearly and coherently"
+    },
+    {
+      "sourceCode": "B1.4",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "identify and use oral and non-verbal communication strategies, including expression, gestures, and body language, and demonstrate an understanding of how these strategies can contribute to the meaning being conveyed"
+    },
+    {
+      "sourceCode": "B1.5",
+      "strand": "B",
+      "overallCode": "B1",
+      "text": "use appropriate word choice, including new vocabulary, grammar, and cohesive sentences when speaking and communicating ideas in various contexts, to support audience comprehension"
+    },
+    {
+      "sourceCode": "B2.1",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "use consolidated phonics knowledge, including phonemic blending to read words and set for variability to correct approximations, and phonemic segmentation to spell phonetically regular monosyllabic and multisyllabic words, in isolation and various text contexts"
+    },
+    {
+      "sourceCode": "B2.2",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "use consolidated orthographic knowledge, including position-based tendencies, to make a spelling choice or accurately pronounce a word when reading"
+    },
+    {
+      "sourceCode": "B2.3",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "use developing knowledge of the meanings of words and morphemes (i.e., bases, prefixes, and suffixes) to read and spell words"
+    },
+    {
+      "sourceCode": "B2.4",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "demonstrate an understanding of a variety of words, acquire and use explicitly taught vocabulary in various contexts, including other subject areas, and use morphological knowledge to analyze and understand new words in context"
+    },
+    {
+      "sourceCode": "B2.5",
+      "strand": "B",
+      "overallCode": "B2",
+      "text": "read words, complex sentences, and paragraphs in a variety of texts fluently, with accuracy and appropriate pacing to support comprehension, and read aloud using varied expression and intonation according to the purpose of reading"
+    },
+    {
+      "sourceCode": "B3.1",
+      "strand": "B",
+      "overallCode": "B3",
+      "text": "identify and construct various sentence types and forms, including simple sentences, compound sentences, and complex sentences containing adverbial clauses"
+    },
+    {
+      "sourceCode": "B3.2",
+      "strand": "B",
+      "overallCode": "B3",
+      "text": "demonstrate an understanding of the functions of parts of speech in sentences, including possessive nouns, linking verbs and the progressive tense, interrogative adjectives and adverbs, and prepositions and interjections, and use this knowledge to support comprehension and communicate meaning clearly"
+    },
+    {
+      "sourceCode": "B3.3",
+      "strand": "B",
+      "overallCode": "B3",
+      "text": "use their understanding of the meaning and function of capitalization and punctuation to communicate meaning clearly, including the use of capital letters in dialogue and for words in titles, commas and quotation marks to mark direct speech and direct quotations from texts within sentences, and apostrophes to indicate contractions"
+    },
+    {
+      "sourceCode": "C1.1",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "read and comprehend various texts, using knowledge of words, grammar, cohesive ties, sentence structures, and background knowledge"
+    },
+    {
+      "sourceCode": "C1.2",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "identify and describe some characteristics of literary and informational text forms and their associated genres"
+    },
+    {
+      "sourceCode": "C1.3",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "identify some text patterns, such as order of importance and cause and effect, and text features, such as headings and an index, associated with various text forms, and explain how they help readers, listeners, and viewers understand the meaning"
+    },
+    {
+      "sourceCode": "C1.4",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "describe ways in which images, graphics, and visual design are used in a given text, and demonstrate an understanding of their purpose and connection to the content of the text"
+    },
+    {
+      "sourceCode": "C1.5",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "identify some elements of style in texts, including voice, word choice, word patterns, and sentence structure, and explain how they help communicate meaning"
+    },
+    {
+      "sourceCode": "C1.6",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "identify the narrator’s point of view, including first person or third person, in a variety of texts, and suggest alternative points of view to tell each story"
+    },
+    {
+      "sourceCode": "C1.7",
+      "strand": "C",
+      "overallCode": "C1",
+      "text": "read, listen to, and view various forms of texts by diverse First Nations, Métis, and Inuit creators and demonstrate understanding of various aspects of First Nations, Métis, and Inuit histories, cultures, relationships, communities, groups, nations, and lived experiences"
+    },
+    {
+      "sourceCode": "C2.1",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "activate prior knowledge, including knowledge gained from personal and text experiences, that they can use to make connections and understand the topic and form of new texts"
+    },
+    {
+      "sourceCode": "C2.2",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "identify specific purposes for engaging with texts, including learning facts or information, or to gain insight or new perspectives"
+    },
+    {
+      "sourceCode": "C2.3",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "make predictions using background knowledge, text features, and evidence from the text, and adjust their understanding based on new information"
+    },
+    {
+      "sourceCode": "C2.4",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "use strategies such as rereading, visualizing, and asking questions, to monitor and confirm their understanding of various texts"
+    },
+    {
+      "sourceCode": "C2.5",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "identify connections between ideas expressed in texts and their knowledges and lived experiences, the ideas in other texts, and the world around them"
+    },
+    {
+      "sourceCode": "C2.6",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "identify the main idea in a simple text, and relate important details in sequence"
+    },
+    {
+      "sourceCode": "C2.7",
+      "strand": "C",
+      "overallCode": "C2",
+      "text": "describe how strategies, such as visualizing, making predictions, and connecting to their experiences, have helped them comprehend various texts"
+    },
+    {
+      "sourceCode": "C3.1",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "identify literary devices, including metaphor and assonance, and describe how they help communicate meaning"
+    },
+    {
+      "sourceCode": "C3.2",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "make inferences using stated and implied information and ideas to understand texts"
+    },
+    {
+      "sourceCode": "C3.3",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "analyze various texts, including literary and informational texts, by identifying main and supporting ideas, sequencing information, and comparing and contrasting elements"
+    },
+    {
+      "sourceCode": "C3.4",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "identify some cultural elements represented in various texts, including symbols, language, and values, and pose questions and share ideas about how these elements contribute to the meaning"
+    },
+    {
+      "sourceCode": "C3.5",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "identify explicit and implicit perspectives communicated in texts, providing evidence, and explain how these perspectives could influence an audience"
+    },
+    {
+      "sourceCode": "C3.6",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "describe personal thoughts and feelings about ideas presented in texts, such as ideas about diversity, inclusion, and accessibility"
+    },
+    {
+      "sourceCode": "C3.7",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "identify some ways in which texts created by First Nations, Métis, and Inuit individuals, communities, groups, or nations communicate about historical periods, cultural experiences, and events, and how they relate to current lived experiences"
+    },
+    {
+      "sourceCode": "C3.8",
+      "strand": "C",
+      "overallCode": "C3",
+      "text": "identify thinking skills that have helped them analyze and better understand various texts"
+    },
+    {
+      "sourceCode": "D1.1",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "identify the topic, purpose, and audience for various texts they plan to create, and describe how the chosen text form and genre will help communicate their intended meaning"
+    },
+    {
+      "sourceCode": "D1.2",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "generate and develop ideas about given and chosen topics, using various strategies, and drawing on various resources, including their own lived experiences, and learning from other subject areas"
+    },
+    {
+      "sourceCode": "D1.3",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "gather information and content relevant to a topic, using three or more sources"
+    },
+    {
+      "sourceCode": "D1.4",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "sort and sequence ideas and information, using appropriate strategies and tools, taking into account the text form and genre to be used"
+    },
+    {
+      "sourceCode": "D1.5",
+      "strand": "D",
+      "overallCode": "D1",
+      "text": "identify the strategies that helped them develop ideas for texts and organize content"
+    },
+    {
+      "sourceCode": "D2.1",
+      "strand": "D",
+      "overallCode": "D2",
+      "text": "draft short texts of various forms and genres, including narrative, persuasive, and informational texts, using a variety of media, tools, and strategies"
+    },
+    {
+      "sourceCode": "D2.2",
+      "strand": "D",
+      "overallCode": "D2",
+      "text": "begin to write in cursive, forming letters with appropriate formation patterns, size, placement, and spacing"
+    },
+    {
+      "sourceCode": "D2.3",
+      "strand": "D",
+      "overallCode": "D2",
+      "text": "demonstrate a personal voice in their texts, using descriptive words and sentence patterns to express their thoughts, feelings, and opinions about the topic"
+    },
+    {
+      "sourceCode": "D2.4",
+      "strand": "D",
+      "overallCode": "D2",
+      "text": "identify the point of view, including first person or third person, used in their texts"
+    },
+    {
+      "sourceCode": "D2.5",
+      "strand": "D",
+      "overallCode": "D2",
+      "text": "make simple revisions to draft texts, including replacing words and adding sentences, to improve content and clarity, using feedback from others"
+    },
+    {
+      "sourceCode": "D2.6",
+      "strand": "D",
+      "overallCode": "D2",
+      "text": "edit draft texts to improve accuracy and style, checking for errors in spelling, punctuation, grammar, and text conventions, and proofread edited texts to make corrections"
+    },
+    {
+      "sourceCode": "D3.1",
+      "strand": "D",
+      "overallCode": "D3",
+      "text": "produce final texts using simple techniques, to achieve the intended effect"
+    },
+    {
+      "sourceCode": "D3.2",
+      "strand": "D",
+      "overallCode": "D3",
+      "text": "present the texts they have created using appropriate strategies, including by reading aloud with expression"
+    },
+    {
+      "sourceCode": "D3.3",
+      "strand": "D",
+      "overallCode": "D3",
+      "text": "identify the strategies that helped them present and communicate their message, and explain how they helped them improve as a text creator"
+    }
+  ]
+}
