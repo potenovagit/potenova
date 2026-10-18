@@ -32,6 +32,11 @@ export const RELEASE_BY_SUBJECT: Record<Subject, string> = {
 };
 export const COMPARE = 'SK-FR-compare';
 export const EQUIV = 'SK-FR-equiv';
+export const PARTITION = 'SK-FR-partition';
+export const UNIT = 'SK-FR-unit';
+export const NONUNIT = 'SK-FR-nonunit';
+export const NUMBERLINE = 'SK-FR-numberline';
+export const ORDER = 'SK-FR-order';
 export const PLURAL_BASE = 'SK-EN-plural-base';
 export const PLURAL_SIB = 'SK-EN-plural-sibilant';
 export const ADD_10 = 'SK-NS-add-within10';
@@ -68,7 +73,54 @@ interface AdditionTask {
   readonly a: number;
   readonly b: number;
 }
-export type Task = CompareTask | EquivTask | PluralTask | AdditionTask;
+interface PartitionTask {
+  readonly subject: 'math';
+  readonly course: 'fractions';
+  readonly skillId: typeof PARTITION;
+  readonly kind: 'fraction_partition';
+  readonly parts: number;
+  readonly shaded: number;
+}
+interface UnitTask {
+  readonly subject: 'math';
+  readonly course: 'fractions';
+  readonly skillId: typeof UNIT;
+  readonly kind: 'fraction_unit';
+  readonly denominator: number;
+}
+interface NonUnitTask {
+  readonly subject: 'math';
+  readonly course: 'fractions';
+  readonly skillId: typeof NONUNIT;
+  readonly kind: 'fraction_nonunit_build';
+  readonly count: number;
+  readonly unitDenominator: number;
+}
+interface NumberLineTask {
+  readonly subject: 'math';
+  readonly course: 'fractions';
+  readonly skillId: typeof NUMBERLINE;
+  readonly kind: 'fraction_number_line';
+  readonly fraction: Fraction;
+  readonly intervals: number;
+}
+interface OrderTask {
+  readonly subject: 'math';
+  readonly course: 'fractions';
+  readonly skillId: typeof ORDER;
+  readonly kind: 'fraction_order';
+  readonly fractions: readonly Fraction[];
+}
+export type Task =
+  | CompareTask
+  | EquivTask
+  | PluralTask
+  | AdditionTask
+  | PartitionTask
+  | UnitTask
+  | NonUnitTask
+  | NumberLineTask
+  | OrderTask;
 
 const f = (numerator: number, denominator: number): Fraction => ({ numerator, denominator });
 const cmp = (left: Fraction, right: Fraction): CompareTask => ({
@@ -101,6 +153,44 @@ const add = (skillId: AdditionTask['skillId'], a: number, b: number): AdditionTa
   kind: 'integer_addition',
   a,
   b,
+});
+const partition = (parts: number, shaded: number): PartitionTask => ({
+  subject: 'math',
+  course: 'fractions',
+  skillId: PARTITION,
+  kind: 'fraction_partition',
+  parts,
+  shaded,
+});
+const unit = (denominator: number): UnitTask => ({
+  subject: 'math',
+  course: 'fractions',
+  skillId: UNIT,
+  kind: 'fraction_unit',
+  denominator,
+});
+const nonunit = (count: number, unitDenominator: number): NonUnitTask => ({
+  subject: 'math',
+  course: 'fractions',
+  skillId: NONUNIT,
+  kind: 'fraction_nonunit_build',
+  count,
+  unitDenominator,
+});
+const numberline = (fraction: Fraction, intervals: number): NumberLineTask => ({
+  subject: 'math',
+  course: 'fractions',
+  skillId: NUMBERLINE,
+  kind: 'fraction_number_line',
+  fraction,
+  intervals,
+});
+const order = (fractions: readonly Fraction[]): OrderTask => ({
+  subject: 'math',
+  course: 'fractions',
+  skillId: ORDER,
+  kind: 'fraction_order',
+  fractions,
 });
 
 export const TASK_BANK: Readonly<Record<string, Task>> = {
@@ -151,6 +241,25 @@ export const TRANSFER_TASKS = new Set([
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
 const isRelation = (v: unknown): v is FractionRelation => v === 'lt' || v === 'eq' || v === 'gt';
 
+/** Parse a learner "a/b" fraction token, or null if malformed. */
+const parseFrac = (a: string): Fraction | null => {
+  const m = a.match(/^(\d+)\/(\d+)$/);
+  if (!m) return null;
+  return { numerator: Number(m[1]), denominator: Number(m[2]) };
+};
+/** The exact tick a number-line fraction lands on (integer by construction). */
+const correctTick = (t: NumberLineTask): number =>
+  (t.fraction.numerator * t.intervals) / t.fraction.denominator;
+const relSign = (a: Fraction, b: Fraction): number => {
+  const r = trueRelation(a, b);
+  return r === 'lt' ? -1 : r === 'gt' ? 1 : 0;
+};
+/** Ascending index order of a fraction list (the correct ordering key). */
+const correctOrder = (fractions: readonly Fraction[]): number[] =>
+  fractions.map((_, i) => i).sort((x, y) => relSign(fractions[x]!, fractions[y]!));
+/** Parse a 1-based "2,1,3" order answer into 0-based indices. */
+const parseOrder = (a: string): number[] => a.split(',').map((s) => Number(s.trim()) - 1);
+
 /** Representations are per-subject working modes; the projection counts their diversity. */
 export const REPRESENTATIONS: Record<Subject, readonly string[]> = {
   math: ['symbolic', 'area-model', 'number-line', 'set', 'counters'],
@@ -177,6 +286,38 @@ export function present(task: Task): { question: string; options: readonly strin
   }
   if (task.kind === 'integer_addition') {
     return { question: `What is ${task.a} + ${task.b}?`, options: [] /* type the number */ };
+  }
+  if (task.kind === 'fraction_partition') {
+    return {
+      question: `A whole is split into ${task.parts} equal parts; ${task.shaded} are shaded. Write the shaded amount as a fraction (a/b).`,
+      options: [],
+    };
+  }
+  if (task.kind === 'fraction_unit') {
+    return {
+      question: `A whole is split into ${task.denominator} equal parts. Write one part as a fraction (a/b).`,
+      options: [],
+    };
+  }
+  if (task.kind === 'fraction_nonunit_build') {
+    return {
+      question: `What fraction is ${task.count} copies of 1/${task.unitDenominator}? Write it as a/b.`,
+      options: [],
+    };
+  }
+  if (task.kind === 'fraction_number_line') {
+    return {
+      question: `On a number line from 0 to 1 split into ${task.intervals} equal steps, which step (0 to ${task.intervals}) is ${fmt(task.fraction)}? Type the step number.`,
+      options: [],
+    };
+  }
+  if (task.kind === 'fraction_order') {
+    return {
+      question: `Put these fractions in order from smallest to largest: ${task.fractions
+        .map(fmt)
+        .join(', ')}. Type their positions (1 = first shown) separated by commas, e.g. 2,1,3.`,
+      options: [],
+    };
   }
   return {
     question: `What is the plural of "${task.word}"? Type the word.`,
@@ -210,6 +351,44 @@ export function answerKeyValid(task: Task): boolean {
       claimedSum: task.a + task.b,
     }).correct;
   }
+  if (task.kind === 'fraction_partition') {
+    return checkMathTask({
+      kind: 'fraction_partition',
+      parts: task.parts,
+      shaded: task.shaded,
+      claimedFraction: f(task.shaded, task.parts),
+    }).correct;
+  }
+  if (task.kind === 'fraction_unit') {
+    return checkMathTask({
+      kind: 'fraction_unit',
+      denominator: task.denominator,
+      claimedUnit: f(1, task.denominator),
+    }).correct;
+  }
+  if (task.kind === 'fraction_nonunit_build') {
+    return checkMathTask({
+      kind: 'fraction_nonunit_build',
+      count: task.count,
+      unitDenominator: task.unitDenominator,
+      claimedFraction: f(task.count, task.unitDenominator),
+    }).correct;
+  }
+  if (task.kind === 'fraction_number_line') {
+    return checkMathTask({
+      kind: 'fraction_number_line',
+      fraction: task.fraction,
+      intervals: task.intervals,
+      claimedTick: correctTick(task),
+    }).correct;
+  }
+  if (task.kind === 'fraction_order') {
+    return checkMathTask({
+      kind: 'fraction_order',
+      fractions: task.fractions,
+      claimedOrder: correctOrder(task.fractions),
+    }).correct;
+  }
   return checkEnglishTask({
     kind: 'noun_plural',
     word: task.word,
@@ -223,6 +402,17 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'fraction_comparison') return isRelation(a);
   if (task.kind === 'fraction_equivalence') return a === 'yes' || a === 'no';
   if (task.kind === 'integer_addition') return /^\d+$/.test(a); // a non-negative integer
+  if (
+    task.kind === 'fraction_partition' ||
+    task.kind === 'fraction_unit' ||
+    task.kind === 'fraction_nonunit_build'
+  ) {
+    return /^\d+\/\d+$/.test(a); // a fraction token a/b
+  }
+  if (task.kind === 'fraction_number_line') return /^\d+$/.test(a); // a step index
+  if (task.kind === 'fraction_order') {
+    return new RegExp(`^\\d+(,\\d+){${task.fractions.length - 1}}$`).test(a.replace(/\s+/g, ''));
+  }
   return /^[a-z]+$/.test(a); // a single word
 }
 
@@ -253,6 +443,50 @@ export function judge(task: Task, raw: string): boolean {
       claimedSum: Number(a),
     }).correct;
   }
+  if (task.kind === 'fraction_partition') {
+    const cf = parseFrac(a);
+    return cf
+      ? checkMathTask({
+          kind: 'fraction_partition',
+          parts: task.parts,
+          shaded: task.shaded,
+          claimedFraction: cf,
+        }).correct
+      : false;
+  }
+  if (task.kind === 'fraction_unit') {
+    const cf = parseFrac(a);
+    return cf
+      ? checkMathTask({ kind: 'fraction_unit', denominator: task.denominator, claimedUnit: cf })
+          .correct
+      : false;
+  }
+  if (task.kind === 'fraction_nonunit_build') {
+    const cf = parseFrac(a);
+    return cf
+      ? checkMathTask({
+          kind: 'fraction_nonunit_build',
+          count: task.count,
+          unitDenominator: task.unitDenominator,
+          claimedFraction: cf,
+        }).correct
+      : false;
+  }
+  if (task.kind === 'fraction_number_line') {
+    return checkMathTask({
+      kind: 'fraction_number_line',
+      fraction: task.fraction,
+      intervals: task.intervals,
+      claimedTick: Number(a),
+    }).correct;
+  }
+  if (task.kind === 'fraction_order') {
+    return checkMathTask({
+      kind: 'fraction_order',
+      fractions: task.fractions,
+      claimedOrder: parseOrder(a),
+    }).correct;
+  }
   return checkEnglishTask({ kind: 'noun_plural', word: task.word, claimedPlural: a }).correct;
 }
 
@@ -280,6 +514,11 @@ export const GEN_SERVABLE: Readonly<Record<string, { subject: Subject; course: T
   {
     [COMPARE]: { subject: 'math', course: 'fractions' },
     [EQUIV]: { subject: 'math', course: 'fractions' },
+    [PARTITION]: { subject: 'math', course: 'fractions' },
+    [UNIT]: { subject: 'math', course: 'fractions' },
+    [NONUNIT]: { subject: 'math', course: 'fractions' },
+    [NUMBERLINE]: { subject: 'math', course: 'fractions' },
+    [ORDER]: { subject: 'math', course: 'fractions' },
     [PLURAL_BASE]: { subject: 'english', course: 'plurals' },
     [PLURAL_SIB]: { subject: 'english', course: 'plurals' },
   };
@@ -332,6 +571,14 @@ function resolveGeneratedTask(taskId: string): Task {
     if (!item) throw new DomainError('NOT_FOUND', 'generated item index out of range');
     if (item.task.kind === 'fraction_comparison') return cmp(item.task.left, item.task.right);
     if (item.task.kind === 'fraction_equivalence') return eq(item.task.left, item.task.right);
+    if (item.task.kind === 'fraction_partition')
+      return partition(item.task.parts, item.task.shaded);
+    if (item.task.kind === 'fraction_unit') return unit(item.task.denominator);
+    if (item.task.kind === 'fraction_nonunit_build')
+      return nonunit(item.task.count, item.task.unitDenominator);
+    if (item.task.kind === 'fraction_number_line')
+      return numberline(item.task.fraction, item.task.intervals);
+    if (item.task.kind === 'fraction_order') return order(item.task.fractions);
     throw new DomainError('POLICY_BLOCKED', 'generated math kind not servable in the loop yet');
   }
   const item = generateEnglishItems(skillId, index + 1, seed, d)[index];

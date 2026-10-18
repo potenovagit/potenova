@@ -76,4 +76,53 @@ describe('generated item stream in the loop', () => {
   it('an unknown static id throws NOT_FOUND', () => {
     expect(() => resolveTask('does-not-exist')).toThrow();
   });
+
+  it('binds the remaining fraction skills: deliverable, gradable, course-matched', () => {
+    const skills = [
+      'SK-FR-partition',
+      'SK-FR-unit',
+      'SK-FR-nonunit',
+      'SK-FR-numberline',
+      'SK-FR-order',
+    ];
+    for (const skillId of skills) {
+      expect(GEN_SERVABLE[skillId]).toMatchObject({ subject: 'math', course: 'fractions' });
+      const id = generatedTaskId(skillId, 0, seed, 'core');
+      const task = gateTask(id); // content gate passes
+      expect(task.skillId).toBe(skillId);
+      expect(present(task).question.length).toBeGreaterThan(0);
+
+      // the correct answer grades correct; a clearly-wrong valid token grades wrong
+      let correct = '';
+      let wrong = '';
+      if (task.kind === 'fraction_partition') {
+        correct = `${task.shaded}/${task.parts}`;
+        wrong = `0/${task.parts}`;
+      } else if (task.kind === 'fraction_unit') {
+        correct = `1/${task.denominator}`;
+        wrong = `2/${task.denominator}`;
+      } else if (task.kind === 'fraction_nonunit_build') {
+        correct = `${task.count}/${task.unitDenominator}`;
+        wrong = `1/${task.unitDenominator}`; // count >= 2
+      } else if (task.kind === 'fraction_number_line') {
+        const tick = (task.fraction.numerator * task.intervals) / task.fraction.denominator;
+        correct = `${tick}`;
+        wrong = `${tick === 0 ? 1 : 0}`;
+      } else if (task.kind === 'fraction_order') {
+        const idx = task.fractions.map((_, i) => i);
+        const asc = [...idx].sort((x, y) => {
+          const r = trueRelation(task.fractions[x]!, task.fractions[y]!);
+          return r === 'lt' ? -1 : r === 'gt' ? 1 : 0;
+        });
+        correct = asc.map((i) => i + 1).join(',');
+        wrong = [...asc]
+          .reverse()
+          .map((i) => i + 1)
+          .join(',');
+      }
+      expect(tokenValid(task, correct)).toBe(true);
+      expect(judge(task, correct)).toBe(true);
+      expect(judge(task, wrong)).toBe(false);
+    }
+  });
 });
