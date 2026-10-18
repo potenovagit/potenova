@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { trueRelation, areEquivalent, pluralize } from '@potenova/content';
+import {
+  trueRelation,
+  areEquivalent,
+  pluralize,
+  pastTenseRegular,
+  comparativeRegular,
+} from '@potenova/content';
 import {
   resolveTask,
   gateTask,
@@ -10,6 +16,7 @@ import {
   judge,
   tokenValid,
 } from '../src/task-bank';
+import { courseFor, COURSES_BY_SUBJECT } from '../src/adaptive';
 
 /**
  * Wiring the deterministic item stream into the coaching/diagnostic loop:
@@ -123,6 +130,34 @@ describe('generated item stream in the loop', () => {
       expect(tokenValid(task, correct)).toBe(true);
       expect(judge(task, correct)).toBe(true);
       expect(judge(task, wrong)).toBe(false);
+    }
+  });
+
+  it('binds English past-tense and comparative as their own servable courses', () => {
+    // the new strands are session-selectable for English
+    expect(COURSES_BY_SUBJECT.english).toEqual(['plurals', 'past-tense', 'comparative']);
+    expect(courseFor('english', 'past-tense')).toBe('past-tense');
+    expect(courseFor('english', 'comparative')).toBe('comparative');
+
+    const cases = [
+      { skillId: 'SK-EN-past-regular', course: 'past-tense', inflect: pastTenseRegular },
+      { skillId: 'SK-EN-comparative', course: 'comparative', inflect: comparativeRegular },
+    ] as const;
+    for (const { skillId, course, inflect } of cases) {
+      expect(GEN_SERVABLE[skillId]).toMatchObject({ subject: 'english', course });
+      const id = generatedTaskId(skillId, 0, seed, 'core');
+      const task = gateTask(id);
+      expect(task.skillId).toBe(skillId);
+      expect(task.course).toBe(course);
+      expect(present(task).question.length).toBeGreaterThan(0);
+      const word =
+        task.kind === 'regular_past_tense'
+          ? task.verb
+          : task.kind === 'comparative_adjective'
+            ? task.adjective
+            : '';
+      expect(judge(task, inflect(word))).toBe(true);
+      expect(judge(task, word)).toBe(false); // the bare word is not the inflected form
     }
   });
 });
