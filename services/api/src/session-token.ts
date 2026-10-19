@@ -1,5 +1,5 @@
 import { DomainError } from '@potenova/contracts';
-import { SignJWT } from 'jose';
+import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 
 /**
  * Potenova session tokens (ADR-0008: "server-authoritative sessions with
@@ -55,6 +55,10 @@ export interface GuardianSessionInput {
   readonly guardianId: string;
   readonly familyId: string;
   readonly region: string;
+  /** A stepped-up (re-verified) session, for sensitive actions. Default false. */
+  readonly stepUp?: boolean;
+  /** Override the TTL (seconds) — used to time-box an elevated step-up window. */
+  readonly ttlSecondsOverride?: number;
 }
 
 export interface IssuedSession {
@@ -62,11 +66,15 @@ export interface IssuedSession {
   readonly expiresAt: string;
 }
 
+/** A step-up window is short by design — the elevation is time-boxed. */
+export const STEP_UP_TTL_SECONDS = 300;
+
 /**
  * Mint a short-lived guardian session token. The claims are exactly what the
  * auth middleware builds its ActorContext from — guardian actor type, owner role,
- * family scope, processing region — with step-up NOT satisfied (sensitive actions
- * must re-verify). No email or other IdP PII is embedded.
+ * family scope, processing region, and whether step-up re-verification is
+ * satisfied (false unless this is an elevated token). No email or other IdP PII
+ * is embedded.
  */
 export async function issueGuardianSession(
   input: GuardianSessionInput,
@@ -74,14 +82,15 @@ export async function issueGuardianSession(
   nowMs: number = Date.now(),
 ): Promise<IssuedSession> {
   const iat = Math.floor(nowMs / 1000);
-  const exp = iat + cfg.ttlSeconds;
+  const ttl = Math.min(input.ttlSecondsOverride ?? cfg.ttlSeconds, cfg.ttlSeconds);
+  const exp = iat + ttl;
   const key = new TextEncoder().encode(cfg.secret);
   const token = await new SignJWT({
     actor_type: 'guardian',
     actor_alias: input.guardianId,
     family_alias: input.familyId,
     guardian_role: 'owner',
-    step_up: false,
+    step_up: input.stepUp === true,
     processing_region: input.region,
     purpose: 'support',
   })
@@ -93,4 +102,44 @@ export async function issueGuardianSession(
     .setExpirationTime(exp)
     .sign(key);
   return { token, expiresAt: new Date(exp * 1000).toISOString() };
+}
+
+export interface VerifiedGuardianSession {
+  readonly guardianId: string;
+  readonly familyId: string | null;
+  readonly region: string;
+  readonly stepUp: boolean;
+}
+
+/**
+ * Verify a Potenova session token (the one `issueGuardianSession` mints) and
+ * return its guardian identity. Used by the step-up endpoint to confirm the
+ * caller's current session before elevating it. Fail-closed on any verification
+ * failure or a non-guardian token.
+ *
+ * @throws DomainError AUTH_REQUIRED — invalid/expired token or not a guardian.
+ */
+export async function verifyGuardianSession(
+  token: string,
+  cfg: SessionSigningConfig,
+): Promise<VerifiedGuardianSession> {
+  let payload: JWTPayload;
+  try {
+    ({ payload } = await jwtVerify(token, new TextEncoder().encode(cfg.secret), {
+      issuer: cfg.issuer,
+      audience: cfg.audience,
+    }));
+  } catch {
+    throw new DomainError('AUTH_REQUIRED', 'invalid or expired session token');
+  }
+  const guardianId = typeof payload.sub === 'string' ? payload.sub : '';
+  if (payload.actor_type !== 'guardian' || !guardianId) {
+    throw new DomainError('AUTH_REQUIRED', 'not a guardian session');
+  }
+  return {
+    guardianId,
+    familyId: typeof payload.family_alias === 'string' ? payload.family_alias : null,
+    region: typeof payload.processing_region === 'string' ? payload.processing_region : 'ca-central',
+    stepUp: payload.step_up === true,
+  };
 }

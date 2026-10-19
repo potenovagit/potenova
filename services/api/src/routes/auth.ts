@@ -3,7 +3,12 @@ import { DomainError } from '@potenova/contracts';
 import { guardianRefForSubject } from '@potenova/identity';
 import { jwtVerify, createRemoteJWKSet, type JWTPayload } from 'jose';
 import { now, type Deps } from '../deps';
-import { issueGuardianSession, readSessionConfig } from '../session-token';
+import {
+  issueGuardianSession,
+  readSessionConfig,
+  verifyGuardianSession,
+  STEP_UP_TTL_SECONDS,
+} from '../session-token';
 
 /**
  * Guardian sign-in exchange (ADR-0008). The managed IdP (Entra External ID)
@@ -128,6 +133,51 @@ export function registerAuth(app: Hono, deps: Deps, env: NodeJS.ProcessEnv): voi
       expiresAt,
       provisioned,
       actor: { actorType: 'guardian', guardianId, familyId, role: 'owner', stepUp: false },
+    });
+  });
+
+  // Step-up re-verification (ADR-0008). Elevates the caller's CURRENT guardian
+  // session to a short-lived step_up=true token so they can perform a sensitive
+  // action (billing, export, deletion, guardian grants). The re-verification
+  // itself (MFA / passkey re-prompt) is the IdP's — synthetic here, and
+  // FAIL-CLOSED in production, where a real re-verified token is required.
+  app.post('/auth/step-up', async (c) => {
+    const bearer = /^Bearer\s+(.+)$/i.exec(c.req.header('authorization') ?? '')?.[1];
+    if (!bearer)
+      throw new DomainError('AUTH_REQUIRED', 'a current guardian session is required to step up');
+
+    const cfg = readSessionConfig(env, isProd);
+    const session = await verifyGuardianSession(bearer, cfg);
+
+    if (isProd)
+      throw new DomainError(
+        'POLICY_BLOCKED',
+        'synthetic step-up is disabled in production; re-verify with the identity provider',
+      );
+
+    const { token, expiresAt } = await issueGuardianSession(
+      {
+        guardianId: session.guardianId,
+        familyId: session.familyId ?? '',
+        region: session.region,
+        stepUp: true,
+        ttlSecondsOverride: STEP_UP_TTL_SECONDS,
+      },
+      cfg,
+      Date.parse(now()),
+    );
+
+    return c.json({
+      token,
+      tokenType: 'Bearer',
+      expiresAt,
+      actor: {
+        actorType: 'guardian',
+        guardianId: session.guardianId,
+        familyId: session.familyId,
+        role: 'owner',
+        stepUp: true,
+      },
     });
   });
 }
