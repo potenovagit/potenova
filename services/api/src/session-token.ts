@@ -139,7 +139,8 @@ export async function verifyGuardianSession(
   return {
     guardianId,
     familyId: typeof payload.family_alias === 'string' ? payload.family_alias : null,
-    region: typeof payload.processing_region === 'string' ? payload.processing_region : 'ca-central',
+    region:
+      typeof payload.processing_region === 'string' ? payload.processing_region : 'ca-central',
     stepUp: payload.step_up === true,
   };
 }

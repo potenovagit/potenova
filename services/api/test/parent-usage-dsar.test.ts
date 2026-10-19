@@ -23,6 +23,8 @@ const otherGuardian = {
   'x-family-alias': 'fam9',
 };
 const child = { 'x-actor-type': 'child', 'x-actor-alias': 'kid1', 'x-family-alias': 'fam1' };
+// Export/erasure are step-up actions (ADR-0008); the owner re-verifies first.
+const ownerStepUp = { ...owner, 'x-step-up': 'true' };
 
 let dbs: PotenovaDb[] = [];
 afterEach(async () => {
@@ -106,7 +108,10 @@ describe('guardian usage read', () => {
 describe('guardian DSAR intake', () => {
   it('records an access request and reads its status back', async () => {
     const app = await onboard();
-    const res = await app.request('/learners/kid1/data-requests', json(owner, { kind: 'access' }));
+    const res = await app.request(
+      '/learners/kid1/data-requests',
+      json(ownerStepUp, { kind: 'access' }),
+    );
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.kind).toBe('access');
@@ -124,7 +129,7 @@ describe('guardian DSAR intake', () => {
     const app = await onboard();
     const res = await app.request(
       '/learners/kid1/data-requests',
-      json(owner, { kind: 'erasure', note: 'closing the account' }),
+      json(ownerStepUp, { kind: 'erasure', note: 'closing the account' }),
     );
     expect(res.status).toBe(201);
     const body = await res.json();
@@ -137,7 +142,10 @@ describe('guardian DSAR intake', () => {
 
   it('rejects an unknown kind', async () => {
     const app = await onboard();
-    const bad = await app.request('/learners/kid1/data-requests', json(owner, { kind: 'sell' }));
+    const bad = await app.request(
+      '/learners/kid1/data-requests',
+      json(ownerStepUp, { kind: 'sell' }),
+    );
     expect(bad.status).toBe(422);
   });
 

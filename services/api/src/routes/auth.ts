@@ -142,18 +142,20 @@ export function registerAuth(app: Hono, deps: Deps, env: NodeJS.ProcessEnv): voi
   // itself (MFA / passkey re-prompt) is the IdP's — synthetic here, and
   // FAIL-CLOSED in production, where a real re-verified token is required.
   app.post('/auth/step-up', async (c) => {
+    // Synthetic step-up is a dev/staging affordance only; in production the real
+    // IdP re-verification applies, so this endpoint is disabled there (fail-closed).
+    if (isProd)
+      throw new DomainError(
+        'POLICY_BLOCKED',
+        'synthetic step-up is disabled in production; re-verify with the identity provider',
+      );
+
     const bearer = /^Bearer\s+(.+)$/i.exec(c.req.header('authorization') ?? '')?.[1];
     if (!bearer)
       throw new DomainError('AUTH_REQUIRED', 'a current guardian session is required to step up');
 
     const cfg = readSessionConfig(env, isProd);
     const session = await verifyGuardianSession(bearer, cfg);
-
-    if (isProd)
-      throw new DomainError(
-        'POLICY_BLOCKED',
-        'synthetic step-up is disabled in production; re-verify with the identity provider',
-      );
 
     const { token, expiresAt } = await issueGuardianSession(
       {

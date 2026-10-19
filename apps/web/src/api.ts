@@ -62,6 +62,8 @@ export function isApiError(e: unknown): e is ApiError {
  * either deployment. Kept in memory only (never persisted).
  */
 let sessionToken: string | null = null;
+/** Whether the guardian has stepped up (re-verified) for a sensitive action. */
+let steppedUp = false;
 
 export interface SignInResult {
   readonly token: string;
@@ -90,11 +92,34 @@ export const signIn = async (idpSubject: string): Promise<SignInResult> => {
     body: { idpSubject },
   });
   sessionToken = r.token;
+  steppedUp = false; // a fresh session is not stepped up
   return r;
 };
 
+/**
+ * Step up (re-verify) before a sensitive guardian action — billing, data export,
+ * deletion (ADR-0008). In jwt-mode this elevates the session token to one whose
+ * step_up claim the API enforces; the dev header shim also honours x-step-up.
+ * The re-verification itself is the IdP's job (synthetic here). Idempotent.
+ */
+export const stepUp = async (): Promise<void> => {
+  if (sessionToken) {
+    try {
+      const r = await call<{ token: string }>('/auth/step-up', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${sessionToken}` },
+      });
+      sessionToken = r.token; // elevated, step_up=true (short-lived)
+    } catch {
+      /* no verifiable session (pure dev header mode) — the x-step-up flag covers it */
+    }
+  }
+  steppedUp = true;
+};
+
 /** Account-owner guardian headers (full mutation rights). Carries the session
- *  Bearer token when signed in, so the same call authenticates under jwt-mode. */
+ *  Bearer token when signed in (so the call authenticates under jwt-mode) and,
+ *  once stepped up, the x-step-up flag the dev header shim reads. */
 export function guardianHeaders(familyId: string, guardianAlias: string): Record<string, string> {
   return {
     'x-actor-type': 'guardian',
@@ -102,6 +127,7 @@ export function guardianHeaders(familyId: string, guardianAlias: string): Record
     'x-guardian-role': 'owner',
     'x-family-alias': familyId,
     ...(sessionToken ? { authorization: `Bearer ${sessionToken}` } : {}),
+    ...(steppedUp ? { 'x-step-up': 'true' } : {}),
   };
 }
 

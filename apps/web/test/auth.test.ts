@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { signIn, guardianHeaders } from '../src/api';
+import { signIn, stepUp, guardianHeaders } from '../src/api';
 
 /**
  * The web client's guardian sign-in exchange: signIn posts to /auth/session and
@@ -47,10 +47,49 @@ describe('guardian sign-in (web client)', () => {
     expect(res.actor.familyId).toBe('fam-idp-123');
     expect(res.provisioned).toBe(true);
 
-    // After sign-in, guardian headers include the session token as a Bearer.
+    // After sign-in, guardian headers include the session token as a Bearer and
+    // are NOT yet stepped up.
     const headers = guardianHeaders(res.actor.familyId, res.actor.guardianId);
     expect(headers.authorization).toBe('Bearer sess-token-abc');
     expect(headers['x-actor-type']).toBe('guardian');
     expect(headers['x-guardian-role']).toBe('owner');
+    expect(headers['x-step-up']).toBeUndefined();
+  });
+
+  it('stepUp elevates the session token and flags x-step-up on guardian calls', async () => {
+    // Sign in first so there is a session token to elevate.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        okJson({
+          token: 'sess-1',
+          tokenType: 'Bearer',
+          expiresAt: 'x',
+          provisioned: true,
+          actor: {
+            actorType: 'guardian',
+            guardianId: 'gdn-1',
+            familyId: 'fam-1',
+            role: 'owner',
+            stepUp: false,
+          },
+        }),
+      ),
+    );
+    await signIn('idp-synthetic:a@b.com');
+
+    // Step up → /auth/step-up returns an elevated token, which replaces the session.
+    const stepFetch = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toContain('/auth/step-up');
+      expect((init?.headers as Record<string, string>).authorization).toBe('Bearer sess-1');
+      return okJson({ token: 'sess-elevated', tokenType: 'Bearer', expiresAt: 'y', actor: {} });
+    });
+    vi.stubGlobal('fetch', stepFetch);
+    await stepUp();
+    expect(stepFetch).toHaveBeenCalledOnce();
+
+    const headers = guardianHeaders('fam-1', 'gdn-1');
+    expect(headers.authorization).toBe('Bearer sess-elevated');
+    expect(headers['x-step-up']).toBe('true');
   });
 });

@@ -151,6 +151,7 @@ export function Dashboard() {
     setExportState('requesting');
     setErr(null);
     try {
+      await api.stepUp(); // sensitive action — re-verify first (ADR-0008)
       const r = await api.submitDataRequest(
         active.familyId,
         active.guardianId,
@@ -169,6 +170,7 @@ export function Dashboard() {
     if (!active) return;
     setErr(null);
     try {
+      await api.stepUp(); // sensitive action — re-verify first (ADR-0008)
       const r = await api.submitDataRequest(
         active.familyId,
         active.guardianId,
