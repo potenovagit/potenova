@@ -88,42 +88,60 @@ describe('early-end usage reconciliation', () => {
     const db = openDatabase();
     dbs.push(db);
     const deps = buildDeps({ env, db });
-    const day = today();
+
+    // A fixed reference clock mid-day, mid-month: elapsed is exactly 10 min (so the
+    // refund is exactly 10, not off-by-one from ceil), and the reservation's day is
+    // the same as the start day — never split by a UTC midnight boundary, which the
+    // wall clock could otherwise do when the suite happens to run just after 00:00.
+    const nowMs = Date.parse('2026-06-15T12:00:00.000Z');
+    const started = new Date(nowMs - 10 * 60_000).toISOString();
+    const day = started.slice(0, 10); // the reservation's (and refund's) UTC day
     await deps.session.addUsageMinutes('kid1', day, 20);
 
     // Non-ACTIVE session → no refund.
     expect(
-      await reconcileUsageOnEnd(deps, {
-        sessionId: 's',
-        learnerAlias: 'kid1',
-        subject: 'math',
-        state: 'COMPLETED',
-        startedAt: new Date().toISOString(),
-        reservedMinutes: 20,
-      }),
+      await reconcileUsageOnEnd(
+        deps,
+        {
+          sessionId: 's',
+          learnerAlias: 'kid1',
+          subject: 'math',
+          state: 'COMPLETED',
+          startedAt: started,
+          reservedMinutes: 20,
+        },
+        nowMs,
+      ),
     ).toBe(0);
 
     // ACTIVE but no reservation recorded → no refund.
     expect(
-      await reconcileUsageOnEnd(deps, {
+      await reconcileUsageOnEnd(
+        deps,
+        {
+          sessionId: 's',
+          learnerAlias: 'kid1',
+          subject: 'math',
+          state: 'ACTIVE',
+        },
+        nowMs,
+      ),
+    ).toBe(0);
+
+    // ACTIVE, reserved 20, started 10 min ago → actual 10, refund 10.
+    const refund = await reconcileUsageOnEnd(
+      deps,
+      {
         sessionId: 's',
         learnerAlias: 'kid1',
         subject: 'math',
         state: 'ACTIVE',
-      }),
-    ).toBe(0);
-
-    // ACTIVE, reserved 20, started 10 min ago → actual 10, refund 10.
-    const started = new Date(Date.now() - 10 * 60_000).toISOString();
-    const refund = await reconcileUsageOnEnd(deps, {
-      sessionId: 's',
-      learnerAlias: 'kid1',
-      subject: 'math',
-      state: 'ACTIVE',
-      startedAt: started,
-      reservedMinutes: 20,
-    });
+        startedAt: started,
+        reservedMinutes: 20,
+      },
+      nowMs,
+    );
     expect(refund).toBe(10);
-    expect(await deps.session.getUsageMinutes('kid1', started.slice(0, 10))).toBe(10);
+    expect(await deps.session.getUsageMinutes('kid1', day)).toBe(10);
   });
 });
