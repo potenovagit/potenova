@@ -4,6 +4,7 @@ import { DOMAIN_MODULES } from './modules';
 import { buildDeps, type BuildDepsOptions, type Deps } from './deps';
 import { onError } from './errors';
 import { authMiddleware, readAuthConfig } from './auth';
+import { registerAuth } from './routes/auth';
 import { registerFamilies } from './routes/families';
 import { registerLearning } from './routes/learning';
 import { registerCommerce } from './routes/commerce';
@@ -61,6 +62,9 @@ export function createApp(opts: CreateAppOptions = {}): Hono {
       '*',
       authMiddleware(readAuthConfig(opts.env ?? process.env), deps.config.primaryRegion),
     );
+    // Guardian sign-in exchange (pre-auth: /auth is not an API prefix, so the
+    // middleware above passes it through and the route verifies identity itself).
+    registerAuth(api, deps, opts.env ?? process.env);
     registerFamilies(api, deps);
     registerLearning(api, deps);
     registerCommerce(api, deps);

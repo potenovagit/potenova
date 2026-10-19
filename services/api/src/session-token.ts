@@ -1,0 +1,96 @@
+import { DomainError } from '@potenova/contracts';
+import { SignJWT } from 'jose';
+
+/**
+ * Potenova session tokens (ADR-0008: "server-authoritative sessions with
+ * short-lived, capability-scoped tokens").
+ *
+ * After the managed IdP (Entra External ID) verifies a guardian, Potenova issues
+ * its OWN short-lived token carrying only the capability claims the app's auth
+ * middleware reads (actor type, guardian role, family scope, region). The IdP
+ * credential is never reused as the app session.
+ *
+ * The token is an HS256 JWT signed with the same issuer/audience/secret the
+ * `jwt`-mode auth middleware verifies, so an issued session authenticates
+ * downstream requests with no extra wiring. Children are NEVER issued one — they
+ * use the device-bound `ChildSessionCredential` — so this only ever mints
+ * guardian sessions.
+ */
+
+export interface SessionSigningConfig {
+  readonly issuer: string;
+  readonly audience: string;
+  readonly secret: string;
+  readonly ttlSeconds: number;
+}
+
+/** Non-prod signing fallback — clearly insecure and dev-only, like dev.ts. */
+const DEV_SESSION_SECRET = 'dev-insecure-session-secret-change-me';
+
+/**
+ * Read the session signing config from the environment. Reuses the AUTH_JWT_*
+ * values so the token is verifiable by `jwt`-mode auth. Fail-closed: in prod a
+ * real secret is required; a non-prod run falls back to a dev secret.
+ *
+ * @throws DomainError POLICY_BLOCKED — prod without an AUTH_JWT_SECRET.
+ */
+export function readSessionConfig(env: NodeJS.ProcessEnv, isProd: boolean): SessionSigningConfig {
+  const issuer = env.AUTH_JWT_ISSUER ?? 'potenova-idp';
+  const audience = env.AUTH_JWT_AUDIENCE ?? 'potenova-api';
+  const ttlSeconds = Number(env.SESSION_TTL_SECONDS ?? 3600);
+  const secret = env.AUTH_JWT_SECRET ?? (isProd ? undefined : DEV_SESSION_SECRET);
+  if (!secret) {
+    throw new DomainError(
+      'POLICY_BLOCKED',
+      'session signing requires AUTH_JWT_SECRET in production',
+    );
+  }
+  if (!Number.isFinite(ttlSeconds) || ttlSeconds <= 0 || ttlSeconds > 86_400) {
+    throw new DomainError('POLICY_BLOCKED', 'SESSION_TTL_SECONDS must be within (0, 86400]');
+  }
+  return { issuer, audience, secret, ttlSeconds };
+}
+
+export interface GuardianSessionInput {
+  readonly guardianId: string;
+  readonly familyId: string;
+  readonly region: string;
+}
+
+export interface IssuedSession {
+  readonly token: string;
+  readonly expiresAt: string;
+}
+
+/**
+ * Mint a short-lived guardian session token. The claims are exactly what the
+ * auth middleware builds its ActorContext from — guardian actor type, owner role,
+ * family scope, processing region — with step-up NOT satisfied (sensitive actions
+ * must re-verify). No email or other IdP PII is embedded.
+ */
+export async function issueGuardianSession(
+  input: GuardianSessionInput,
+  cfg: SessionSigningConfig,
+  nowMs: number = Date.now(),
+): Promise<IssuedSession> {
+  const iat = Math.floor(nowMs / 1000);
+  const exp = iat + cfg.ttlSeconds;
+  const key = new TextEncoder().encode(cfg.secret);
+  const token = await new SignJWT({
+    actor_type: 'guardian',
+    actor_alias: input.guardianId,
+    family_alias: input.familyId,
+    guardian_role: 'owner',
+    step_up: false,
+    processing_region: input.region,
+    purpose: 'support',
+  })
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setSubject(input.guardianId)
+    .setIssuedAt(iat)
+    .setIssuer(cfg.issuer)
+    .setAudience(cfg.audience)
+    .setExpirationTime(exp)
+    .sign(key);
+  return { token, expiresAt: new Date(exp * 1000).toISOString() };
+}
