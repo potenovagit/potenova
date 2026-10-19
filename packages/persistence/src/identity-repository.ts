@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { PotenovaDb } from './database';
-import { family, guardian, learnerProfile, consentGrant } from './schema';
+import { family, guardian, learnerProfile, consentGrant, idpDirectory } from './schema';
 
 /** Identity, family and consent persistence (WP-01). Consent is durable — the
  *  consent fence must survive restarts (no processing before a stored grant). */
@@ -35,6 +35,13 @@ export interface ConsentGrantRow {
   grantedAt: string;
   revokedAt: string | null;
 }
+export interface IdpDirectoryRow {
+  /** A hash of the IdP's opaque subject — the raw subject is never stored. */
+  subjectHash: string;
+  guardianId: string;
+  familyId: string;
+  linkedAt: string;
+}
 
 export class IdentityRepository {
   constructor(private readonly h: PotenovaDb) {}
@@ -68,6 +75,28 @@ export class IdentityRepository {
         target: guardian.guardianId,
         set: { familyId: g.familyId, role: g.role, status: g.status },
       });
+  }
+
+  /** Link an IdP subject (by hash) to a family/guardian on first sign-in.
+   *  First writer wins — a concurrent duplicate is a no-op (idempotent). */
+  async linkIdpSubject(r: IdpDirectoryRow): Promise<void> {
+    const db = await this.h.ready();
+    await db
+      .insert(idpDirectory)
+      .values(r)
+      .onConflictDoNothing({ target: idpDirectory.subjectHash });
+  }
+
+  /** Resolve the family/guardian a previously-linked IdP subject maps to. */
+  async getGuardianBySubject(
+    subjectHash: string,
+  ): Promise<{ guardianId: string; familyId: string } | null> {
+    const db = await this.h.ready();
+    const [row] = await db
+      .select()
+      .from(idpDirectory)
+      .where(eq(idpDirectory.subjectHash, subjectHash));
+    return row ? { guardianId: row.guardianId, familyId: row.familyId } : null;
   }
 
   async saveLearner(l: LearnerRow): Promise<void> {

@@ -64,6 +64,19 @@ export const learnerProfile = pgTable('learner_profile', {
   ageBand: text('age_band').notNull(),
   lifecycleStatus: text('lifecycle_status').notNull(),
 });
+/**
+ * Guardian ↔ IdP-subject directory (ADR-0035). Maps a HASH of the managed IdP's
+ * opaque guardian subject to Potenova's own family/guardian ids — the explicit,
+ * persisted replacement for the deterministic scaffold mapping. The raw subject
+ * is never stored (only its hash), and the ids it points at are independent of
+ * the subject.
+ */
+export const idpDirectory = pgTable('idp_directory', {
+  subjectHash: text('subject_hash').primaryKey(),
+  guardianId: text('guardian_id').notNull(),
+  familyId: text('family_id').notNull(),
+  linkedAt: text('linked_at').notNull(),
+});
 export const consentGrant = pgTable('consent_grant', {
   grantId: text('grant_id').primaryKey(),
   familyId: text('family_id').notNull(),
@@ -251,6 +264,8 @@ CREATE TABLE IF NOT EXISTS guardian (
 CREATE TABLE IF NOT EXISTS learner_profile (
   learner_id text PRIMARY KEY, family_id text NOT NULL, nickname text NOT NULL, grade integer NOT NULL,
   age_band text NOT NULL, lifecycle_status text NOT NULL);
+CREATE TABLE IF NOT EXISTS idp_directory (
+  subject_hash text PRIMARY KEY, guardian_id text NOT NULL, family_id text NOT NULL, linked_at text NOT NULL);
 CREATE TABLE IF NOT EXISTS consent_grant (
   grant_id text PRIMARY KEY, family_id text NOT NULL, purpose text NOT NULL, version text NOT NULL,
   modality text NOT NULL, state text NOT NULL, granted_at text NOT NULL, revoked_at text);
