@@ -182,6 +182,20 @@ export function requireActorType(a: AuthCtx, ...types: readonly ActorType[]): vo
   }
 }
 
+/**
+ * Step-up gate (ADR-0008, AT-24/52): a sensitive guardian action — billing,
+ * data export, deletion, guardian grants — requires recently re-verified
+ * (stepped-up) auth. Fail-closed: a session that has not stepped up is refused
+ * with STEP_UP_REQUIRED so the client can re-verify (POST /auth/step-up). In
+ * jwt mode `stepUp` comes only from a verified, step-up token; the dev header
+ * shim honours `x-step-up` (dev is not a security boundary either way).
+ */
+export function requireStepUp(a: AuthCtx): void {
+  if (!a.stepUp) {
+    throw new DomainError('STEP_UP_REQUIRED', 'this action requires step-up re-verification');
+  }
+}
+
 /** Canadian residency gate for any child-data / AI processing (NFR-02, AT-55). */
 export function assertRegion(a: AuthCtx): void {
   if (!isApprovedRegion(a.region)) {

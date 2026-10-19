@@ -1,7 +1,7 @@
 import type { Context, Hono } from 'hono';
 import { DomainError } from '@potenova/contracts';
 import type { GuardianPreferenceRow } from '@potenova/persistence';
-import { readAuth, requireActorType, assertRegion, type AuthCtx } from '../auth';
+import { readAuth, requireActorType, requireStepUp, assertRegion, type AuthCtx } from '../auth';
 import { now, type Deps } from '../deps';
 import { COURSES_BY_SUBJECT, courseCoachableSkills, courseFor, type Subject } from '../adaptive';
 
@@ -144,6 +144,8 @@ export function registerParent(app: Hono, deps: Deps): void {
   app.post('/learners/:alias/data-requests', async (c) => {
     const a = authed(c);
     requireActorType(a, 'guardian');
+    // Export/erasure is a sensitive action (ADR-0008) — require step-up re-verification.
+    requireStepUp(a);
     const alias = c.req.param('alias');
     await assertOwnsLearner(a, alias);
 

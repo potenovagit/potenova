@@ -18,6 +18,7 @@ const STATUS: Record<ErrorCode, number> = {
   RATE_LIMITED: 429,
   DEPENDENCY_UNAVAILABLE: 503,
   REVIEW_REQUIRED: 403,
+  STEP_UP_REQUIRED: 403,
 };
 
 export function statusForCode(code: ErrorCode): number {
