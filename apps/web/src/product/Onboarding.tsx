@@ -6,15 +6,18 @@ import './Onboarding.css';
 /**
  * Caregiver onboarding — the approved guided linear stepper.
  *
- * Steps 1–3 (create account → verify email → add a second factor) are the
- * account phase. Real identity is the managed IdP's job (ADR-0008), so in this
- * Stage-2 synthetic flow those three are client-side only — no credentials are
- * sent anywhere. The real API is touched exactly where the backend models state:
- *   • step 4 (add child)  → createFamily + addLearner
- *   • step 5 (consent)    → grantConsent (+ multimodal grants if voice/photo on)
- *   • step 6 (start trial)→ activateEntitlement
- * "Activated" therefore means verified email + MFA + a child with consent — no
- * stray empty accounts. Mastery is never set here; it stays derived from evidence.
+ * Steps 1–3 (create account → verify email → add a second factor) are the IdP
+ * account phase. Real credential/passkey/MFA handling is the managed IdP's job
+ * (ADR-0008), so those screens stay client-side ceremony — no credentials are
+ * sent anywhere. Completing them stands in for an IdP-verified guardian, so the
+ * API is then touched where the backend models state:
+ *   • step 3 → 4 (finish account) → signIn (/auth/session): the SERVER provisions
+ *     the family + owner guardian from the verified subject and returns their ids
+ *   • step 4 (add child)   → addLearner (under the signed-in family)
+ *   • step 5 (consent)     → grantConsent (+ multimodal grants if voice/photo on)
+ *   • step 6 (start trial) → activateEntitlement
+ * "Activated" therefore means a signed-in guardian with MFA and a child with
+ * consent — no stray empty accounts. Mastery is never set here; it stays derived.
  */
 
 type Focus = 'math' | 'english' | 'both';
@@ -90,7 +93,41 @@ export function Onboarding() {
     setErr(isApiError(e) ? `${e.message} (${e.code})` : fallback);
   };
 
-  /** Step 4 → 5: create the family and add the child (family must exist first). */
+  /**
+   * Sign in through the real exchange (ADR-0008). Steps 1–3 are the IdP account
+   * phase; completing them stands in for an Entra-verified guardian, so here we
+   * call /auth/session with a stable synthetic subject. The SERVER provisions the
+   * family + owner guardian and returns their real ids, which the rest of
+   * onboarding then uses — no client-minted family, no client-side createFamily.
+   * Idempotent: a repeat maps to the same family.
+   */
+  async function ensureSignedIn(): Promise<void> {
+    if (familyReady) return;
+    const idpSubject = `idp-synthetic:${email.trim().toLowerCase() || idsRef.current.guardianId}`;
+    const { actor } = await api.signIn(idpSubject);
+    idsRef.current = {
+      ...idsRef.current,
+      familyId: actor.familyId,
+      guardianId: actor.guardianId,
+    };
+    setFamilyReady(true);
+  }
+
+  /** Step 3 → 4: finish the account phase by signing in (provisions the family). */
+  async function submitAccount(): Promise<void> {
+    setBusy(true);
+    setErr(null);
+    try {
+      await ensureSignedIn();
+      go(4);
+    } catch (e) {
+      fail(e, 'Could not create your account. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Step 4 → 5: add the child under the signed-in guardian's family. */
   async function submitChild(): Promise<void> {
     if (!nickname.trim()) {
       setErr('Please enter a nickname for your child.');
@@ -99,11 +136,8 @@ export function Onboarding() {
     setBusy(true);
     setErr(null);
     try {
+      await ensureSignedIn(); // safety net; normally already done at step 3
       const { familyId, guardianId, learnerId } = idsRef.current;
-      if (!familyReady) {
-        await api.createFamily(familyId, guardianId);
-        setFamilyReady(true);
-      }
       await api.addLearner(familyId, guardianId, learnerId, nickname.trim(), grade);
       go(5);
     } catch (e) {
@@ -376,7 +410,7 @@ export function Onboarding() {
               style={{ maxWidth: 520 }}
               onSubmit={(e) => {
                 e.preventDefault();
-                go(4);
+                void submitAccount();
               }}
             >
               <label className={`onb-opt${mfa === 'passkey' ? ' sel' : ''}`}>
@@ -406,11 +440,21 @@ export function Onboarding() {
                 </span>
               </label>
               <div className="onb-actions">
-                <button className="onb-btn onb-btn-g" type="button" onClick={() => go(2)}>
+                <button
+                  className="onb-btn onb-btn-g"
+                  type="button"
+                  onClick={() => go(2)}
+                  disabled={busy}
+                >
                   Back
                 </button>
-                <button className="onb-btn onb-btn-p" type="submit" style={{ flex: 1 }}>
-                  Turn on &amp; continue
+                <button
+                  className="onb-btn onb-btn-p"
+                  type="submit"
+                  style={{ flex: 1 }}
+                  disabled={busy}
+                >
+                  {busy ? 'Setting up…' : 'Turn on & continue'}
                 </button>
               </div>
               <p className="onb-note muted">Required before your child’s first session.</p>

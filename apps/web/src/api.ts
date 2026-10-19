@@ -53,13 +53,55 @@ export function isApiError(e: unknown): e is ApiError {
   return typeof e === 'object' && e !== null && 'code' in e && 'status' in e;
 }
 
-/** Account-owner guardian headers (full mutation rights). */
+// ---- Guardian sign-in exchange (ADR-0008) -----------------------------------
+
+/**
+ * The Potenova session token from the last guardian sign-in. In `jwt`-mode the
+ * API verifies it (Bearer); in the Stage-2 dev/header mode it is ignored and the
+ * x-actor-* headers carry identity — so sending both keeps the flow working in
+ * either deployment. Kept in memory only (never persisted).
+ */
+let sessionToken: string | null = null;
+
+export interface SignInResult {
+  readonly token: string;
+  readonly tokenType: string;
+  readonly expiresAt: string;
+  readonly provisioned: boolean;
+  readonly actor: {
+    readonly actorType: 'guardian';
+    readonly guardianId: string;
+    readonly familyId: string;
+    readonly role: 'owner';
+    readonly stepUp: boolean;
+  };
+}
+
+/**
+ * Exchange a verified IdP identity for a Potenova session, provisioning the
+ * guardian's family on first sign-in. In this synthetic Stage-2 flow the IdP
+ * subject stands in for an Entra-verified guardian; the server owns the
+ * provisioning and returns the real family/guardian ids the rest of onboarding
+ * uses. Fail-closed in production (a real verified token is required there).
+ */
+export const signIn = async (idpSubject: string): Promise<SignInResult> => {
+  const r = await call<SignInResult>('/auth/session', {
+    method: 'POST',
+    body: { idpSubject },
+  });
+  sessionToken = r.token;
+  return r;
+};
+
+/** Account-owner guardian headers (full mutation rights). Carries the session
+ *  Bearer token when signed in, so the same call authenticates under jwt-mode. */
 export function guardianHeaders(familyId: string, guardianAlias: string): Record<string, string> {
   return {
     'x-actor-type': 'guardian',
     'x-actor-alias': guardianAlias,
     'x-guardian-role': 'owner',
     'x-family-alias': familyId,
+    ...(sessionToken ? { authorization: `Bearer ${sessionToken}` } : {}),
   };
 }
 
