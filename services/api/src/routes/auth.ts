@@ -157,6 +157,7 @@ export function registerAuth(app: Hono, deps: Deps, env: NodeJS.ProcessEnv): voi
     const cfg = readSessionConfig(env, isProd);
     const session = await verifyGuardianSession(bearer, cfg);
 
+    const at = now();
     const { token, expiresAt } = await issueGuardianSession(
       {
         guardianId: session.guardianId,
@@ -166,8 +167,20 @@ export function registerAuth(app: Hono, deps: Deps, env: NodeJS.ProcessEnv): voi
         ttlSecondsOverride: STEP_UP_TTL_SECONDS,
       },
       cfg,
-      Date.parse(now()),
+      Date.parse(at),
     );
+
+    // Record the elevation on the immutable security audit log — who re-verified,
+    // when, and the window it is valid for (ADR-0008/0034; SEC-001 audit trail).
+    await deps.safety.recordAudit({
+      approver: session.guardianId,
+      reason: 'step_up_reverification',
+      object: session.familyId ? `family:${session.familyId}` : `guardian:${session.guardianId}`,
+      action: 'step_up_elevation',
+      outcome: 'EXECUTED',
+      expiry: expiresAt,
+      at,
+    });
 
     return c.json({
       token,

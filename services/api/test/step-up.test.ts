@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { createApp } from '../src/app';
-import { openDatabase, type PotenovaDb } from '@potenova/persistence';
+import { openDatabase, SafetyRepository, type PotenovaDb } from '@potenova/persistence';
 import { decodeJwt } from 'jose';
 
 /**
@@ -155,5 +155,30 @@ describe('step-up re-verification (guardian sensitive actions)', () => {
     );
     expect(inProd.status).toBe(422);
     expect((await inProd.json()).code).toBe('POLICY_BLOCKED');
+  });
+
+  it('records each step-up elevation on the security audit log', async () => {
+    const app = appWith(jwtEnv);
+    const db = dbs[dbs.length - 1]!;
+    const signin = await (
+      await app.request(
+        '/auth/session',
+        json({ 'content-type': 'application/json' }, { idpSubject: 'entra-sub-audit' }),
+      )
+    ).json();
+
+    const elevated = await (
+      await app.request('/auth/step-up', json({ authorization: `Bearer ${signin.token}` }, {}))
+    ).json();
+
+    const audit = await new SafetyRepository(db).recentAudit(10);
+    const entry = audit.find((e) => e.action === 'step_up_elevation');
+    expect(entry).toBeDefined();
+    expect(entry!.approver).toBe(signin.actor.guardianId);
+    expect(entry!.reason).toBe('step_up_reverification');
+    expect(entry!.outcome).toBe('EXECUTED');
+    expect(entry!.object).toBe(`family:${signin.actor.familyId}`);
+    // The audited expiry matches the elevated token's window.
+    expect(entry!.expiry).toBe(elevated.expiresAt);
   });
 });
