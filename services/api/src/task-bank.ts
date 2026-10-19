@@ -684,7 +684,26 @@ export function generatedTaskId(
   return `gen:${skillId}:${seed}:${difficulty}:${index}`;
 }
 
+/** The difficulty slot value that marks a generated item as a NOVEL-context
+ *  transfer probe (resolved as a `stretch` item, graded as a transfer_check). */
+export const TRANSFER_MARKER = 'transfer';
+
+/** A generated transfer-probe id for a skill — a novel-context item the loop grades
+ *  as transfer_check so a correct answer can lift a mastered skill to TRANSFERABLE. */
+export function generatedTransferTaskId(skillId: string, index: number, seed: number): string {
+  return `gen:${skillId}:${seed}:${TRANSFER_MARKER}:${index}`;
+}
+
 const isGeneratedId = (taskId: string): boolean => taskId.startsWith('gen:');
+
+/** True when a turn on this task id must be recorded as a transfer_check — a static
+ *  transfer item (TRANSFER_TASKS) or a generated id carrying the transfer marker. */
+export function isTransferTask(taskId: string): boolean {
+  if (TRANSFER_TASKS.has(taskId)) return true;
+  if (!isGeneratedId(taskId)) return false;
+  const parts = taskId.split(':'); // gen : skillId : seed : difficulty : index
+  return parts.length === 5 && parts[3] === TRANSFER_MARKER;
+}
 
 /** Reconstruct a generated item as a gradable Task. Pure/deterministic from the id. */
 function resolveGeneratedTask(taskId: string): Task {
@@ -704,7 +723,18 @@ function resolveGeneratedTask(taskId: string): Task {
   if (!Number.isInteger(seed) || !Number.isInteger(index) || index < 0) {
     throw new DomainError('NOT_FOUND', 'malformed generated task id');
   }
-  const d = difficulty as Difficulty;
+  // The `transfer` marker denotes a NOVEL-context item (AT-12): it is generated at
+  // the hardest `stretch` tier so it is a genuinely different item from the `core`
+  // practice stream, and the loop grades it as a transfer_check (see isTransferTask).
+  if (
+    difficulty !== 'intro' &&
+    difficulty !== 'core' &&
+    difficulty !== 'stretch' &&
+    difficulty !== TRANSFER_MARKER
+  ) {
+    throw new DomainError('NOT_FOUND', 'malformed generated task id');
+  }
+  const d: Difficulty = difficulty === TRANSFER_MARKER ? 'stretch' : difficulty;
 
   if (servable.subject === 'math') {
     const item = generateItems(skillId, index + 1, seed, d)[index];
