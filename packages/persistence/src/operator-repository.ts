@@ -68,6 +68,15 @@ export class OperatorRepository {
     return r ? !r.disabled : true;
   }
 
+  /** Capabilities currently disabled by a kill switch (operator metrics). */
+  async disabledCapabilities(): Promise<string[]> {
+    const db = await this.h.ready();
+    const rows = await db
+      .select({ capability: killSwitch.capability, disabled: killSwitch.disabled })
+      .from(killSwitch);
+    return rows.filter((r) => r.disabled).map((r) => r.capability);
+  }
+
   async saveIncident(i: IncidentRow): Promise<void> {
     const db = await this.h.ready();
     await db

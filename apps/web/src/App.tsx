@@ -1588,6 +1588,22 @@ function AdminView() {
                 {metrics.sessions.active} / {metrics.sessions.total}
               </div>
             </div>
+            <div className="statcard">
+              <div className="stat-k">Suspended accounts</div>
+              <div className="stat-v">{metrics.accounts.byStatus.suspended ?? 0}</div>
+            </div>
+            <div className="statcard">
+              <div className="stat-k">Learning-active (billing)</div>
+              <div className="stat-v">{metrics.billing.learningActiveFamilies}</div>
+            </div>
+            <div className="statcard">
+              <div className="stat-k">Pending dual-auth</div>
+              <div className="stat-v">{metrics.safety.pendingDualAuth}</div>
+            </div>
+            <div className="statcard">
+              <div className="stat-k">Pending notifications</div>
+              <div className="stat-v">{metrics.notifications.pending}</div>
+            </div>
           </div>
 
           <h2>Account suspend / reactivate</h2>

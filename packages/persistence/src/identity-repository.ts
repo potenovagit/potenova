@@ -100,6 +100,15 @@ export class IdentityRepository {
     return { families: f.length, guardians: g.length, learners: l.length };
   }
 
+  /** Family counts broken down by account status (active / suspended / closed). */
+  async accountStatusCounts(): Promise<Record<string, number>> {
+    const db = await this.h.ready();
+    const rows = await db.select({ status: family.status }).from(family);
+    const out: Record<string, number> = { active: 0, suspended: 0, closed: 0 };
+    for (const r of rows) out[r.status] = (out[r.status] ?? 0) + 1;
+    return out;
+  }
+
   async saveGuardian(g: GuardianRow): Promise<void> {
     const db = await this.h.ready();
     await db

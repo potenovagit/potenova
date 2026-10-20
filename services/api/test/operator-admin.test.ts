@@ -4,6 +4,7 @@ import {
   openDatabase,
   BillingRepository,
   SafetyRepository,
+  NotificationRepository,
   type PotenovaDb,
 } from '@potenova/persistence';
 
@@ -81,9 +82,17 @@ describe('GET /operator/metrics', () => {
     const res = await app.request('/operator/metrics', json(operator));
     expect(res.status).toBe(200);
     const m = await res.json();
-    expect(m.accounts).toEqual({ families: 1, guardians: 1, learners: 1 });
+    expect(m.accounts.families).toBe(1);
+    expect(m.accounts.guardians).toBe(1);
+    expect(m.accounts.learners).toBe(1);
+    expect(m.accounts.byStatus.active).toBe(1);
+    expect(m.accounts.byStatus.suspended).toBe(0);
     expect(m.sessions.total).toBe(1);
     expect(m.sessions.active).toBe(1);
+    // Billing posture: the paid-active family counts as learning-active.
+    expect(m.billing.learningActiveFamilies).toBe(1);
+    expect(m.safety.pendingDualAuth).toBe(0);
+    expect(m.notifications.pending).toBe(0);
     // No real model is wired pre-G2 → nothing is production-approved.
     expect(m.ai.anyModelApprovedForProduction).toBe(false);
   });
@@ -154,5 +163,37 @@ describe('POST /operator/accounts/:id/suspend | /reactivate', () => {
     await onboard(app, db);
     const res = await app.request('/operator/accounts/fam1/suspend', json(guardianRead(), {}));
     expect(res.status).toBe(403);
+  });
+
+  it('ties suspend/reactivate into the billing + notification flows (outbox)', async () => {
+    const { app, db } = freshApp();
+    await onboard(app, db);
+
+    await app.request('/operator/accounts/fam1/suspend', json(operator, {}));
+    const notes = new NotificationRepository(db);
+    const afterSuspend = await notes.listForFamily('fam1');
+    // A guardian-facing message AND a billing-service signal are enqueued.
+    expect(afterSuspend.map((n) => `${n.recipient}:${n.kind}`).sort()).toEqual([
+      'billing:billing_hold',
+      'guardian:account_suspended',
+    ]);
+
+    await app.request('/operator/accounts/fam1/reactivate', json(operator, {}));
+    const afterReactivate = await notes.listForFamily('fam1');
+    expect(afterReactivate.map((n) => `${n.recipient}:${n.kind}`)).toContain(
+      'billing:billing_resume',
+    );
+    expect(afterReactivate.map((n) => `${n.recipient}:${n.kind}`)).toContain(
+      'guardian:account_reactivated',
+    );
+
+    // Richer metrics reflect the suspended account + the pending outbox.
+    const m = await (await app.request('/operator/metrics', json(operator))).json();
+    expect(m.accounts.byStatus.suspended).toBe(0); // reactivated above
+    expect(m.notifications.pending).toBe(4);
+
+    // The outbox is surfaced read-only to operators.
+    const out = await (await app.request('/operator/notifications', json(operator))).json();
+    expect(out.notifications).toHaveLength(4);
   });
 });
