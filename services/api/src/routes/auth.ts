@@ -1,6 +1,7 @@
 import type { Hono } from 'hono';
 import { DomainError } from '@potenova/contracts';
-import { guardianRefForSubject } from '@potenova/identity';
+import { hashIdpSubject } from '@potenova/identity';
+import { randomUUID } from 'node:crypto';
 import { jwtVerify, createRemoteJWKSet, type JWTPayload } from 'jose';
 import { now, type Deps } from '../deps';
 import {
@@ -100,23 +101,28 @@ export function registerAuth(app: Hono, deps: Deps, env: NodeJS.ProcessEnv): voi
         throw new DomainError('AUTH_REQUIRED', 'idpSubject is required for synthetic sign-in');
     }
 
-    // Map the subject to Potenova's own guardian/family ids and provision on first
-    // sign-in (idempotent). Guardians only; children never reach this path.
-    const { familyId, guardianId } = guardianRefForSubject(subject);
+    // Resolve the subject against the persisted directory; provision on first
+    // sign-in (idempotent). Guardians only; children never reach this path. The
+    // raw subject is never stored — only its hash — and the ids are independent
+    // of the subject (freshly minted, not derived from it).
+    const subjectHash = hashIdpSubject(subject);
+    const existing = await deps.identity.getGuardianBySubject(subjectHash);
+    let familyId: string;
+    let guardianId: string;
     let provisioned = false;
-    if (!(await deps.identity.getFamily(familyId))) {
+    if (existing) {
+      ({ familyId, guardianId } = existing);
+    } else {
+      familyId = `fam-${randomUUID()}`;
+      guardianId = `gdn-${randomUUID()}`;
       await deps.identity.saveFamily({
         familyId,
         marketRegion: 'ca-on',
         legalOwnerGuardianId: guardianId,
         status: 'active',
       });
-      await deps.identity.saveGuardian({
-        guardianId,
-        familyId,
-        role: 'owner',
-        status: 'active',
-      });
+      await deps.identity.saveGuardian({ guardianId, familyId, role: 'owner', status: 'active' });
+      await deps.identity.linkIdpSubject({ subjectHash, guardianId, familyId, linkedAt: now() });
       provisioned = true;
     }
 

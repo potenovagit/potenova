@@ -1,7 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { createApp } from '../src/app';
 import { openDatabase, type PotenovaDb } from '@potenova/persistence';
-import { guardianRefForSubject } from '@potenova/identity';
 import { SignJWT, decodeJwt } from 'jose';
 
 /**
@@ -46,14 +45,10 @@ describe('guardian sign-in exchange', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
 
-    const { familyId, guardianId } = guardianRefForSubject('entra-sub-abc');
-    expect(body.actor).toMatchObject({
-      actorType: 'guardian',
-      guardianId,
-      familyId,
-      role: 'owner',
-      stepUp: false,
-    });
+    // The ids are freshly minted (not derived from the subject) and persisted.
+    expect(body.actor).toMatchObject({ actorType: 'guardian', role: 'owner', stepUp: false });
+    expect(body.actor.familyId).toMatch(/^fam-/);
+    expect(body.actor.guardianId).toMatch(/^gdn-/);
     expect(body.provisioned).toBe(true);
     expect(body.tokenType).toBe('Bearer');
 
@@ -62,8 +57,8 @@ describe('guardian sign-in exchange', () => {
     expect(claims.actor_type).toBe('guardian');
     expect(claims.guardian_role).toBe('owner');
     expect(claims.step_up).toBe(false);
-    expect(claims.family_alias).toBe(familyId);
-    expect(claims.sub).toBe(guardianId);
+    expect(claims.family_alias).toBe(body.actor.familyId);
+    expect(claims.sub).toBe(body.actor.guardianId);
     expect(typeof claims.exp).toBe('number');
     // No IdP PII (e.g. email) is embedded.
     expect(claims.email).toBeUndefined();
@@ -121,8 +116,14 @@ describe('guardian sign-in exchange', () => {
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    const { guardianId } = guardianRefForSubject('entra-oid-999');
-    expect(body.actor.guardianId).toBe(guardianId);
+    expect(body.actor.guardianId).toMatch(/^gdn-/);
+    expect(body.provisioned).toBe(true);
+    // The same Entra subject signing in again maps to the SAME guardian (directory).
+    const again = await (
+      await app.request('/auth/session', json({}, { authorization: `Bearer ${entraToken}` }))
+    ).json();
+    expect(again.actor.guardianId).toBe(body.actor.guardianId);
+    expect(again.provisioned).toBe(false);
   });
 
   it('rejects an invalid identity token, and refuses a bearer when no IdP is configured', async () => {
