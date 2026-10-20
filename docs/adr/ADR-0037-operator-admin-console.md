@@ -4,7 +4,7 @@
 - Date: 2026-10-20
 - Owner: Operations / Security
 - Related: ADR-0017 (persistence), ADR-0018 (HTTP API), ADR-0008 (actor authz),
-  WP-13 (operator status); SEC-003 (immutable audit), ER-16 (AI routing posture),
+  WP-13 (operator status); SEC-004 (immutable audit), ER-16 (AI routing posture),
   ACC-007, AT-24/52.
 
 ## Context
@@ -28,7 +28,7 @@ without ever touching mastery, content, or a child's data. Suspension in particu
   checks family status **before** the consent fence and refuses a non-`active` family with
   `POLICY_BLOCKED` (422). Suspension therefore stops new processing immediately; it is fail-closed
   (a missing family is also refused).
-- **Audited** — every suspend/reactivate is appended to the immutable security audit (SEC-003)
+- **Audited** — every suspend/reactivate is appended to the immutable security audit (SEC-004)
   via `SafetyRepository.recordAudit` with `object = family:<id>`, `action =
 account_suspend|account_reactivate`, `reason = account_administration`, `outcome = EXECUTED`,
   and the operator as `approver`. Account administration is never a mastery or content action.
