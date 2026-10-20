@@ -195,16 +195,19 @@ export function requireActorType(a: AuthCtx, ...types: readonly ActorType[]): vo
 }
 
 /**
- * Least-privilege operator gate (SEC-013). Fail-closed: the actor must be an
- * `operator` AND its RBAC role must grant `permission`. A read-only operator can
- * therefore never reach an account-admin route, and the privilege comes from the
- * verified role claim (or dev header), never from the actor type alone.
+ * Least-privilege operator gate (SEC-013 + SEC-002). Fail-closed: the actor must
+ * be an `operator` whose RBAC role grants `permission`, AND — for a sensitive
+ * permission — the session must be currently elevated (a time-bound JIT
+ * step-up). A read-only operator can never reach an account-admin route, and even
+ * an admin cannot mutate on a standing session until it elevates
+ * (POST /auth/operator/step-up, or the `x-step-up` dev shim).
  */
 export function requireOperatorPermission(a: AuthCtx, permission: OperatorPermission): void {
   assertOperatorPermission({
     actor: a.actor,
     operatorRole: a.operatorRole,
     permission,
+    elevated: a.stepUp,
   });
 }
 

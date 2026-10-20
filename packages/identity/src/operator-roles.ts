@@ -51,6 +51,18 @@ export function permissionsFor(role: OperatorRole): readonly OperatorPermission[
   return ROLE_PERMISSIONS[role] ?? [];
 }
 
+/**
+ * Sensitive operator permissions require time-bound just-in-time elevation
+ * (SEC-002), on top of the role grant: holding the role is not enough — the
+ * operator must have elevated recently. Reading is never sensitive.
+ */
+export const SENSITIVE_OPERATOR_PERMISSIONS: ReadonlySet<OperatorPermission> =
+  new Set<OperatorPermission>(['operator:account_admin', 'operator:operator_admin']);
+
+export function isSensitiveOperatorPermission(permission: OperatorPermission): boolean {
+  return SENSITIVE_OPERATOR_PERMISSIONS.has(permission);
+}
+
 /** Does this operator role hold `permission`? Fail-closed. */
 export function operatorCan(
   role: OperatorRole | undefined,
@@ -64,13 +76,19 @@ export interface OperatorAuthzRequest {
   readonly actor: ActorContext;
   readonly operatorRole?: OperatorRole;
   readonly permission: OperatorPermission;
+  /** Whether the session is currently elevated (a valid, unexpired JIT step-up). */
+  readonly elevated?: boolean;
 }
 
 /**
- * Assert an operator may exercise `permission`. Fail-closed: the actor must be an
- * `operator` AND its role must grant the permission.
+ * Assert an operator may exercise `permission`. Fail-closed, in two independent
+ * guards (SEC-013 + SEC-002):
+ *  1. role — the actor must be an `operator` whose role grants the permission;
+ *  2. elevation — a SENSITIVE permission additionally requires a current JIT
+ *     elevation, so even an admin cannot mutate on a standing session.
  *
  * @throws DomainError FORBIDDEN_ROLE — not an operator, or the role lacks it.
+ * @throws DomainError STEP_UP_REQUIRED — sensitive permission without elevation.
  */
 export function assertOperatorPermission(req: OperatorAuthzRequest): void {
   if (req.actor.actorType !== 'operator') {
@@ -78,5 +96,8 @@ export function assertOperatorPermission(req: OperatorAuthzRequest): void {
   }
   if (!operatorCan(req.operatorRole, req.permission)) {
     throw new DomainError('FORBIDDEN_ROLE', `operator role lacks ${req.permission}`);
+  }
+  if (isSensitiveOperatorPermission(req.permission) && !req.elevated) {
+    throw new DomainError('STEP_UP_REQUIRED', `${req.permission} requires just-in-time elevation`);
   }
 }

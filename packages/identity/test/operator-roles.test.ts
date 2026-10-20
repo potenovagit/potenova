@@ -5,6 +5,7 @@ import {
   permissionsFor,
   assertOperatorPermission,
   isOperatorRole,
+  isSensitiveOperatorPermission,
 } from '../src/operator-roles';
 import type { ActorContext } from '@potenova/contracts';
 
@@ -70,12 +71,40 @@ describe('operator role model', () => {
     ).toThrowError(/operator:account_admin/);
   });
 
-  it('assertOperatorPermission passes for an admin with the permission', () => {
+  it('assertOperatorPermission passes for an admin with the permission when elevated', () => {
     expect(() =>
       assertOperatorPermission({
         actor: operator(),
         operatorRole: 'admin',
         permission: 'operator:account_admin',
+        elevated: true,
+      }),
+    ).not.toThrow();
+  });
+
+  it('classifies sensitive permissions (JIT required) vs reads', () => {
+    expect(isSensitiveOperatorPermission('operator:account_admin')).toBe(true);
+    expect(isSensitiveOperatorPermission('operator:operator_admin')).toBe(true);
+    expect(isSensitiveOperatorPermission('operator:read')).toBe(false);
+  });
+
+  it('a sensitive permission requires elevation even for an admin (SEC-002)', () => {
+    expect(() =>
+      assertOperatorPermission({
+        actor: operator(),
+        operatorRole: 'admin',
+        permission: 'operator:account_admin',
+        elevated: false,
+      }),
+    ).toThrowError(/just-in-time elevation/);
+  });
+
+  it('read is never sensitive — no elevation needed', () => {
+    expect(() =>
+      assertOperatorPermission({
+        actor: operator(),
+        operatorRole: 'read_only',
+        permission: 'operator:read',
       }),
     ).not.toThrow();
   });

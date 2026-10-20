@@ -748,11 +748,14 @@ export interface OperatorMetrics {
 export const operatorMetrics = () =>
   call<OperatorMetrics>('/operator/metrics', { headers: operatorHeaders() });
 
-/** Suspend or reactivate a family account (operator-only, audited). */
+/** Suspend or reactivate a family account (operator-only, audited). This is a
+ *  sensitive action, so it needs a just-in-time elevation (SEC-002): the dev
+ *  shim flags x-step-up; in jwt mode the operator session is elevated via
+ *  POST /auth/operator/step-up before the call. */
 export const setAccountStatus = (familyId: string, action: 'suspend' | 'reactivate') =>
   call<{ familyId: string; status: string }>(
     `/operator/accounts/${encodeURIComponent(familyId)}/${action}`,
-    { method: 'POST', headers: operatorHeaders() },
+    { method: 'POST', headers: { ...operatorHeaders(), 'x-step-up': 'true' } },
   );
 
 /* ---- Privacy operations (operator-only): erasure + retention sweep ---- */
