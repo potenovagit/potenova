@@ -10,7 +10,11 @@ import {
   verifyGuardianSession,
   STEP_UP_TTL_SECONDS,
 } from '../session-token';
-import { issueOperatorSession } from '../operator-token';
+import {
+  issueOperatorSession,
+  verifyOperatorSession,
+  OPERATOR_STEP_UP_TTL_SECONDS,
+} from '../operator-token';
 
 /**
  * Guardian sign-in exchange (ADR-0008). The managed IdP (Entra External ID)
@@ -197,6 +201,58 @@ export function registerAuth(app: Hono, deps: Deps, env: NodeJS.ProcessEnv): voi
       tokenType: 'Bearer',
       expiresAt,
       actor: { actorType: 'operator', operatorId: record.operatorId, role: record.role },
+    });
+  });
+
+  // Operator JIT elevation (SEC-002). Even an admin holds no standing authority
+  // to mutate: a sensitive operator action (account/operator administration)
+  // requires elevating the CURRENT operator session to a short-lived
+  // (OPERATOR_STEP_UP_TTL_SECONDS) step_up=true token first. The re-verification
+  // itself (MFA / passkey re-prompt) is the IdP's — synthetic here, FAIL-CLOSED
+  // in production. The elevation is recorded on the immutable security audit.
+  app.post('/auth/operator/step-up', async (c) => {
+    if (isProd)
+      throw new DomainError(
+        'POLICY_BLOCKED',
+        'synthetic operator step-up is disabled in production; re-verify with the identity provider',
+      );
+    const bearer = /^Bearer\s+(.+)$/i.exec(c.req.header('authorization') ?? '')?.[1];
+    if (!bearer)
+      throw new DomainError('AUTH_REQUIRED', 'a current operator session is required to step up');
+
+    const cfg = readSessionConfig(env, isProd);
+    const session = await verifyOperatorSession(bearer, cfg);
+    const at = now();
+    const { token, expiresAt } = await issueOperatorSession(
+      {
+        operatorId: session.operatorId,
+        role: session.role,
+        region: session.region,
+        stepUp: true,
+        ttlSecondsOverride: OPERATOR_STEP_UP_TTL_SECONDS,
+      },
+      cfg,
+      Date.parse(at),
+    );
+    await deps.safety.recordAudit({
+      approver: session.operatorId,
+      reason: 'operator_jit_elevation',
+      object: `operator:${session.operatorId}`,
+      action: 'operator_step_up_elevation',
+      outcome: 'EXECUTED',
+      expiry: expiresAt,
+      at,
+    });
+    return c.json({
+      token,
+      tokenType: 'Bearer',
+      expiresAt,
+      actor: {
+        actorType: 'operator',
+        operatorId: session.operatorId,
+        role: session.role,
+        stepUp: true,
+      },
     });
   });
 

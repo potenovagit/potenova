@@ -1,6 +1,11 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { createApp } from '../src/app';
-import { openDatabase, IdentityRepository, type PotenovaDb } from '@potenova/persistence';
+import {
+  openDatabase,
+  IdentityRepository,
+  SafetyRepository,
+  type PotenovaDb,
+} from '@potenova/persistence';
 import { hashIdpSubject } from '@potenova/identity';
 
 /**
@@ -70,7 +75,11 @@ describe('operator RBAC (dev-mode role header)', () => {
       legalOwnerGuardianId: 'g1',
       status: 'active',
     });
-    const susp = await app.request('/operator/accounts/fam1/suspend', post(opHeaders('admin')));
+    // Sensitive action → admin must also be elevated (JIT; dev shim flags it).
+    const susp = await app.request(
+      '/operator/accounts/fam1/suspend',
+      post({ ...opHeaders('admin'), 'x-step-up': 'true' }),
+    );
     expect(susp.status).toBe(200);
     expect((await susp.json()).status).toBe('suspended');
   });
@@ -78,6 +87,13 @@ describe('operator RBAC (dev-mode role header)', () => {
   it('an operator with no role is refused (fail-closed)', async () => {
     const { app } = freshApp();
     expect((await app.request('/operator/metrics', get(opHeaders()))).status).toBe(403);
+  });
+
+  it('a standing (non-elevated) admin is refused a sensitive action (SEC-002 JIT)', async () => {
+    const { app } = freshApp();
+    const res = await app.request('/operator/accounts/fam1/suspend', post(opHeaders('admin')));
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe('STEP_UP_REQUIRED');
   });
 
   it('a guardian cannot reach an operator route', async () => {
@@ -95,7 +111,10 @@ describe('operator RBAC (dev-mode role header)', () => {
 
     const asAdmin = await app.request(
       '/operator/operators',
-      post(opHeaders('admin'), { idpSubject: 'sub-x', role: 'support' }),
+      post(
+        { ...opHeaders('admin'), 'x-step-up': 'true' },
+        { idpSubject: 'sub-x', role: 'support' },
+      ),
     );
     expect(asAdmin.status).toBe(201);
     expect((await asAdmin.json()).role).toBe('support');
@@ -133,7 +152,7 @@ describe('operator sign-in exchange (jwt mode)', () => {
     expect(susp.status).toBe(403);
   });
 
-  it('an admin directory role mints a token that may administer accounts', async () => {
+  it('an admin must elevate (JIT) before administering an account', async () => {
     const { app, db } = freshApp(jwtEnv);
     await seedOperator(db, 'op-sub-admin', 'admin');
     await new IdentityRepository(db).saveFamily({
@@ -145,8 +164,36 @@ describe('operator sign-in exchange (jwt mode)', () => {
     const { token } = await (
       await app.request('/auth/operator/session', post({}, { idpSubject: 'op-sub-admin' }))
     ).json();
-    const susp = await app.request('/operator/accounts/fam1/suspend', post(bearer(token)));
-    expect(susp.status).toBe(200);
+
+    // A standing admin session holds no mutation authority (SEC-002).
+    const denied = await app.request('/operator/accounts/fam1/suspend', post(bearer(token)));
+    expect(denied.status).toBe(403);
+    expect((await denied.json()).code).toBe('STEP_UP_REQUIRED');
+
+    // Read is not sensitive — it works on the standing session.
+    expect((await app.request('/operator/metrics', get(bearer(token)))).status).toBe(200);
+
+    // Elevate just-in-time, then the same action succeeds on the elevated token.
+    const elevated = await app.request('/auth/operator/step-up', post(bearer(token)));
+    expect(elevated.status).toBe(200);
+    const { token: stepped } = await elevated.json();
+    const ok = await app.request('/operator/accounts/fam1/suspend', post(bearer(stepped)));
+    expect(ok.status).toBe(200);
+  });
+
+  it('records each JIT elevation on the immutable security audit', async () => {
+    const { app, db } = freshApp(jwtEnv);
+    await seedOperator(db, 'op-sub-admin2', 'admin');
+    const { token } = await (
+      await app.request('/auth/operator/session', post({}, { idpSubject: 'op-sub-admin2' }))
+    ).json();
+    await app.request('/auth/operator/step-up', post(bearer(token)));
+    const audit = await new SafetyRepository(db).recentAudit();
+    const jit = audit.find((a) => a.action === 'operator_step_up_elevation');
+    expect(jit?.approver).toBe('opr-admin');
+    expect(jit?.reason).toBe('operator_jit_elevation');
+    expect(jit?.outcome).toBe('EXECUTED');
+    expect(jit?.expiry).toBeTruthy();
   });
 
   it('an unregistered subject is refused (no self-provisioning)', async () => {

@@ -16,7 +16,14 @@ import {
 
 const env = { APP_ENV: 'staging', PRIMARY_REGION: 'ca-central', DR_REGION: 'ca-east' };
 
-const operator = { 'x-actor-type': 'operator', 'x-actor-alias': 'op1', 'x-operator-role': 'admin' };
+// An elevated admin console session (JIT step-up satisfied via the dev shim);
+// the dedicated JIT behaviour is covered in operator-rbac.test.ts.
+const operator = {
+  'x-actor-type': 'operator',
+  'x-actor-alias': 'op1',
+  'x-operator-role': 'admin',
+  'x-step-up': 'true',
+};
 const owner = {
   'x-actor-type': 'guardian',
   'x-actor-alias': 'g1',
