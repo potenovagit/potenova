@@ -62,6 +62,25 @@ async function recordUsage(
   return { estimatedCost };
 }
 
+/** Log one AI route decision (AI-006): model, policy, capability, cost (units), reason. */
+async function logRoute(
+  deps: Deps,
+  input: {
+    capability: string;
+    requestedModel: string | null;
+    chosenModel: string | null;
+    outcome: string;
+    policy: string;
+    reasonCode: string | null;
+    processingRegion: string;
+    childContext: boolean;
+    synthetic: boolean;
+    units: number | null;
+  },
+): Promise<void> {
+  await deps.routeLog.record({ decisionId: `rd-${randomUUID()}`, at: now(), ...input });
+}
+
 /**
  * AI candidate-evaluation surface (AI-003; ADR-0005/0006).
  *
@@ -162,6 +181,18 @@ export function registerAiEval(app: Hono, deps: Deps): void {
         expiry: null,
         at: now(),
       });
+      await logRoute(deps, {
+        capability: 'task_generation',
+        requestedModel: deps.ai.candidateModelId,
+        chosenModel: null,
+        outcome: 'FALLBACK',
+        policy: 'eval:synthetic',
+        reasonCode: out.reason,
+        processingRegion: provider.region,
+        childContext: false,
+        synthetic: true,
+        units: out.units,
+      });
       return c.json({
         synthetic: true,
         deliveredToChild: false,
@@ -208,6 +239,19 @@ export function registerAiEval(app: Hono, deps: Deps): void {
       capability: 'task_generation',
       provider: provider.id,
       model: deps.ai.candidateModelId,
+      units: gen.units,
+    });
+
+    await logRoute(deps, {
+      capability: 'task_generation',
+      requestedModel: deps.ai.candidateModelId,
+      chosenModel: deps.ai.candidateModelId,
+      outcome: 'EVAL_ROUTE',
+      policy: 'eval:synthetic',
+      reasonCode: null,
+      processingRegion: provider.region,
+      childContext: false,
+      synthetic: true,
       units: gen.units,
     });
 
