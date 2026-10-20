@@ -98,6 +98,84 @@ export class AzureOpenAiChatProvider implements GenerativeProvider {
   }
 }
 
+export interface SelfHostedConfig {
+  /** Base URL of the OpenAI-compatible inference server (vLLM / TGI / Ollama). */
+  readonly endpoint: string;
+  /** Model the server serves, e.g. 'llama-3.1-8b-instruct'. */
+  readonly model: string;
+  /** Canadian region the deployment runs in (residency); checked by the gateway. */
+  readonly region: string;
+  /** Optional bearer token, when the server requires auth. */
+  readonly apiKey?: string;
+  /** Chat-completions path; default '/v1/chat/completions'. */
+  readonly apiPath?: string;
+  readonly id?: string;
+}
+
+/**
+ * Self-hosted model adapter (ADR-0046). Calls an OpenAI-compatible inference
+ * server you run on Canadian compute you control — so there is NO third-party
+ * abuse-monitoring/retention surface and no vendor exemption to obtain; residency
+ * and retention are held directly. Same seam as the Azure adapter, so the gateway,
+ * eval harness and residency checks treat it identically. Used for candidate
+ * evaluation on synthetic data until the G2 approval gate clears.
+ */
+export class SelfHostedChatProvider implements GenerativeProvider {
+  readonly id: string;
+  readonly region: string;
+  readonly #endpoint: string;
+  readonly #model: string;
+  readonly #apiKey?: string;
+  readonly #apiPath: string;
+
+  constructor(cfg: SelfHostedConfig) {
+    this.id = cfg.id ?? `self-hosted:${cfg.model}`;
+    this.region = cfg.region;
+    this.#endpoint = cfg.endpoint.replace(/\/+$/, '');
+    this.#model = cfg.model;
+    this.#apiKey = cfg.apiKey;
+    this.#apiPath = cfg.apiPath ?? '/v1/chat/completions';
+  }
+
+  async generate(req: GenerativeRequest): Promise<GenerativeResult> {
+    const url = `${this.#endpoint}${this.#apiPath}`;
+    const messages: { role: string; content: string }[] = [];
+    if (req.system) messages.push({ role: 'system', content: req.system });
+    messages.push({ role: 'user', content: req.prompt });
+
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
+    if (this.#apiKey) headers.authorization = `Bearer ${this.#apiKey}`;
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: this.#model,
+          messages,
+          temperature: req.temperature ?? 0,
+          max_tokens: req.maxOutputTokens ?? 600,
+        }),
+      });
+    } catch {
+      throw new DomainError('DEPENDENCY_UNAVAILABLE', 'self-hosted AI provider unreachable');
+    }
+    if (!res.ok) {
+      throw new DomainError('DEPENDENCY_UNAVAILABLE', `self-hosted AI provider HTTP ${res.status}`);
+    }
+    const data = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+      usage?: { total_tokens?: number };
+    };
+    return {
+      text: data.choices?.[0]?.message?.content ?? '',
+      model: this.id,
+      units: data.usage?.total_tokens ?? 0,
+    };
+  }
+}
+
 /** Deterministic, offline stub — returns scripted text, never touches the network. */
 export class StubGenerativeProvider implements GenerativeProvider {
   readonly id: string;
