@@ -131,6 +131,14 @@ export const entitlement = pgTable('entitlement', {
   tierId: text('tier_id'),
   updatedAt: text('updated_at').notNull(),
 });
+// Billing hold — invoicing paused for an administratively suspended family. A
+// flag SEPARATE from the entitlement state machine (which has no admin-suspend
+// state): the billing-signal consumer sets/clears it; entitlement is untouched.
+export const billingHold = pgTable('billing_hold', {
+  familyId: text('family_id').primaryKey(),
+  held: boolean('held').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
 export const providerCallback = pgTable('provider_callback', {
   callbackKey: text('callback_key').primaryKey(), // channel:transactionId
   channel: text('channel').notNull(),
@@ -319,6 +327,8 @@ CREATE INDEX IF NOT EXISTS idx_consent_family ON consent_grant (family_id);
 
 CREATE TABLE IF NOT EXISTS entitlement (
   family_id text PRIMARY KEY, state text NOT NULL, tier_id text, updated_at text NOT NULL);
+CREATE TABLE IF NOT EXISTS billing_hold (
+  family_id text PRIMARY KEY, held boolean NOT NULL, updated_at text NOT NULL);
 CREATE TABLE IF NOT EXISTS provider_callback (
   callback_key text PRIMARY KEY, channel text NOT NULL, transaction_id text NOT NULL,
   family_id text NOT NULL, kind text NOT NULL, applied_at text NOT NULL);

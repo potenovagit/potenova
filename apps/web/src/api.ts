@@ -742,7 +742,7 @@ export interface OperatorMetrics {
     byStatus: Record<string, number>;
   };
   sessions: { total: number; active: number };
-  billing: { entitlements: Record<string, number>; learningActiveFamilies: number };
+  billing: { entitlements: Record<string, number>; learningActiveFamilies: number; holds: number };
   safety: { killSwitchesDisabled: string[]; pendingDualAuth: number };
   notifications: { pending: number };
   ai: {
