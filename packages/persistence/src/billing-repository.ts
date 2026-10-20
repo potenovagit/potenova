@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { PotenovaDb } from './database';
-import { entitlement, providerCallback } from './schema';
+import { entitlement, providerCallback, billingHold } from './schema';
 
 /** Billing persistence (WP-12). Entitlement is current-state per family; the
  *  provider-callback ledger is append-only so idempotency survives restarts —
@@ -39,6 +39,27 @@ export class BillingRepository {
     const out: Record<string, number> = {};
     for (const r of rows) out[r.state] = (out[r.state] ?? 0) + 1;
     return out;
+  }
+
+  /** Set/clear a family's billing hold (invoicing pause). Separate from the
+   *  entitlement state machine — an administrative overlay, not a lifecycle state. */
+  async setHold(familyId: string, held: boolean, at: string): Promise<void> {
+    const db = await this.h.ready();
+    await db
+      .insert(billingHold)
+      .values({ familyId, held, updatedAt: at })
+      .onConflictDoUpdate({ target: billingHold.familyId, set: { held, updatedAt: at } });
+  }
+  async getHold(familyId: string): Promise<boolean> {
+    const db = await this.h.ready();
+    const [r] = await db.select().from(billingHold).where(eq(billingHold.familyId, familyId));
+    return r ? r.held : false;
+  }
+  /** Count of families currently on billing hold (operator billing posture). */
+  async heldCount(): Promise<number> {
+    const db = await this.h.ready();
+    const rows = await db.select({ held: billingHold.held }).from(billingHold);
+    return rows.filter((r) => r.held).length;
   }
 
   /** Durable idempotency: returns whether this callback was newly applied. */

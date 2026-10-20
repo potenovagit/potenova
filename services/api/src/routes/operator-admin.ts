@@ -5,6 +5,8 @@ import { learningActive, type EntitlementState } from '@potenova/billing';
 import { randomUUID } from 'node:crypto';
 import { readAuth, requireOperatorPermission } from '../auth';
 import { now, type Deps } from '../deps';
+import { runNotificationDelivery } from '../notification-delivery';
+import { runBillingSignalProcessing } from '../billing-signals';
 
 /**
  * Operator/admin console surface (synthetic, pre-G2), under least-privilege RBAC
@@ -26,19 +28,29 @@ export function registerOperatorAdmin(app: Hono, deps: Deps): void {
 
   app.get('/operator/metrics', async (c) => {
     requireOperatorPermission(auth(c), 'operator:read');
-    const [identity, byStatus, sessions, entitlements, disabledCaps, pendingDA, pendingNotes, ai] =
-      await Promise.all([
-        deps.identity.counts(),
-        deps.identity.accountStatusCounts(),
-        deps.session.sessionCounts(),
-        deps.billing.entitlementStateCounts(),
-        deps.operator.disabledCapabilities(),
-        deps.safety.listPendingDualAuth(),
-        deps.notifications.pendingCount(),
-        deps.ai.candidateModelId
-          ? Promise.resolve(deps.ai.registry.isApprovedForProduction(deps.ai.candidateModelId))
-          : Promise.resolve(false),
-      ]);
+    const [
+      identity,
+      byStatus,
+      sessions,
+      entitlements,
+      billingHolds,
+      disabledCaps,
+      pendingDA,
+      pendingNotes,
+      ai,
+    ] = await Promise.all([
+      deps.identity.counts(),
+      deps.identity.accountStatusCounts(),
+      deps.session.sessionCounts(),
+      deps.billing.entitlementStateCounts(),
+      deps.billing.heldCount(),
+      deps.operator.disabledCapabilities(),
+      deps.safety.listPendingDualAuth(),
+      deps.notifications.pendingCount(),
+      deps.ai.candidateModelId
+        ? Promise.resolve(deps.ai.registry.isApprovedForProduction(deps.ai.candidateModelId))
+        : Promise.resolve(false),
+    ]);
     const evalStats = await deps.operator.evalRunStats();
     // Families with learning currently active by entitlement (billing posture).
     const learningActiveFamilies = Object.entries(entitlements).reduce(
@@ -49,7 +61,7 @@ export function registerOperatorAdmin(app: Hono, deps: Deps): void {
       asOf: now(),
       accounts: { ...identity, byStatus }, // { families, guardians, learners, byStatus }
       sessions, // { total, active }
-      billing: { entitlements, learningActiveFamilies },
+      billing: { entitlements, learningActiveFamilies, holds: billingHolds },
       safety: {
         killSwitchesDisabled: disabledCaps,
         pendingDualAuth: pendingDA.length,
@@ -77,6 +89,34 @@ export function registerOperatorAdmin(app: Hono, deps: Deps): void {
         createdAt: r.createdAt,
       })),
     });
+  });
+
+  // Drain the outbox (delivery worker). Fail-closed: with no approved, in-region
+  // provider nothing is delivered — notifications are HELD. A privileged
+  // operational action (in production a scheduled system job).
+  app.post('/operator/notifications/dispatch', async (c) => {
+    const a = auth(c);
+    requireOperatorPermission(a, 'operator:account_admin');
+    const summary = await runNotificationDelivery(deps);
+    await deps.safety.recordAudit({
+      approver: a.actor.actorAlias,
+      reason: 'notification_dispatch',
+      object: 'notifications:outbox',
+      action: 'notification_dispatch',
+      outcome: summary.delivered > 0 ? 'EXECUTED' : 'HELD',
+      expiry: null,
+      at: now(),
+    });
+    return c.json(summary);
+  });
+
+  // Process billing hold/resume signals (billing-service consumer). Applies the
+  // billing HOLD overlay — never an entitlement-state transition.
+  app.post('/operator/billing/process-signals', async (c) => {
+    const a = auth(c);
+    requireOperatorPermission(a, 'operator:account_admin');
+    const summary = await runBillingSignalProcessing(deps);
+    return c.json(summary);
   });
 
   const setStatus = (disabled: boolean) => async (c: Context) => {

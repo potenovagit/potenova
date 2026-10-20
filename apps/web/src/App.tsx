@@ -1604,6 +1604,10 @@ function AdminView() {
               <div className="stat-k">Pending notifications</div>
               <div className="stat-v">{metrics.notifications.pending}</div>
             </div>
+            <div className="statcard">
+              <div className="stat-k">Billing holds</div>
+              <div className="stat-v">{metrics.billing.holds}</div>
+            </div>
           </div>
 
           <h2>Account suspend / reactivate</h2>

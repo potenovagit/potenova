@@ -38,6 +38,7 @@ import {
   retentionPolicyFromApproval,
   type ApprovalsConfig,
 } from './approvals';
+import type { NotificationProvider } from './notification-delivery';
 
 /** Everything the routes need: config + the shared database and its repositories. */
 export interface Deps {
@@ -56,6 +57,10 @@ export interface Deps {
   readonly session: SessionRepository;
   /** AI candidate-evaluation plumbing (synthetic data only; AI-003). */
   readonly ai: AiDeps;
+  /** Notification delivery provider — null until an approved, in-region provider
+   *  is configured (EVIDENCE REQUIRED, residency/consent-bound). Delivery is
+   *  fail-closed while null. */
+  readonly notificationProvider: NotificationProvider | null;
   /** EVIDENCE-REQUIRED policy bundle enforced at the edge (ER-03/07/08/09). */
   readonly policies: PolicyDeps;
 }
@@ -138,6 +143,9 @@ export interface BuildDepsOptions {
   readonly aiProvider?: GenerativeProvider;
   /** Inject an input provider (tests pass an offline stub to drive the trust floor). */
   readonly inputProvider?: InputProvider;
+  /** Inject a notification delivery provider (tests pass an offline stub). Null
+   *  by default everywhere — no approved provider is wired (EVIDENCE REQUIRED). */
+  readonly notificationProvider?: NotificationProvider;
   /** Signed policy approvals (else read from env POTENOVA_APPROVALS). Flips a
    *  policy to an approved value, unblocking prod for that gate. */
   readonly approvals?: ApprovalsConfig;
@@ -213,6 +221,7 @@ export function buildDeps(opts: BuildDepsOptions = {}): Deps {
     retentionStore: new RetentionRepository(db),
     session: new SessionRepository(db),
     ai: buildAiDeps(env, config.environment === 'prod', opts.aiProvider, opts.inputProvider),
+    notificationProvider: opts.notificationProvider ?? null,
     policies: buildPolicies(config.environment === 'prod', opts.approvals ?? parseApprovals(env)),
   };
 }

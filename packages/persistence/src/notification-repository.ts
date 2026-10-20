@@ -42,6 +42,15 @@ export class NotificationRepository {
     return rows.map((r) => ({ ...r }));
   }
 
+  /** Transition a notification out of PENDING (delivered / held / processed). */
+  async markStatus(notificationId: string, status: string): Promise<void> {
+    const db = await this.h.ready();
+    await db
+      .update(notification)
+      .set({ status })
+      .where(eq(notification.notificationId, notificationId));
+  }
+
   async pendingCount(): Promise<number> {
     const db = await this.h.ready();
     const rows = await db
