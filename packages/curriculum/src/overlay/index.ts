@@ -132,8 +132,8 @@ export const FRACTIONS_OVERLAY: readonly ProposedSkillMapping[] = [
     4,
     'B2.7',
     'SK-FR-nonunit',
-    'full',
-    'Repeated addition of a unit fraction as multiplication by a whole number.',
+    'partial',
+    'Expectation frames this as MULTIPLICATION of a unit fraction by a whole number; SK-FR-nonunit covers the repeated-addition view only (educator round-2: was over-claimed as full).',
   ),
   // Place fractions on a number line.
   link(
@@ -190,10 +190,17 @@ export const FRACTIONS_OVERLAY: readonly ProposedSkillMapping[] = [
     5,
     'B1.3',
     'SK-FR-equiv',
-    'full',
-    'Equivalent fractions from halves to twelfths, incl. improper/mixed.',
+    'partial',
+    'Expectation includes improper fractions and mixed numbers, beyond recognizing equivalent proper fractions (educator round-2: was over-claimed as full).',
   ),
-  link('math', 7, 'B1.4', 'SK-FR-equiv', 'full', 'Using equivalent fractions to simplify.'),
+  link(
+    'math',
+    7,
+    'B1.4',
+    'SK-FR-equiv',
+    'partial',
+    'Expectation is using equivalence to SIMPLIFY, not just recognizing it — needs a simplification skill (educator round-2: recognition mistaken for full simplification).',
+  ),
   // Compare two fractions.
   link(
     'math',
