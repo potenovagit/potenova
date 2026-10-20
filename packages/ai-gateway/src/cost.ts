@@ -32,6 +32,15 @@ export function overDraftBudget(
   return estimatedCost > budget;
 }
 
+/**
+ * Per-operation cost controls (AI-015) — DRAFT, unapproved placeholders. They
+ * bound a single AI operation so an accidental loop or a runaway response can
+ * never spin or burn cost unbounded: at most this many attempts, and at most
+ * this many cumulative token units before the operation stops and falls back.
+ */
+export const DRAFT_MAX_GENERATION_ATTEMPTS = 3;
+export const DRAFT_MAX_OPERATION_UNITS = 8000;
+
 export interface CostEvent {
   readonly eventId: string;
   readonly familyAlias: string;

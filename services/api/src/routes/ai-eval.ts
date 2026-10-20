@@ -12,6 +12,7 @@ import {
   assertCostPayloadClean,
   estimateCost,
   overDraftBudget,
+  boundedGenerate,
   DRAFT_SESSION_COST_BUDGET,
 } from '@potenova/ai-gateway';
 import { randomUUID } from 'node:crypto';
@@ -127,9 +128,56 @@ export function registerAiEval(app: Hono, deps: Deps): void {
       right: readFraction(body.right, DEFAULT_TASK.right),
     };
 
+    // Bounded, fallback-safe invocation (AI-015): retries are bounded + transient
+    // only, cost is capped, and exhaustion never throws — it returns FALLBACK so
+    // the operation ends in a safe non-delivery rather than stalling.
     const t0 = Date.now();
-    const gen = await provider.generate({ ...buildComparisonPrompt(task), temperature: 0 });
+    const out = await boundedGenerate(provider, { ...buildComparisonPrompt(task), temperature: 0 });
     const latencyMs = Date.now() - t0;
+
+    if (out.kind === 'FALLBACK') {
+      // No usable model answer within bounds → contained, safe, never delivered.
+      await deps.operator.recordEvalRun({
+        modelId: provider.id,
+        kind: 'single',
+        latencyMs,
+        accuracy: 0,
+        containmentHeld: true,
+        verdict: 'FALLBACK',
+        at: now(),
+      });
+      await recordUsage(deps, {
+        kind: 'eval_single',
+        capability: 'task_generation',
+        provider: provider.id,
+        model: deps.ai.candidateModelId,
+        units: out.units,
+      });
+      await deps.safety.recordAudit({
+        approver: a.actor.actorAlias,
+        reason: `ai_generation_fallback:${out.reason}`,
+        object: `ai_model:${provider.id}`,
+        action: 'ai_generation_fallback',
+        outcome: 'FALLBACK',
+        expiry: null,
+        at: now(),
+      });
+      return c.json({
+        synthetic: true,
+        deliveredToChild: false,
+        model: provider.id,
+        processingRegion: provider.region,
+        task,
+        verdict: 'FALLBACK',
+        reasonCodes: [out.reason],
+        delivery: 'FALLBACK',
+        attempts: out.attempts,
+        tokenUnits: out.units,
+        estimatedCost: estimateCost(out.units),
+      });
+    }
+
+    const gen = out.result;
     const generated = parseGeneratedMathAnswer(gen.text);
 
     const result = evaluateMathCandidate({
@@ -175,6 +223,7 @@ export function registerAiEval(app: Hono, deps: Deps): void {
       verdict: result.verdict,
       reasonCodes: result.reasonCodes,
       delivery: result.delivery,
+      attempts: out.attempts,
       tokenUnits: gen.units,
       estimatedCost,
     });
