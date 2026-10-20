@@ -6,6 +6,12 @@ import {
   DomainError,
   isApprovedRegion,
 } from '@potenova/contracts';
+import {
+  type OperatorRole,
+  type OperatorPermission,
+  assertOperatorPermission,
+  isOperatorRole,
+} from '@potenova/identity';
 import type { Context, MiddlewareHandler } from 'hono';
 import { jwtVerify, createRemoteJWKSet, type JWTPayload } from 'jose';
 
@@ -27,6 +33,8 @@ import { jwtVerify, createRemoteJWKSet, type JWTPayload } from 'jose';
 export interface AuthCtx {
   readonly actor: ActorContext;
   readonly guardianRole?: 'owner' | 'learning_viewer';
+  /** The operator's RBAC role, when the actor is an operator (SEC-013). */
+  readonly operatorRole?: OperatorRole;
   readonly stepUp: boolean;
   readonly region: string;
 }
@@ -94,6 +102,7 @@ function fromClaims(p: JWTPayload, defaultRegion: string): AuthCtx {
   if (!actorType || !(ACTOR_TYPES as readonly string[]).includes(actorType) || !actorAlias)
     throw new DomainError('AUTH_REQUIRED', 'token missing a valid actor identity');
   const gr = str(p.guardian_role);
+  const or = str(p.operator_role);
   const actor: ActorContext = {
     actorType: actorType as ActorType,
     actorAlias,
@@ -104,6 +113,7 @@ function fromClaims(p: JWTPayload, defaultRegion: string): AuthCtx {
   return {
     actor,
     guardianRole: gr === 'owner' || gr === 'learning_viewer' ? gr : undefined,
+    operatorRole: isOperatorRole(or) ? or : undefined,
     stepUp: p.step_up === true || p.step_up === 'true',
     region: str(p.processing_region) ?? defaultRegion,
   };
@@ -116,6 +126,7 @@ function fromHeaders(c: Context, defaultRegion: string): AuthCtx {
   if (!actorType || !actorAlias)
     throw new DomainError('AUTH_REQUIRED', 'x-actor-type and x-actor-alias are required');
   const gr = c.req.header('x-guardian-role');
+  const or = c.req.header('x-operator-role');
   const actor: ActorContext = {
     actorType,
     actorAlias,
@@ -126,6 +137,7 @@ function fromHeaders(c: Context, defaultRegion: string): AuthCtx {
   return {
     actor,
     guardianRole: gr === 'owner' || gr === 'learning_viewer' ? gr : undefined,
+    operatorRole: isOperatorRole(or) ? or : undefined,
     stepUp: c.req.header('x-step-up') === 'true',
     region: c.req.header('x-processing-region') ?? defaultRegion,
   };
@@ -180,6 +192,20 @@ export function requireActorType(a: AuthCtx, ...types: readonly ActorType[]): vo
   if (!types.includes(a.actor.actorType)) {
     throw new DomainError('FORBIDDEN_ROLE', `requires actor type: ${types.join(' | ')}`);
   }
+}
+
+/**
+ * Least-privilege operator gate (SEC-013). Fail-closed: the actor must be an
+ * `operator` AND its RBAC role must grant `permission`. A read-only operator can
+ * therefore never reach an account-admin route, and the privilege comes from the
+ * verified role claim (or dev header), never from the actor type alone.
+ */
+export function requireOperatorPermission(a: AuthCtx, permission: OperatorPermission): void {
+  assertOperatorPermission({
+    actor: a.actor,
+    operatorRole: a.operatorRole,
+    permission,
+  });
 }
 
 /**

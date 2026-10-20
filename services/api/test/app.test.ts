@@ -26,7 +26,11 @@ const producer = {
   'x-actor-alias': 'ep1',
   'x-family-alias': 'fam1',
 };
-const operator = { 'x-actor-type': 'operator', 'x-actor-alias': 'op1' };
+const operator = {
+  'x-actor-type': 'operator',
+  'x-actor-alias': 'op1',
+  'x-operator-role': 'read_only',
+};
 
 const json = (headers: Record<string, string>, body?: unknown) => ({
   method: body === undefined ? 'GET' : 'POST',

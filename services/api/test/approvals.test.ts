@@ -143,7 +143,11 @@ const owner = {
   'x-family-alias': 'fam1',
 };
 const child = { 'x-actor-type': 'child', 'x-actor-alias': 'kid1', 'x-family-alias': 'fam1' };
-const operator = { 'x-actor-type': 'operator', 'x-actor-alias': 'op1' };
+const operator = {
+  'x-actor-type': 'operator',
+  'x-actor-alias': 'op1',
+  'x-operator-role': 'read_only',
+};
 
 let dbs: PotenovaDb[] = [];
 afterEach(async () => {

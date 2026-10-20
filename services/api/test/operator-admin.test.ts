@@ -16,7 +16,7 @@ import {
 
 const env = { APP_ENV: 'staging', PRIMARY_REGION: 'ca-central', DR_REGION: 'ca-east' };
 
-const operator = { 'x-actor-type': 'operator', 'x-actor-alias': 'op1' };
+const operator = { 'x-actor-type': 'operator', 'x-actor-alias': 'op1', 'x-operator-role': 'admin' };
 const owner = {
   'x-actor-type': 'guardian',
   'x-actor-alias': 'g1',

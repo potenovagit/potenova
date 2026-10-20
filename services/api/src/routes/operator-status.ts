@@ -1,7 +1,7 @@
 import type { Context, Hono } from 'hono';
 import { AGE_BANDS } from '@potenova/identity';
 import { DATA_CLASSES, checkRetentionReadiness } from '@potenova/policy';
-import { readAuth, requireActorType, type AuthCtx } from '../auth';
+import { readAuth, requireOperatorPermission, type AuthCtx } from '../auth';
 import { type Deps } from '../deps';
 import { gateTask } from '../task-bank';
 
@@ -24,7 +24,11 @@ export function registerOperatorStatus(app: Hono, deps: Deps): void {
 
   app.get('/operator/status', async (c) => {
     const a = authed(c);
-    requireActorType(a, 'operator', 'child_safety');
+    // The independent safety layer may read the posture directly; any operator
+    // needs the operator:read permission (SEC-013 least-privilege RBAC).
+    if (a.actor.actorType !== 'child_safety') {
+      requireOperatorPermission(a, 'operator:read');
+    }
 
     const p = deps.policies;
 
