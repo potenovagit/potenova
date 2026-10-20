@@ -3,13 +3,13 @@ import type { GuardianRole } from '@potenova/identity';
 import type { AuditEvent, DualAuthAction } from './policy';
 
 /**
- * Privileged access control (SEC-002/003; SAFE-017; AT-52).
+ * Privileged access control (SEC-002/003/004; SAFE-017; AT-52).
  *
  * Zero standing access: elevation to sensitive child data is purpose-specific and
  * time-bound, auto-expiring (SEC-002). Highest-risk actions require two distinct
  * approvers (SEC-003). Every decision writes to a tamper-resistant audit sink,
  * separate from application logs, carrying approver/reason/object/action/outcome/
- * expiry (SEC-003; SAFE-017). A parent/guardian role can never self-elevate to
+ * expiry (SEC-004; SAFE-017). A parent/guardian role can never self-elevate to
  * operational privilege; the denial is recorded (AT-52).
  */
 
@@ -96,7 +96,7 @@ export function evaluatePrivilegedElevation(input: {
   };
 }
 
-/** Append-only, tamper-resistant audit sink, distinct from application logs (SEC-003). */
+/** Append-only, tamper-resistant audit sink, distinct from application logs (SEC-004). */
 export class SecurityAuditSink {
   readonly #events: AuditEvent[] = [];
 

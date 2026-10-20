@@ -18,8 +18,9 @@ duty (maker-checker): two distinct operators for the worst actions.
 Note a traceability caveat: in the repo's authoritative `requirements.csv`/`requirements.json`,
 **SEC-003 = dual authorization**. An older `05_Security_Privacy_Child_Safety_Specification` uses a
 different SEC-00x numbering (there SEC-003 is the tamper-resistant audit log), which is what some
-existing code comments cite. This record and its code cite the CSV IDs; the comment drift should
-be reconciled separately.
+existing code comments cited. This record and its code cite the CSV IDs; the comment drift has
+since been reconciled — the tamper-resistant audit-log references now cite **SEC-004** (its CSV ID),
+leaving **SEC-003** for dual authorization throughout.
 
 ## Decision
 

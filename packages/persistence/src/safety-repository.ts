@@ -3,7 +3,7 @@ import type { PotenovaDb } from './database';
 import { securityAudit, dataSubjectRequest, dualAuthRequest } from './schema';
 
 /** Safety & privacy persistence (WP-11). The security audit is append-only and
- *  tamper-resistant (SEC-003) — it must outlive any process. Data-subject
+ *  tamper-resistant (SEC-004) — it must outlive any process. Data-subject
  *  requests carry durable state so a deletion is never prematurely "complete". */
 
 export interface AuditEventRow {

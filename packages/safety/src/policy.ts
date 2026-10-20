@@ -2,7 +2,7 @@
  * Safety / privacy policy taxonomy (WP-11).
  *
  * Data sensitivity classes (SEC-001), safety severity, the tamper-resistant audit
- * event shape (SEC-003; SAFE-017), and the actions that require dual authorization
+ * event shape (SEC-004; SAFE-017), and the actions that require dual authorization
  * (SEC-003). Numeric values (e.g. elevation TTLs) are supplied by callers and
  * remain EVIDENCE REQUIRED where the spec defers them.
  */
@@ -29,7 +29,7 @@ export type DualAuthAction = (typeof DUAL_AUTH_ACTIONS)[number];
 
 /**
  * A tamper-resistant audit event (SAFE-017): approver, reason, object, action,
- * outcome and expiry — minimized of sensitive content (SEC-003).
+ * outcome and expiry — minimized of sensitive content (SEC-004).
  */
 export interface AuditEvent {
   readonly approver: string;
