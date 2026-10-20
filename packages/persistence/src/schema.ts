@@ -147,6 +147,24 @@ export const aiUsageEvent = pgTable('ai_usage_event', {
   learnerAlias: text('learner_alias'),
   sessionId: text('session_id'),
 });
+// AI route-decision log (AI-006). Each routing decision records the capability,
+// the requested/chosen model, the outcome + policy that decided it, the fallback/
+// block reason, the processing region, and (when known) the token units. No child
+// content — identifiers and reason codes only.
+export const routeDecision = pgTable('route_decision', {
+  decisionId: text('decision_id').primaryKey(),
+  at: text('at').notNull(),
+  capability: text('capability').notNull(),
+  requestedModel: text('requested_model'),
+  chosenModel: text('chosen_model'),
+  outcome: text('outcome').notNull(),
+  policy: text('policy').notNull(),
+  reasonCode: text('reason_code'),
+  processingRegion: text('processing_region').notNull(),
+  childContext: boolean('child_context').notNull(),
+  synthetic: boolean('synthetic').notNull(),
+  units: integer('units'),
+});
 // Billing hold — invoicing paused for an administratively suspended family. A
 // flag SEPARATE from the entitlement state machine (which has no admin-suspend
 // state): the billing-signal consumer sets/clears it; entitlement is untouched.
@@ -349,6 +367,11 @@ CREATE TABLE IF NOT EXISTS ai_usage_event (
   event_id text PRIMARY KEY, at text NOT NULL, synthetic boolean NOT NULL, kind text NOT NULL,
   capability text NOT NULL, provider text NOT NULL, model text NOT NULL, units integer NOT NULL,
   family_alias text, learner_alias text, session_id text);
+CREATE TABLE IF NOT EXISTS route_decision (
+  decision_id text PRIMARY KEY, at text NOT NULL, capability text NOT NULL, requested_model text,
+  chosen_model text, outcome text NOT NULL, policy text NOT NULL, reason_code text,
+  processing_region text NOT NULL, child_context boolean NOT NULL, synthetic boolean NOT NULL,
+  units integer);
 CREATE TABLE IF NOT EXISTS provider_callback (
   callback_key text PRIMARY KEY, channel text NOT NULL, transaction_id text NOT NULL,
   family_id text NOT NULL, kind text NOT NULL, applied_at text NOT NULL);

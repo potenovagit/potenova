@@ -52,9 +52,10 @@ export function registerOperatorAdmin(app: Hono, deps: Deps): void {
         ? Promise.resolve(deps.ai.registry.isApprovedForProduction(deps.ai.candidateModelId))
         : Promise.resolve(false),
     ]);
-    const [evalStats, aiUsage] = await Promise.all([
+    const [evalStats, aiUsage, routeDecisions] = await Promise.all([
       deps.operator.evalRunStats(),
       deps.aiUsage.summary(),
+      deps.routeLog.count(),
     ]);
     // Families with learning currently active by entitlement (billing posture).
     const learningActiveFamilies = Object.entries(entitlements).reduce(
@@ -83,6 +84,7 @@ export function registerOperatorAdmin(app: Hono, deps: Deps): void {
           totalUnits: aiUsage.totalUnits,
           estimatedCostDraft: estimateCost(aiUsage.totalUnits),
         },
+        routeDecisions,
       },
     });
   });
@@ -107,6 +109,61 @@ export function registerOperatorAdmin(app: Hono, deps: Deps): void {
       byProvider: withCost(byProvider),
       note: 'cost is a DRAFT estimate (unapproved per-unit rate, ER-01/NFR-14)',
     });
+  });
+
+  // Route probe (AI-006): exercise the gateway's task-specific routing across
+  // capabilities (text / speech / vision) on synthetic inputs and LOG the
+  // decision. Pre-G2 no model is APPROVED, so a production (child-context) route
+  // fails closed to BLOCK with a reason — exactly what the log must capture.
+  interface RouteProbeBody {
+    capability?: string;
+    modelId?: string;
+    ageBand?: string;
+    subject?: string;
+    processingRegion?: string;
+    childContext?: boolean;
+  }
+  app.post('/operator/route-probe', async (c) => {
+    requireOperatorPermission(auth(c), 'operator:read');
+    const b = await c.req.json<RouteProbeBody>().catch(() => ({}) as RouteProbeBody);
+    if (!b.capability || !b.ageBand || !b.subject) {
+      throw new DomainError('POLICY_BLOCKED', 'capability, ageBand and subject are required');
+    }
+    const processingRegion = b.processingRegion ?? deps.config.primaryRegion;
+    const childContext = b.childContext ?? true;
+    const requestedModel = (b.modelId ?? '').trim();
+    const outcome = deps.ai.gateway.route({
+      modelId: requestedModel,
+      processingRegion,
+      ageBand: b.ageBand,
+      subject: b.subject,
+      capability: b.capability,
+      childContext,
+    });
+    const chosenModel = outcome.kind === 'BLOCK' ? null : outcome.modelId;
+    const reasonCode = outcome.kind === 'BLOCK' ? outcome.reason : null;
+    await deps.routeLog.record({
+      decisionId: `rd-${randomUUID()}`,
+      at: now(),
+      capability: b.capability,
+      requestedModel: requestedModel || null,
+      chosenModel,
+      outcome: outcome.kind,
+      policy: 'residency>approval>envelope',
+      reasonCode,
+      processingRegion,
+      childContext,
+      synthetic: true,
+      units: null,
+    });
+    return c.json({ capability: b.capability, outcome: outcome.kind, chosenModel, reasonCode });
+  });
+
+  // The AI route-decision log (AI-006), most recent first.
+  app.get('/operator/route-decisions', async (c) => {
+    requireOperatorPermission(auth(c), 'operator:read');
+    const rows = await deps.routeLog.recent();
+    return c.json({ decisions: rows });
   });
 
   // Pending notifications (the outbox a real delivery worker would drain).
