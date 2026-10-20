@@ -19,6 +19,7 @@ import {
   AIGateway,
   ModelRegistry,
   AzureOpenAiChatProvider,
+  SelfHostedChatProvider,
   StubInputProvider,
   type GenerativeProvider,
   type InputProvider,
@@ -181,6 +182,22 @@ function buildAiDeps(
         region: env.AZURE_OPENAI_REGION ?? 'ca-east',
         apiVersion: env.AZURE_OPENAI_API_VERSION,
       });
+    }
+    // Self-hosted, in-region model (ADR-0046): an OpenAI-compatible server on
+    // Canadian compute you control — no vendor abuse-monitoring exemption needed.
+    if (!provider) {
+      const shEndpoint = env.SELFHOST_ENDPOINT;
+      const shModel = env.SELFHOST_MODEL;
+      const shRegion = env.SELFHOST_REGION;
+      if (shEndpoint && shModel && shRegion) {
+        provider = new SelfHostedChatProvider({
+          endpoint: shEndpoint,
+          model: shModel,
+          region: shRegion,
+          apiKey: env.SELFHOST_API_KEY,
+          apiPath: env.SELFHOST_API_PATH,
+        });
+      }
     }
   }
 
