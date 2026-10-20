@@ -92,9 +92,13 @@ try {
   // or flipped every approval, this FAILS the promotion on purpose.
   if (expectFailClosed) {
     await check('fail-closed posture (no prod model, prodReady=false)', async () => {
+      // Operator surfaces are under least-privilege RBAC (ADR-0038): an operator
+      // must carry a role. The smoke check only reads posture, so it presents the
+      // least-privileged read role.
       const r = await get('/operator/status', {
         'x-actor-type': 'operator',
         'x-actor-alias': 'smoke',
+        'x-operator-role': 'read_only',
       });
       if (r.status !== 200) throw new Error(`operator/status ${r.status}`);
       if (r.body?.prodReady === true)
