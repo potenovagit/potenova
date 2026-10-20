@@ -17,6 +17,7 @@ import { registerLessons } from './routes/lessons';
 import { registerParent } from './routes/parent';
 import { registerOperatorStatus } from './routes/operator-status';
 import { registerOperatorAdmin } from './routes/operator-admin';
+import { registerOperatorDualAuth } from './routes/operator-dual-auth';
 import { registerPrivacy } from './routes/privacy';
 
 export interface CreateAppOptions extends BuildDepsOptions {
@@ -78,6 +79,7 @@ export function createApp(opts: CreateAppOptions = {}): Hono {
     registerParent(api, deps);
     registerOperatorStatus(api, deps);
     registerOperatorAdmin(api, deps);
+    registerOperatorDualAuth(api, deps);
     registerPrivacy(api, deps);
     return api;
   };

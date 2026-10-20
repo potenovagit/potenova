@@ -86,6 +86,21 @@ export const operatorDirectory = pgTable('operator_directory', {
   status: text('status').notNull(),
   linkedAt: text('linked_at').notNull(),
 });
+// Dual-authorization requests (SEC-003). A highest-risk action requested by one
+// operator and approved by a different one (maker-checker); separate from the
+// audit log, which records each transition.
+export const dualAuthRequest = pgTable('dual_auth_request', {
+  requestId: text('request_id').primaryKey(),
+  action: text('action').notNull(),
+  params: text('params').notNull(),
+  reason: text('reason').notNull(),
+  requestedBy: text('requested_by').notNull(),
+  requestedAt: text('requested_at').notNull(),
+  status: text('status').notNull(),
+  approvedBy: text('approved_by'),
+  decidedAt: text('decided_at'),
+  expiresAt: text('expires_at').notNull(),
+});
 export const consentGrant = pgTable('consent_grant', {
   grantId: text('grant_id').primaryKey(),
   familyId: text('family_id').notNull(),
@@ -278,6 +293,10 @@ CREATE TABLE IF NOT EXISTS idp_directory (
 CREATE TABLE IF NOT EXISTS operator_directory (
   subject_hash text PRIMARY KEY, operator_id text NOT NULL, role text NOT NULL, status text NOT NULL,
   linked_at text NOT NULL);
+CREATE TABLE IF NOT EXISTS dual_auth_request (
+  request_id text PRIMARY KEY, action text NOT NULL, params text NOT NULL, reason text NOT NULL,
+  requested_by text NOT NULL, requested_at text NOT NULL, status text NOT NULL,
+  approved_by text, decided_at text, expires_at text NOT NULL);
 CREATE TABLE IF NOT EXISTS consent_grant (
   grant_id text PRIMARY KEY, family_id text NOT NULL, purpose text NOT NULL, version text NOT NULL,
   modality text NOT NULL, state text NOT NULL, granted_at text NOT NULL, revoked_at text);
