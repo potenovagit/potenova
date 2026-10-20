@@ -53,7 +53,7 @@ interface Learner {
 }
 
 type Note = { kind: 'ok' | 'err'; text: string };
-type Tab = 'parent' | 'child' | 'operator';
+type Tab = 'parent' | 'child' | 'operator' | 'admin';
 
 export function Console() {
   const [tab, setTab] = useState<Tab>('parent');
@@ -82,6 +82,7 @@ export function Console() {
     { id: 'parent', label: 'Parent' },
     { id: 'child', label: 'Child' },
     { id: 'operator', label: 'Operator' },
+    { id: 'admin', label: 'Admin' },
   ];
 
   return (
@@ -129,6 +130,7 @@ export function Console() {
         )}
         {tab === 'child' && <ChildView family={family} learner={learner} />}
         {tab === 'operator' && <OperatorView />}
+        {tab === 'admin' && <AdminView />}
       </main>
 
       <footer className="foot">
@@ -1502,5 +1504,148 @@ function ErasurePanel() {
         </>
       )}
     </div>
+  );
+}
+
+function AdminView() {
+  const [metrics, setMetrics] = useState<api.OperatorMetrics | null>(null);
+  const [routing, setRouting] = useState<api.OperatorStatus['modelRouting']>([]);
+  const [phase, setPhase] = useState<'loading' | 'ok' | 'err'>('loading');
+  const [familyId, setFamilyId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [note, setNote, fail] = useNote();
+
+  const load = () => {
+    setPhase('loading');
+    setNote(null);
+    Promise.all([api.operatorMetrics(), api.operatorStatus()])
+      .then(([m, s]) => {
+        setMetrics(m);
+        setRouting(s.modelRouting);
+        setPhase('ok');
+      })
+      .catch((e) => {
+        fail(e);
+        setPhase('err');
+      });
+  };
+  useEffect(load, []);
+
+  const act = (action: 'suspend' | 'reactivate') => {
+    if (!familyId.trim()) {
+      setNote({ kind: 'err', text: 'Enter a family id first.' });
+      return;
+    }
+    setBusy(true);
+    setNote(null);
+    api
+      .setAccountStatus(familyId.trim(), action)
+      .then((r) => {
+        setNote({ kind: 'ok', text: `Account ${r.familyId} is now ${r.status}.` });
+        load();
+      })
+      .catch(fail)
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <section className="col">
+      <h1>Admin</h1>
+      <p className="lede">
+        Operator administration on synthetic data: roll-up counts, account suspend/reactivate
+        (audited), and a read-only view of which model is allowed for which activity. No real child
+        data; account suspend takes effect at the edge on the next session.
+      </p>
+
+      {phase === 'loading' && <div className="skeleton" aria-hidden="true" />}
+      <NoteBar note={note} />
+      {phase === 'err' && (
+        <div className="empty">
+          <p>Could not load admin data.</p>
+          <button onClick={load}>Retry</button>
+        </div>
+      )}
+
+      {phase === 'ok' && metrics && (
+        <>
+          <h2>Metrics</h2>
+          <div className="statgrid">
+            <div className="statcard">
+              <div className="stat-k">Families</div>
+              <div className="stat-v">{metrics.accounts.families}</div>
+            </div>
+            <div className="statcard">
+              <div className="stat-k">Guardians</div>
+              <div className="stat-v">{metrics.accounts.guardians}</div>
+            </div>
+            <div className="statcard">
+              <div className="stat-k">Learners</div>
+              <div className="stat-v">{metrics.accounts.learners}</div>
+            </div>
+            <div className="statcard">
+              <div className="stat-k">Sessions (active / total)</div>
+              <div className="stat-v">
+                {metrics.sessions.active} / {metrics.sessions.total}
+              </div>
+            </div>
+          </div>
+
+          <h2>Account suspend / reactivate</h2>
+          <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              aria-label="Family id"
+              placeholder="family id (e.g. fam-…)"
+              value={familyId}
+              onChange={(e) => setFamilyId(e.target.value)}
+              style={{ minWidth: 260 }}
+            />
+            <button disabled={busy} onClick={() => act('suspend')}>
+              Suspend
+            </button>
+            <button disabled={busy} onClick={() => act('reactivate')}>
+              Reactivate
+            </button>
+          </div>
+
+          <h2>Model routing (read-only)</h2>
+          {routing.length === 0 ? (
+            <p className="muted">
+              No model is registered. No model is routable for production until APPROVED; the
+              gateway still gates every call on status, Canadian region and the age/subject/
+              capability envelope.
+            </p>
+          ) : (
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th>Status</th>
+                  <th>Prod?</th>
+                  <th>Regions</th>
+                  <th>Age bands</th>
+                  <th>Subjects</th>
+                  <th>Capabilities</th>
+                  <th>No-train</th>
+                </tr>
+              </thead>
+              <tbody>
+                {routing.map((m) => (
+                  <tr key={m.modelId}>
+                    <td className="mono">{m.modelId}</td>
+                    <td>{m.status}</td>
+                    <td>{m.approvedForProduction ? 'yes' : 'no'}</td>
+                    <td>{m.allowedRegions.join(', ')}</td>
+                    <td>{m.ageBands.join(', ')}</td>
+                    <td>{m.subjects.join(', ')}</td>
+                    <td>{m.capabilities.join(', ')}</td>
+                    <td>{m.trainingDisabled ? 'yes' : 'no'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
+    </section>
   );
 }

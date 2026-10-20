@@ -134,6 +134,21 @@ export function registerOperatorStatus(app: Hono, deps: Deps): void {
     }
     const contentGate = { active: positive && negativeBlocked, positive, negativeBlocked };
 
+    // --- Model routing (read-only): which model is allowed for which activity. ---
+    // This is the registry's view, NOT a routing decision — the gateway still
+    // gates every call on status, Canadian region and the age/subject/capability
+    // envelope. No model is routable for production until APPROVED.
+    const modelRouting = deps.ai.registry.list().map((m) => ({
+      modelId: m.modelId,
+      status: m.status,
+      approvedForProduction: m.status === 'APPROVED',
+      allowedRegions: m.allowedRegions,
+      ageBands: m.ageBands,
+      subjects: m.subjects,
+      capabilities: m.capabilities,
+      trainingDisabled: m.trainingDisabled,
+    }));
+
     // Overall prod-readiness: every fail-closed policy signed and no model wired.
     const prodReady =
       policies.mastery.approved &&
@@ -151,6 +166,7 @@ export function registerOperatorStatus(app: Hono, deps: Deps): void {
       ai,
       modelEval,
       killSwitches,
+      modelRouting,
       contentGate,
     });
   });

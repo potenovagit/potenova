@@ -30,6 +30,13 @@ export class ModelRegistry {
     return this.#entries.get(modelId);
   }
 
+  /** Every registered model, for a read-only routing/approval view. Never used
+   *  to make a routing decision — that stays `routable()`, which gates on status,
+   *  region and envelope. */
+  list(): readonly ModelRegistryEntry[] {
+    return [...this.#entries.values()];
+  }
+
   isApprovedForProduction(modelId: string): boolean {
     return this.#entries.get(modelId)?.status === ROUTABLE;
   }

@@ -66,6 +66,24 @@ export class IdentityRepository {
     return r ?? null;
   }
 
+  /** Set a family's account status (operator suspend/reactivate). No-op if the
+   *  family does not exist (the caller checks existence first). */
+  async setFamilyStatus(familyId: string, status: string): Promise<void> {
+    const db = await this.h.ready();
+    await db.update(family).set({ status }).where(eq(family.familyId, familyId));
+  }
+
+  /** Counts for the operator metrics view (synthetic scale). */
+  async counts(): Promise<{ families: number; guardians: number; learners: number }> {
+    const db = await this.h.ready();
+    const [f, g, l] = await Promise.all([
+      db.select({ id: family.familyId }).from(family),
+      db.select({ id: guardian.guardianId }).from(guardian),
+      db.select({ id: learnerProfile.learnerId }).from(learnerProfile),
+    ]);
+    return { families: f.length, guardians: g.length, learners: l.length };
+  }
+
   async saveGuardian(g: GuardianRow): Promise<void> {
     const db = await this.h.ready();
     await db
