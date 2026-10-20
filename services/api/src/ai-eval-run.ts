@@ -1,4 +1,8 @@
-import type { GenerativeProvider } from '@potenova/ai-gateway';
+import {
+  boundedGenerate,
+  type GenerativeProvider,
+  type GenerativeRequest,
+} from '@potenova/ai-gateway';
 import {
   buildComparisonPrompt,
   parseGeneratedMathAnswer,
@@ -18,15 +22,24 @@ export function providerSuiteRunner(provider: GenerativeProvider): {
   getTokens: () => number;
 } {
   let tokenUnits = 0;
+  // Bounded, fallback-safe per task (AI-015): a transient failure is retried
+  // within bounds, and exhaustion yields an unparsed answer (contained, never a
+  // pass) rather than throwing and aborting the whole suite.
+  const call = (prompt: GenerativeRequest) =>
+    boundedGenerate(provider, { ...prompt, temperature: 0 });
   const generate = async (task: SuiteTask): Promise<SuiteAnswer> => {
     if (task.kind === 'comparison') {
-      const g = await provider.generate({ ...buildComparisonPrompt(task), temperature: 0 });
-      tokenUnits += g.units;
-      return { kind: 'comparison', ...parseGeneratedMathAnswer(g.text) };
+      const out = await call(buildComparisonPrompt(task));
+      tokenUnits += out.units;
+      return out.kind === 'OK'
+        ? { kind: 'comparison', ...parseGeneratedMathAnswer(out.result.text) }
+        : { kind: 'comparison', claimedAnswer: null, explanation: '' };
     }
-    const g = await provider.generate({ ...buildEquivalencePrompt(task), temperature: 0 });
-    tokenUnits += g.units;
-    return { kind: 'equivalence', ...parseGeneratedEquivalenceAnswer(g.text) };
+    const out = await call(buildEquivalencePrompt(task));
+    tokenUnits += out.units;
+    return out.kind === 'OK'
+      ? { kind: 'equivalence', ...parseGeneratedEquivalenceAnswer(out.result.text) }
+      : { kind: 'equivalence', claimedEquivalent: null, explanation: '' };
   };
   return { generate, getTokens: () => tokenUnits };
 }
