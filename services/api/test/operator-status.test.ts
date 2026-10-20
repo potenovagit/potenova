@@ -61,6 +61,9 @@ describe('GET /operator/status', () => {
     expect(s.contentGate.active).toBe(true);
     expect(s.contentGate.positive).toBe(true);
     expect(s.contentGate.negativeBlocked).toBe(true);
+
+    // No provider → no model registered → the routing view is empty (nothing routable).
+    expect(s.modelRouting).toEqual([]);
   });
 
   it('reflects a configured candidate model as SYNTHETIC_TESTING (never approved)', async () => {
@@ -71,6 +74,12 @@ describe('GET /operator/status', () => {
     expect(s.ai.anyModelApprovedForProduction).toBe(false);
     expect(s.modelEval.runnable).toBe(true);
     expect(s.modelEval.envelope.subjects).toContain('math');
+
+    // The candidate shows in the read-only routing view — but never as approved.
+    expect(s.modelRouting).toHaveLength(1);
+    expect(s.modelRouting[0].status).toBe('SYNTHETIC_TESTING');
+    expect(s.modelRouting[0].approvedForProduction).toBe(false);
+    expect(s.modelRouting[0].subjects).toContain('math');
   });
 
   it('surfaces recorded eval runs + measured latency (SLO stays a DRAFT slot)', async () => {

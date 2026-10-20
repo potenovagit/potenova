@@ -66,6 +66,13 @@ export class SessionRepository {
     return r ?? null;
   }
 
+  /** Tutoring-session counts for the operator metrics view (synthetic scale). */
+  async sessionCounts(): Promise<{ total: number; active: number }> {
+    const db = await this.h.ready();
+    const rows = await db.select({ state: tutoringSession.state }).from(tutoringSession);
+    return { total: rows.length, active: rows.filter((r) => r.state === 'ACTIVE').length };
+  }
+
   async saveTutoringSession(s: TutoringSessionRow): Promise<void> {
     const db = await this.h.ready();
     await db

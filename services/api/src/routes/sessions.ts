@@ -82,6 +82,13 @@ export function registerSessions(app: Hono, deps: Deps): void {
     }
     const band = learner.ageBand as AgeBand;
 
+    // Account state: a suspended/closed family cannot start a session (operator
+    // suspend takes effect at the edge, before any processing).
+    const fam = a.actor.familyAlias ? await deps.identity.getFamily(a.actor.familyAlias) : null;
+    if (!fam || fam.status !== 'active') {
+      throw new DomainError('POLICY_BLOCKED', 'family account is not active');
+    }
+
     // Consent fence.
     const consentOk = await hasChildLearningConsent(deps, a.actor.familyAlias);
 

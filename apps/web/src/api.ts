@@ -710,11 +710,43 @@ export interface OperatorStatus {
     latency: { sloMs: number | null; decisionId: string; approved: boolean; recordedRuns: number };
   };
   killSwitches: { capability: string; active: boolean }[];
+  modelRouting: {
+    modelId: string;
+    status: string;
+    approvedForProduction: boolean;
+    allowedRegions: string[];
+    ageBands: string[];
+    subjects: string[];
+    capabilities: string[];
+    trainingDisabled: boolean;
+  }[];
   contentGate: { active: boolean; positive: boolean; negativeBlocked: boolean };
 }
 
 export const operatorStatus = () =>
   call<OperatorStatus>('/operator/status', { headers: operatorHeaders() });
+
+export interface OperatorMetrics {
+  asOf: string;
+  accounts: { families: number; guardians: number; learners: number };
+  sessions: { total: number; active: number };
+  ai: {
+    providerConfigured: boolean;
+    candidateModelId: string | null;
+    anyModelApprovedForProduction: boolean;
+  };
+}
+
+/** Roll-up counts + AI posture for the admin view (operator-only, read-only). */
+export const operatorMetrics = () =>
+  call<OperatorMetrics>('/operator/metrics', { headers: operatorHeaders() });
+
+/** Suspend or reactivate a family account (operator-only, audited). */
+export const setAccountStatus = (familyId: string, action: 'suspend' | 'reactivate') =>
+  call<{ familyId: string; status: string }>(
+    `/operator/accounts/${encodeURIComponent(familyId)}/${action}`,
+    { method: 'POST', headers: operatorHeaders() },
+  );
 
 /* ---- Privacy operations (operator-only): erasure + retention sweep ---- */
 
