@@ -131,6 +131,22 @@ export const entitlement = pgTable('entitlement', {
   tierId: text('tier_id'),
   updatedAt: text('updated_at').notNull(),
 });
+// AI usage/cost events (AI-013/AI-020). Append-only, privacy-safe: aliases only,
+// never raw child content. Pre-G2 these come from the synthetic eval path (no
+// family/learner); the alias columns are ready for approved child routing at G2.
+export const aiUsageEvent = pgTable('ai_usage_event', {
+  eventId: text('event_id').primaryKey(),
+  at: text('at').notNull(),
+  synthetic: boolean('synthetic').notNull(),
+  kind: text('kind').notNull(),
+  capability: text('capability').notNull(),
+  provider: text('provider').notNull(),
+  model: text('model').notNull(),
+  units: integer('units').notNull(),
+  familyAlias: text('family_alias'),
+  learnerAlias: text('learner_alias'),
+  sessionId: text('session_id'),
+});
 // Billing hold — invoicing paused for an administratively suspended family. A
 // flag SEPARATE from the entitlement state machine (which has no admin-suspend
 // state): the billing-signal consumer sets/clears it; entitlement is untouched.
@@ -329,6 +345,10 @@ CREATE TABLE IF NOT EXISTS entitlement (
   family_id text PRIMARY KEY, state text NOT NULL, tier_id text, updated_at text NOT NULL);
 CREATE TABLE IF NOT EXISTS billing_hold (
   family_id text PRIMARY KEY, held boolean NOT NULL, updated_at text NOT NULL);
+CREATE TABLE IF NOT EXISTS ai_usage_event (
+  event_id text PRIMARY KEY, at text NOT NULL, synthetic boolean NOT NULL, kind text NOT NULL,
+  capability text NOT NULL, provider text NOT NULL, model text NOT NULL, units integer NOT NULL,
+  family_alias text, learner_alias text, session_id text);
 CREATE TABLE IF NOT EXISTS provider_callback (
   callback_key text PRIMARY KEY, channel text NOT NULL, transaction_id text NOT NULL,
   family_id text NOT NULL, kind text NOT NULL, applied_at text NOT NULL);

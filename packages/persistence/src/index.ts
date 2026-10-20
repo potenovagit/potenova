@@ -7,6 +7,7 @@ export * from './content-repository';
 export * from './safety-repository';
 export * from './operator-repository';
 export * from './notification-repository';
+export * from './ai-usage-repository';
 export * from './erasure-repository';
 export * from './retention-repository';
 export * from './session-repository';

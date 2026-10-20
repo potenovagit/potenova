@@ -2,6 +2,7 @@ import type { Context, Hono } from 'hono';
 import { DomainError } from '@potenova/contracts';
 import { hashIdpSubject, isOperatorRole } from '@potenova/identity';
 import { learningActive, type EntitlementState } from '@potenova/billing';
+import { estimateCost } from '@potenova/ai-gateway';
 import { randomUUID } from 'node:crypto';
 import { readAuth, requireOperatorPermission } from '../auth';
 import { now, type Deps } from '../deps';
@@ -51,7 +52,10 @@ export function registerOperatorAdmin(app: Hono, deps: Deps): void {
         ? Promise.resolve(deps.ai.registry.isApprovedForProduction(deps.ai.candidateModelId))
         : Promise.resolve(false),
     ]);
-    const evalStats = await deps.operator.evalRunStats();
+    const [evalStats, aiUsage] = await Promise.all([
+      deps.operator.evalRunStats(),
+      deps.aiUsage.summary(),
+    ]);
     // Families with learning currently active by entitlement (billing posture).
     const learningActiveFamilies = Object.entries(entitlements).reduce(
       (sum, [state, n]) => sum + (learningActive(state as EntitlementState) ? n : 0),
@@ -72,7 +76,36 @@ export function registerOperatorAdmin(app: Hono, deps: Deps): void {
         candidateModelId: deps.ai.candidateModelId,
         anyModelApprovedForProduction: ai,
         evalRuns: evalStats.count,
+        // AI-020: usage/cost observed alongside the eval outcomes above. Cost is
+        // a DRAFT estimate from an unapproved per-unit rate, never a final figure.
+        usage: {
+          events: aiUsage.events,
+          totalUnits: aiUsage.totalUnits,
+          estimatedCostDraft: estimateCost(aiUsage.totalUnits),
+        },
       },
+    });
+  });
+
+  // AI usage/cost drill-down (AI-013): by model / capability / provider. Pre-G2
+  // the source is the synthetic eval path (no family/learner/session dimension
+  // yet — those populate when a model is approved for child routing at G2).
+  app.get('/operator/ai-usage', async (c) => {
+    requireOperatorPermission(auth(c), 'operator:read');
+    const [summary, byModel, byCapability, byProvider] = await Promise.all([
+      deps.aiUsage.summary(),
+      deps.aiUsage.breakdown('model'),
+      deps.aiUsage.breakdown('capability'),
+      deps.aiUsage.breakdown('provider'),
+    ]);
+    const withCost = (rows: { key: string; events: number; units: number }[]) =>
+      rows.map((r) => ({ ...r, estimatedCostDraft: estimateCost(r.units) }));
+    return c.json({
+      summary: { ...summary, estimatedCostDraft: estimateCost(summary.totalUnits) },
+      byModel: withCost(byModel),
+      byCapability: withCost(byCapability),
+      byProvider: withCost(byProvider),
+      note: 'cost is a DRAFT estimate (unapproved per-unit rate, ER-01/NFR-14)',
     });
   });
 

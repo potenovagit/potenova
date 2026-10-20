@@ -1608,6 +1608,10 @@ function AdminView() {
               <div className="stat-k">Billing holds</div>
               <div className="stat-v">{metrics.billing.holds}</div>
             </div>
+            <div className="statcard">
+              <div className="stat-k">AI token units (eval)</div>
+              <div className="stat-v">{metrics.ai.usage.totalUnits}</div>
+            </div>
           </div>
 
           <h2>Account suspend / reactivate</h2>
