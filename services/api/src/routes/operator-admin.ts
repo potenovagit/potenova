@@ -1,6 +1,8 @@
 import type { Context, Hono } from 'hono';
 import { DomainError } from '@potenova/contracts';
 import { hashIdpSubject, isOperatorRole } from '@potenova/identity';
+import { learningActive, type EntitlementState } from '@potenova/billing';
+import { randomUUID } from 'node:crypto';
 import { readAuth, requireOperatorPermission } from '../auth';
 import { now, type Deps } from '../deps';
 
@@ -24,21 +26,56 @@ export function registerOperatorAdmin(app: Hono, deps: Deps): void {
 
   app.get('/operator/metrics', async (c) => {
     requireOperatorPermission(auth(c), 'operator:read');
-    const [identity, sessions] = await Promise.all([
-      deps.identity.counts(),
-      deps.session.sessionCounts(),
-    ]);
+    const [identity, byStatus, sessions, entitlements, disabledCaps, pendingDA, pendingNotes, ai] =
+      await Promise.all([
+        deps.identity.counts(),
+        deps.identity.accountStatusCounts(),
+        deps.session.sessionCounts(),
+        deps.billing.entitlementStateCounts(),
+        deps.operator.disabledCapabilities(),
+        deps.safety.listPendingDualAuth(),
+        deps.notifications.pendingCount(),
+        deps.ai.candidateModelId
+          ? Promise.resolve(deps.ai.registry.isApprovedForProduction(deps.ai.candidateModelId))
+          : Promise.resolve(false),
+      ]);
+    const evalStats = await deps.operator.evalRunStats();
+    // Families with learning currently active by entitlement (billing posture).
+    const learningActiveFamilies = Object.entries(entitlements).reduce(
+      (sum, [state, n]) => sum + (learningActive(state as EntitlementState) ? n : 0),
+      0,
+    );
     return c.json({
       asOf: now(),
-      accounts: identity, // { families, guardians, learners }
+      accounts: { ...identity, byStatus }, // { families, guardians, learners, byStatus }
       sessions, // { total, active }
+      billing: { entitlements, learningActiveFamilies },
+      safety: {
+        killSwitchesDisabled: disabledCaps,
+        pendingDualAuth: pendingDA.length,
+      },
+      notifications: { pending: pendingNotes },
       ai: {
         providerConfigured: deps.ai.provider !== null,
         candidateModelId: deps.ai.candidateModelId,
-        anyModelApprovedForProduction: deps.ai.candidateModelId
-          ? deps.ai.registry.isApprovedForProduction(deps.ai.candidateModelId)
-          : false,
+        anyModelApprovedForProduction: ai,
+        evalRuns: evalStats.count,
       },
+    });
+  });
+
+  // Pending notifications (the outbox a real delivery worker would drain).
+  app.get('/operator/notifications', async (c) => {
+    requireOperatorPermission(auth(c), 'operator:read');
+    const rows = await deps.notifications.listPending();
+    return c.json({
+      notifications: rows.map((r) => ({
+        notificationId: r.notificationId,
+        recipient: r.recipient,
+        familyId: r.familyId,
+        kind: r.kind,
+        createdAt: r.createdAt,
+      })),
     });
   });
 
@@ -61,6 +98,27 @@ export function registerOperatorAdmin(app: Hono, deps: Deps): void {
       expiry: null,
       at,
     });
+
+    // Tie the account-status change into the billing + notification flows via the
+    // outbox (a real worker drains it). We do NOT mutate the entitlement state
+    // machine directly — account suspension is an administrative overlay that
+    // already supersedes entitlement at the session edge, and the billing service
+    // owns its own lifecycle (it consumes the hold/resume signal). A guardian
+    // notification records the account-state change for the family.
+    const enqueue = (recipient: string, kind: string) =>
+      deps.notifications.enqueue({
+        notificationId: `ntf-${randomUUID()}`,
+        recipient,
+        familyId,
+        kind,
+        payload: JSON.stringify({ familyId, status: next, by: a.actor.actorAlias }),
+        createdAt: at,
+      });
+    await Promise.all([
+      enqueue('guardian', disabled ? 'account_suspended' : 'account_reactivated'),
+      enqueue('billing', disabled ? 'billing_hold' : 'billing_resume'),
+    ]);
+
     return c.json({ familyId, status: next });
   };
 

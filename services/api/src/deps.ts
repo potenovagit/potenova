@@ -11,6 +11,7 @@ import {
   ErasureRepository,
   RetentionRepository,
   SessionRepository,
+  NotificationRepository,
 } from '@potenova/persistence';
 import {
   AIGateway,
@@ -48,6 +49,7 @@ export interface Deps {
   readonly content: ContentRepository;
   readonly safety: SafetyRepository;
   readonly operator: OperatorRepository;
+  readonly notifications: NotificationRepository;
   readonly erasure: ErasureRepository;
   /** Retention-sweep store (distinct from `policies.retention`, the schedule). */
   readonly retentionStore: RetentionRepository;
@@ -206,6 +208,7 @@ export function buildDeps(opts: BuildDepsOptions = {}): Deps {
     content: new ContentRepository(db),
     safety: new SafetyRepository(db),
     operator: new OperatorRepository(db),
+    notifications: new NotificationRepository(db),
     erasure: new ErasureRepository(db),
     retentionStore: new RetentionRepository(db),
     session: new SessionRepository(db),

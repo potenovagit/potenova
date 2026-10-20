@@ -735,14 +735,37 @@ export const operatorStatus = () =>
 
 export interface OperatorMetrics {
   asOf: string;
-  accounts: { families: number; guardians: number; learners: number };
+  accounts: {
+    families: number;
+    guardians: number;
+    learners: number;
+    byStatus: Record<string, number>;
+  };
   sessions: { total: number; active: number };
+  billing: { entitlements: Record<string, number>; learningActiveFamilies: number };
+  safety: { killSwitchesDisabled: string[]; pendingDualAuth: number };
+  notifications: { pending: number };
   ai: {
     providerConfigured: boolean;
     candidateModelId: string | null;
     anyModelApprovedForProduction: boolean;
+    evalRuns: number;
   };
 }
+
+export interface OperatorNotification {
+  notificationId: string;
+  recipient: string;
+  familyId: string | null;
+  kind: string;
+  createdAt: string;
+}
+
+/** Pending notification outbox (operator-only, read-only). */
+export const operatorNotifications = () =>
+  call<{ notifications: OperatorNotification[] }>('/operator/notifications', {
+    headers: operatorHeaders(),
+  });
 
 /** Roll-up counts + AI posture for the admin view (operator-only, read-only). */
 export const operatorMetrics = () =>

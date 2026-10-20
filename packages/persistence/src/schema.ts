@@ -101,6 +101,18 @@ export const dualAuthRequest = pgTable('dual_auth_request', {
   decidedAt: text('decided_at'),
   expiresAt: text('expires_at').notNull(),
 });
+// Notification outbox. A durable queue of notifications a real worker drains
+// (guardian-facing messages; signals the billing service consumes). Enqueue-only
+// from the app — delivery is out of scope pre-G2 (no email/SMS provider wired).
+export const notification = pgTable('notification', {
+  notificationId: text('notification_id').primaryKey(),
+  recipient: text('recipient').notNull(),
+  familyId: text('family_id'),
+  kind: text('kind').notNull(),
+  payload: text('payload').notNull(),
+  status: text('status').notNull(),
+  createdAt: text('created_at').notNull(),
+});
 export const consentGrant = pgTable('consent_grant', {
   grantId: text('grant_id').primaryKey(),
   familyId: text('family_id').notNull(),
@@ -297,6 +309,9 @@ CREATE TABLE IF NOT EXISTS dual_auth_request (
   request_id text PRIMARY KEY, action text NOT NULL, params text NOT NULL, reason text NOT NULL,
   requested_by text NOT NULL, requested_at text NOT NULL, status text NOT NULL,
   approved_by text, decided_at text, expires_at text NOT NULL);
+CREATE TABLE IF NOT EXISTS notification (
+  notification_id text PRIMARY KEY, recipient text NOT NULL, family_id text, kind text NOT NULL,
+  payload text NOT NULL, status text NOT NULL, created_at text NOT NULL);
 CREATE TABLE IF NOT EXISTS consent_grant (
   grant_id text PRIMARY KEY, family_id text NOT NULL, purpose text NOT NULL, version text NOT NULL,
   modality text NOT NULL, state text NOT NULL, granted_at text NOT NULL, revoked_at text);

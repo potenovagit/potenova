@@ -32,6 +32,15 @@ export class BillingRepository {
     return r ?? null;
   }
 
+  /** Entitlement counts by state, for the operator billing-posture metric. */
+  async entitlementStateCounts(): Promise<Record<string, number>> {
+    const db = await this.h.ready();
+    const rows = await db.select({ state: entitlement.state }).from(entitlement);
+    const out: Record<string, number> = {};
+    for (const r of rows) out[r.state] = (out[r.state] ?? 0) + 1;
+    return out;
+  }
+
   /** Durable idempotency: returns whether this callback was newly applied. */
   async recordCallback(input: {
     channel: string;
