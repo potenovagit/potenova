@@ -12,6 +12,26 @@ import { DomainError } from '@potenova/contracts';
  */
 export const DRAFT_SESSION_COST_BUDGET = 1.0; // placeholder units — ER-01/NFR-14, NOT approved
 
+/**
+ * DRAFT per-token-unit cost — an unapproved placeholder (ER-01/NFR-14; derived
+ * from the beta), isolated here so recalibration is a one-line change. Never a
+ * final figure: estimated cost is always derived from this, never stored.
+ */
+export const DRAFT_UNIT_COST = 0.0001;
+
+/** Estimated cost for `units` tokens at the DRAFT rate. Not an approved amount. */
+export function estimateCost(units: number): number {
+  return units * DRAFT_UNIT_COST;
+}
+
+/** Whether an estimated cost exceeds a budget (AI-014 anomaly signal). */
+export function overDraftBudget(
+  estimatedCost: number,
+  budget: number = DRAFT_SESSION_COST_BUDGET,
+): boolean {
+  return estimatedCost > budget;
+}
+
 export interface CostEvent {
   readonly eventId: string;
   readonly familyAlias: string;

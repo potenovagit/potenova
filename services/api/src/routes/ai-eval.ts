@@ -8,9 +8,58 @@ import {
   DEFAULT_EVAL_SUITE,
   type Fraction,
 } from '@potenova/content';
+import {
+  assertCostPayloadClean,
+  estimateCost,
+  overDraftBudget,
+  DRAFT_SESSION_COST_BUDGET,
+} from '@potenova/ai-gateway';
+import { randomUUID } from 'node:crypto';
 import { readAuth, requireActorType, assertRegion } from '../auth';
 import { now, type Deps } from '../deps';
 import { providerSuiteRunner } from '../ai-eval-run';
+
+/**
+ * Record a privacy-safe AI usage/cost event for a candidate run and, if the
+ * DRAFT budget is exceeded, raise an operator-only cost anomaly (AI-013/AI-014).
+ * The event carries aliases + token units only — the cost guard rejects any raw
+ * child content — and nothing here ever reaches or informs a child. Cost is
+ * derived from the DRAFT rate, never stored.
+ */
+async function recordUsage(
+  deps: Deps,
+  input: { kind: string; capability: string; provider: string; model: string; units: number },
+): Promise<{ estimatedCost: number }> {
+  assertCostPayloadClean(input as unknown as Record<string, unknown>);
+  const at = now();
+  await deps.aiUsage.recordUsage({
+    eventId: `aiu-${randomUUID()}`,
+    at,
+    synthetic: true,
+    kind: input.kind,
+    capability: input.capability,
+    provider: input.provider,
+    model: input.model,
+    units: input.units,
+    familyAlias: null,
+    learnerAlias: null,
+    sessionId: null,
+  });
+  const estimatedCost = estimateCost(input.units);
+  if (overDraftBudget(estimatedCost)) {
+    // Operator-only anomaly (AI-014): emitted, never surfaced to a child.
+    await deps.safety.recordAudit({
+      approver: 'system:ai_cost_monitor',
+      reason: `ai_cost_anomaly; units=${input.units}; draftBudget=${DRAFT_SESSION_COST_BUDGET}`,
+      object: `ai_model:${input.model}`,
+      action: 'ai_cost_anomaly',
+      outcome: 'ALERT',
+      expiry: null,
+      at,
+    });
+  }
+  return { estimatedCost };
+}
 
 /**
  * AI candidate-evaluation surface (AI-003; ADR-0005/0006).
@@ -105,6 +154,15 @@ export function registerAiEval(app: Hono, deps: Deps): void {
       at: now(),
     });
 
+    // Account the real provider token usage (privacy-safe) + anomaly if over DRAFT budget.
+    const { estimatedCost } = await recordUsage(deps, {
+      kind: 'eval_single',
+      capability: 'task_generation',
+      provider: provider.id,
+      model: deps.ai.candidateModelId,
+      units: gen.units,
+    });
+
     return c.json({
       synthetic: true,
       deliveredToChild: false,
@@ -118,6 +176,7 @@ export function registerAiEval(app: Hono, deps: Deps): void {
       reasonCodes: result.reasonCodes,
       delivery: result.delivery,
       tokenUnits: gen.units,
+      estimatedCost,
     });
   });
 
@@ -159,12 +218,21 @@ export function registerAiEval(app: Hono, deps: Deps): void {
       at: now(),
     });
 
+    const { estimatedCost } = await recordUsage(deps, {
+      kind: 'eval_suite',
+      capability: 'task_generation',
+      provider: provider.id,
+      model: deps.ai.candidateModelId,
+      units: runner.getTokens(),
+    });
+
     return c.json({
       synthetic: true,
       deliveredToChild: false,
       model: provider.id,
       processingRegion: provider.region,
       tokenUnits: runner.getTokens(),
+      estimatedCost,
       report,
     });
   });

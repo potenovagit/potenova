@@ -750,6 +750,7 @@ export interface OperatorMetrics {
     candidateModelId: string | null;
     anyModelApprovedForProduction: boolean;
     evalRuns: number;
+    usage: { events: number; totalUnits: number; estimatedCostDraft: number };
   };
 }
 
