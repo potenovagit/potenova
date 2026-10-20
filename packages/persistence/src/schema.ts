@@ -77,6 +77,15 @@ export const idpDirectory = pgTable('idp_directory', {
   familyId: text('family_id').notNull(),
   linkedAt: text('linked_at').notNull(),
 });
+// Operator ↔ IdP-subject directory (SEC-013/SEC-002). Operators are PRE-REGISTERED
+// (no self-provisioning) and carry an RBAC role; the raw subject is never stored.
+export const operatorDirectory = pgTable('operator_directory', {
+  subjectHash: text('subject_hash').primaryKey(),
+  operatorId: text('operator_id').notNull(),
+  role: text('role').notNull(),
+  status: text('status').notNull(),
+  linkedAt: text('linked_at').notNull(),
+});
 export const consentGrant = pgTable('consent_grant', {
   grantId: text('grant_id').primaryKey(),
   familyId: text('family_id').notNull(),
@@ -266,6 +275,9 @@ CREATE TABLE IF NOT EXISTS learner_profile (
   age_band text NOT NULL, lifecycle_status text NOT NULL);
 CREATE TABLE IF NOT EXISTS idp_directory (
   subject_hash text PRIMARY KEY, guardian_id text NOT NULL, family_id text NOT NULL, linked_at text NOT NULL);
+CREATE TABLE IF NOT EXISTS operator_directory (
+  subject_hash text PRIMARY KEY, operator_id text NOT NULL, role text NOT NULL, status text NOT NULL,
+  linked_at text NOT NULL);
 CREATE TABLE IF NOT EXISTS consent_grant (
   grant_id text PRIMARY KEY, family_id text NOT NULL, purpose text NOT NULL, version text NOT NULL,
   modality text NOT NULL, state text NOT NULL, granted_at text NOT NULL, revoked_at text);

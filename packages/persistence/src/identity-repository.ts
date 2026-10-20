@@ -1,6 +1,13 @@
 import { eq } from 'drizzle-orm';
 import type { PotenovaDb } from './database';
-import { family, guardian, learnerProfile, consentGrant, idpDirectory } from './schema';
+import {
+  family,
+  guardian,
+  learnerProfile,
+  consentGrant,
+  idpDirectory,
+  operatorDirectory,
+} from './schema';
 
 /** Identity, family and consent persistence (WP-01). Consent is durable — the
  *  consent fence must survive restarts (no processing before a stored grant). */
@@ -40,6 +47,15 @@ export interface IdpDirectoryRow {
   subjectHash: string;
   guardianId: string;
   familyId: string;
+  linkedAt: string;
+}
+export interface OperatorDirectoryRow {
+  /** A hash of the IdP's opaque subject — the raw subject is never stored. */
+  subjectHash: string;
+  operatorId: string;
+  /** RBAC role (OperatorRole); authorization reads this, never the caller. */
+  role: string;
+  status: string;
   linkedAt: string;
 }
 
@@ -115,6 +131,30 @@ export class IdentityRepository {
       .from(idpDirectory)
       .where(eq(idpDirectory.subjectHash, subjectHash));
     return row ? { guardianId: row.guardianId, familyId: row.familyId } : null;
+  }
+
+  /** Register (or update) an operator in the directory. Operators are
+   *  pre-provisioned — never self-created on sign-in (SEC-002: no standing
+   *  access by default). The role is the RBAC role authorization reads. */
+  async saveOperator(r: OperatorDirectoryRow): Promise<void> {
+    const db = await this.h.ready();
+    await db
+      .insert(operatorDirectory)
+      .values(r)
+      .onConflictDoUpdate({
+        target: operatorDirectory.subjectHash,
+        set: { operatorId: r.operatorId, role: r.role, status: r.status },
+      });
+  }
+
+  /** Resolve the operator (id + RBAC role + status) an IdP subject maps to. */
+  async getOperatorBySubject(subjectHash: string): Promise<OperatorDirectoryRow | null> {
+    const db = await this.h.ready();
+    const [row] = await db
+      .select()
+      .from(operatorDirectory)
+      .where(eq(operatorDirectory.subjectHash, subjectHash));
+    return row ?? null;
   }
 
   async saveLearner(l: LearnerRow): Promise<void> {

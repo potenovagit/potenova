@@ -1,6 +1,6 @@
-import type { Hono } from 'hono';
+import type { Context, Hono } from 'hono';
 import { DomainError } from '@potenova/contracts';
-import { hashIdpSubject } from '@potenova/identity';
+import { hashIdpSubject, isOperatorRole, type OperatorRole } from '@potenova/identity';
 import { randomUUID } from 'node:crypto';
 import { jwtVerify, createRemoteJWKSet, type JWTPayload } from 'jose';
 import { now, type Deps } from '../deps';
@@ -10,6 +10,7 @@ import {
   verifyGuardianSession,
   STEP_UP_TTL_SECONDS,
 } from '../session-token';
+import { issueOperatorSession } from '../operator-token';
 
 /**
  * Guardian sign-in exchange (ADR-0008). The managed IdP (Entra External ID)
@@ -76,30 +77,36 @@ async function verifyEntraIdentity(token: string, v: EntraVerifier): Promise<str
 export function registerAuth(app: Hono, deps: Deps, env: NodeJS.ProcessEnv): void {
   const isProd = deps.config.environment === 'prod';
 
-  app.post('/auth/session', async (c) => {
+  /**
+   * Resolve a verified IdP subject from the request, shared by the guardian and
+   * operator sign-in exchanges. A Bearer identity token is verified against the
+   * configured Entra verifier (production shape); otherwise a synthetic
+   * `{ idpSubject }` body stands in — dev/staging only, FAIL-CLOSED in prod.
+   */
+  const resolveSubject = async (c: Context): Promise<string> => {
     const bearer = /^Bearer\s+(.+)$/i.exec(c.req.header('authorization') ?? '')?.[1];
-
-    // Resolve the verified guardian subject from whichever mode applies.
-    let subject: string;
     if (bearer) {
       const verifier = readEntraVerifier(env);
       if (!verifier)
         throw new DomainError('DEPENDENCY_UNAVAILABLE', 'identity provider is not configured');
-      subject = await verifyEntraIdentity(bearer, verifier);
-    } else {
-      // Synthetic sign-in — dev/staging only, never in production.
-      if (isProd)
-        throw new DomainError(
-          'POLICY_BLOCKED',
-          'synthetic sign-in is disabled in production; present a verified identity token',
-        );
-      const body = await c.req
-        .json<{ idpSubject?: string }>()
-        .catch(() => ({}) as { idpSubject?: string });
-      subject = typeof body.idpSubject === 'string' ? body.idpSubject.trim() : '';
-      if (!subject)
-        throw new DomainError('AUTH_REQUIRED', 'idpSubject is required for synthetic sign-in');
+      return verifyEntraIdentity(bearer, verifier);
     }
+    if (isProd)
+      throw new DomainError(
+        'POLICY_BLOCKED',
+        'synthetic sign-in is disabled in production; present a verified identity token',
+      );
+    const body = await c.req
+      .json<{ idpSubject?: string }>()
+      .catch(() => ({}) as { idpSubject?: string });
+    const subject = typeof body.idpSubject === 'string' ? body.idpSubject.trim() : '';
+    if (!subject)
+      throw new DomainError('AUTH_REQUIRED', 'idpSubject is required for synthetic sign-in');
+    return subject;
+  };
+
+  app.post('/auth/session', async (c) => {
+    const subject = await resolveSubject(c);
 
     // Resolve the subject against the persisted directory; provision on first
     // sign-in (idempotent). Guardians only; children never reach this path. The
@@ -139,6 +146,57 @@ export function registerAuth(app: Hono, deps: Deps, env: NodeJS.ProcessEnv): voi
       expiresAt,
       provisioned,
       actor: { actorType: 'guardian', guardianId, familyId, role: 'owner', stepUp: false },
+    });
+  });
+
+  // Operator sign-in exchange (SEC-013/SEC-002). Mirrors the guardian flow, but
+  // operators are NOT self-provisioned — the verified subject must already be in
+  // the operator directory (an unknown or deactivated subject is refused), and
+  // the RBAC role comes from that directory, never the caller. One break-glass
+  // exception: a configured OPERATOR_BOOTSTRAP_SUBJECT is provisioned as `admin`
+  // on first sign-in (dev/staging only) so a fresh deployment has a first admin.
+  app.post('/auth/operator/session', async (c) => {
+    const subject = await resolveSubject(c);
+    const subjectHash = hashIdpSubject(subject);
+
+    let record = await deps.identity.getOperatorBySubject(subjectHash);
+    if (!record) {
+      const bootstrap = (env.OPERATOR_BOOTSTRAP_SUBJECT ?? '').trim();
+      if (!isProd && bootstrap && bootstrap === subject) {
+        const operatorId = `opr-${randomUUID()}`;
+        await deps.identity.saveOperator({
+          subjectHash,
+          operatorId,
+          role: 'admin',
+          status: 'active',
+          linkedAt: now(),
+        });
+        record = { subjectHash, operatorId, role: 'admin', status: 'active', linkedAt: now() };
+      } else {
+        // Standing access is denied by default — only a pre-registered operator
+        // may sign in (SEC-002). No self-provisioning.
+        throw new DomainError('FORBIDDEN_ROLE', 'not a registered operator');
+      }
+    }
+    if (record.status !== 'active')
+      throw new DomainError('FORBIDDEN_ROLE', 'operator account is not active');
+    const role: string = record.role;
+    if (!isOperatorRole(role))
+      throw new DomainError('POLICY_BLOCKED', 'operator has no valid role');
+    const operatorRole: OperatorRole = role;
+
+    const cfg = readSessionConfig(env, isProd);
+    const { token, expiresAt } = await issueOperatorSession(
+      { operatorId: record.operatorId, role: operatorRole, region: deps.config.primaryRegion },
+      cfg,
+      Date.parse(now()),
+    );
+
+    return c.json({
+      token,
+      tokenType: 'Bearer',
+      expiresAt,
+      actor: { actorType: 'operator', operatorId: record.operatorId, role: record.role },
     });
   });
 

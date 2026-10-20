@@ -668,7 +668,14 @@ export const resumeDiagnosticRun = (familyId: string, learnerId: string, runId: 
 // ---- Operator / QA status ---------------------------------------------------
 
 export function operatorHeaders(): Record<string, string> {
-  return { 'x-actor-type': 'operator', 'x-actor-alias': 'web-operator' };
+  // Dev-mode operator identity. The RBAC role drives least-privilege checks
+  // (SEC-013); the demo console runs as an admin operator. In jwt mode the role
+  // instead comes from the verified operator session token.
+  return {
+    'x-actor-type': 'operator',
+    'x-actor-alias': 'web-operator',
+    'x-operator-role': 'admin',
+  };
 }
 
 export interface OperatorStatus {

@@ -10,7 +10,11 @@ import { StubGenerativeProvider } from '@potenova/ai-gateway';
  */
 
 const env = { APP_ENV: 'staging', PRIMARY_REGION: 'ca-central', DR_REGION: 'ca-east' };
-const operator = { 'x-actor-type': 'operator', 'x-actor-alias': 'op1' };
+const operator = {
+  'x-actor-type': 'operator',
+  'x-actor-alias': 'op1',
+  'x-operator-role': 'read_only',
+};
 const guardian = { 'x-actor-type': 'guardian', 'x-actor-alias': 'g1', 'x-family-alias': 'fam1' };
 
 let dbs: PotenovaDb[] = [];
