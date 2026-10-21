@@ -1,0 +1,244 @@
+import type { AssistanceBand, EvidenceMode } from './evidence';
+
+/**
+ * Conceptual-mastery evaluation for the Grades 3–5 fractions beta (ER-03 candidate
+ * policy v0.2; educator Stage-1 Annex A/B/E).
+ *
+ * ============================================================================
+ *  EVIDENCE REQUIRED / CANDIDATE POLICY. The thresholds here are the educator's
+ *  candidate values, approved only as a candidate policy subject to Stage-2
+ *  calibration — NOT empirically validated child-release rules and NOT an
+ *  independent Ontario-certified educator sign-off. Synthetic/non-prod only.
+ * ============================================================================
+ *
+ * What this adds over the global DRAFT policy: mastery of a core assessed skill
+ * (equivalence, comparison) is derived from FOUR distinct evidence DIMENSIONS,
+ * not a single correct answer:
+ *   - model     — valid equal-partition representation of the same whole
+ *   - value     — the two fractions are the same quantity (the bare answer)
+ *   - reasoning — WHY they are equal (chosen among misconception-based options)
+ *   - transfer  — an uncoached new item, in a different family, after reasoning
+ *
+ * The property the educator asked to see demonstrated: a child who answers the
+ * `value` correctly but the `reasoning` WRONG does NOT reach INDEPENDENT — a
+ * correct final answer is not, by itself, evidence of conceptual understanding.
+ * The evaluator reports WHICH requirements are unmet so the behaviour is legible.
+ *
+ * Only unaided (A0 / A1-neutral) evidence in an independent/transfer check counts;
+ * assisted (A2+) and teaching-mode work never reach INDEPENDENT (AT-09). Counting
+ * is on DISTINCT item families across ≥2 sessions and ≥2 representations, so a
+ * repeated template or a single sitting cannot satisfy a dimension.
+ */
+
+export const EVIDENCE_DIMENSIONS = ['model', 'value', 'reasoning', 'transfer'] as const;
+export type EvidenceDimension = (typeof EVIDENCE_DIMENSIONS)[number];
+
+/** One dimension-tagged observation of a child's work (slice-local; the production
+ *  ledger event is a superset — see evidence.ts). */
+export interface ConceptualEvidence {
+  readonly eventId: string;
+  readonly skillId: string;
+  readonly gradeTarget: number;
+  readonly dimension: EvidenceDimension;
+  readonly correct: boolean;
+  readonly assistanceBand: AssistanceBand;
+  readonly mode: EvidenceMode;
+  readonly representation: string;
+  /** Canonical item-family id — distinct families prevent double-counting a template. */
+  readonly itemFamilyId: string;
+  readonly observedAt: string; // ISO 8601
+}
+
+export interface ConceptualSkillPolicy {
+  readonly skillId: string;
+  readonly role: 'assessed-core' | 'on-ramp';
+  /** Minimum distinct-family eligible correct events overall. */
+  readonly minIndependent: number;
+  /** Required eligible correct events per dimension (distinct families). */
+  readonly dimensionQuota: Partial<Record<EvidenceDimension, number>>;
+  readonly minSessions: number;
+  readonly minRepresentations: number;
+  readonly retentionDelayHours: number;
+}
+
+/** Bands that may count toward independence (A1 only when it is strictly
+ *  non-cognitive; until the ledger records that distinguishably, treat A1 with
+ *  care — see Stage-1 Annex C). A2+ never count. */
+export const MASTERY_ELIGIBLE_BANDS: readonly AssistanceBand[] = ['A0', 'A1'];
+/** Modes whose correct events may count toward independence. */
+export const MASTERY_COUNTED_MODES: readonly EvidenceMode[] = [
+  'independent_check',
+  'transfer_check',
+];
+
+export interface ER03CandidatePolicy {
+  readonly policyVersion: string;
+  readonly approved: false;
+  readonly skills: Readonly<Record<string, ConceptualSkillPolicy>>;
+}
+
+/** ER-03 candidate policy v0.2 (educator Annex E). CANDIDATE — not approved. */
+export const ER03_CANDIDATE_V02: ER03CandidatePolicy = {
+  policyVersion: 'er03-fractions-g3g5-CANDIDATE-v0.2',
+  approved: false,
+  skills: {
+    'SK-FR-partition': {
+      skillId: 'SK-FR-partition',
+      role: 'on-ramp',
+      minIndependent: 4,
+      dimensionQuota: { model: 2, value: 2 },
+      minSessions: 1,
+      minRepresentations: 2,
+      retentionDelayHours: 48,
+    },
+    'SK-FR-unit': {
+      skillId: 'SK-FR-unit',
+      role: 'on-ramp',
+      minIndependent: 3,
+      dimensionQuota: { model: 1, value: 2 },
+      minSessions: 1,
+      minRepresentations: 2,
+      retentionDelayHours: 48,
+    },
+    'SK-FR-nonunit': {
+      skillId: 'SK-FR-nonunit',
+      role: 'on-ramp',
+      minIndependent: 4,
+      dimensionQuota: { model: 2, value: 2 },
+      minSessions: 1,
+      minRepresentations: 2,
+      retentionDelayHours: 72,
+    },
+    'SK-FR-equiv': {
+      skillId: 'SK-FR-equiv',
+      role: 'assessed-core',
+      minIndependent: 5,
+      dimensionQuota: { model: 1, value: 2, reasoning: 1, transfer: 1 },
+      minSessions: 2,
+      minRepresentations: 2,
+      retentionDelayHours: 168,
+    },
+    'SK-FR-compare': {
+      skillId: 'SK-FR-compare',
+      role: 'assessed-core',
+      minIndependent: 5,
+      dimensionQuota: { model: 1, value: 2, reasoning: 1, transfer: 1 },
+      minSessions: 2,
+      minRepresentations: 2,
+      retentionDelayHours: 168,
+    },
+  },
+};
+
+export type ConceptualState = 'UNKNOWN' | 'NOT_YET_DEMONSTRATED' | 'INDEPENDENT' | 'RETAINED';
+
+export interface DimensionProgress {
+  readonly dimension: EvidenceDimension;
+  readonly have: number;
+  readonly need: number;
+  readonly met: boolean;
+}
+
+export interface ConceptualMasteryResult {
+  readonly skillId: string;
+  readonly policyVersion: string;
+  readonly state: ConceptualState;
+  readonly eligibleCount: number;
+  readonly sessions: number;
+  readonly representations: number;
+  readonly dimensions: readonly DimensionProgress[];
+  /** Human-readable reasons a skill is not yet INDEPENDENT (empty when it is). */
+  readonly unmet: readonly string[];
+}
+
+const isEligible = (e: ConceptualEvidence): boolean =>
+  e.correct &&
+  MASTERY_ELIGIBLE_BANDS.includes(e.assistanceBand) &&
+  MASTERY_COUNTED_MODES.includes(e.mode);
+
+const dayOf = (iso: string): string => iso.slice(0, 10);
+
+/**
+ * Evaluate conceptual mastery for one skill from its evidence. Pure and
+ * deterministic. Greedily assigns each eligible event to at most one dimension
+ * quota, counting only DISTINCT item families per dimension so a repeated
+ * template cannot satisfy two slots.
+ */
+export function evaluateConceptualMastery(
+  events: readonly ConceptualEvidence[],
+  policy: ConceptualSkillPolicy,
+): ConceptualMasteryResult {
+  const mine = events.filter((e) => e.skillId === policy.skillId);
+  const eligible = mine.filter(isEligible);
+
+  // Count distinct-family eligible correct events per dimension.
+  const usedFamilies = new Map<EvidenceDimension, Set<string>>();
+  const countedEvents: ConceptualEvidence[] = [];
+  for (const dim of EVIDENCE_DIMENSIONS) {
+    const need = policy.dimensionQuota[dim] ?? 0;
+    if (need === 0) continue;
+    const seen = new Set<string>();
+    for (const e of eligible) {
+      if (e.dimension !== dim) continue;
+      if (seen.has(e.itemFamilyId)) continue;
+      seen.add(e.itemFamilyId);
+      countedEvents.push(e);
+    }
+    usedFamilies.set(dim, seen);
+  }
+
+  const dimensions: DimensionProgress[] = EVIDENCE_DIMENSIONS.filter(
+    (d) => (policy.dimensionQuota[d] ?? 0) > 0,
+  ).map((d) => {
+    const need = policy.dimensionQuota[d] ?? 0;
+    const have = usedFamilies.get(d)?.size ?? 0;
+    return { dimension: d, have, need, met: have >= need };
+  });
+
+  const sessions = new Set(countedEvents.map((e) => dayOf(e.observedAt))).size;
+  const representations = new Set(countedEvents.map((e) => e.representation)).size;
+  const eligibleFamilies = new Set(eligible.map((e) => e.itemFamilyId)).size;
+
+  const unmet: string[] = [];
+  for (const d of dimensions) {
+    if (!d.met) unmet.push(`${d.dimension}: ${d.have}/${d.need} independent demonstrations`);
+  }
+  if (eligibleFamilies < policy.minIndependent)
+    unmet.push(
+      `only ${eligibleFamilies}/${policy.minIndependent} distinct independent item families`,
+    );
+  if (sessions < policy.minSessions)
+    unmet.push(`only ${sessions}/${policy.minSessions} assessment sessions`);
+  if (representations < policy.minRepresentations)
+    unmet.push(`only ${representations}/${policy.minRepresentations} representations`);
+
+  let state: ConceptualState;
+  if (mine.length === 0) state = 'UNKNOWN';
+  else if (unmet.length > 0) state = 'NOT_YET_DEMONSTRATED';
+  else state = hasRetention(eligible, policy) ? 'RETAINED' : 'INDEPENDENT';
+
+  return {
+    skillId: policy.skillId,
+    policyVersion: ER03_CANDIDATE_V02.policyVersion,
+    state,
+    eligibleCount: eligibleFamilies,
+    sessions,
+    representations,
+    dimensions,
+    unmet,
+  };
+}
+
+/** RETAINED needs one additional eligible correct event at least `retentionDelayHours`
+ *  after the LATEST of the events that first satisfied the requirements. */
+function hasRetention(
+  eligible: readonly ConceptualEvidence[],
+  policy: ConceptualSkillPolicy,
+): boolean {
+  if (eligible.length === 0) return false;
+  const times = eligible.map((e) => Date.parse(e.observedAt)).sort((a, b) => a - b);
+  // Qualifying window = all but the latest; a later event beyond the delay is retention.
+  const earliestQualifier = times[0]!;
+  const delayMs = policy.retentionDelayHours * 3_600_000;
+  return times.some((t) => t - earliestQualifier >= delayMs);
+}
