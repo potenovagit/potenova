@@ -244,7 +244,13 @@ function buildTask(
         .sort((a, b) => trueRelationSign(fractions[a]!, fractions[b]!));
       return {
         task: { kind: 'fraction_order', fractions, claimedOrder },
-        dedupeKey: `o:${fractions.map(fracKey).join(',')}`,
+        // Canonical (value-sorted) set key, so permutations of the SAME three
+        // fractions are one problem, not several (educator: permutations counted
+        // as distinct strings).
+        dedupeKey: `o:${[...fractions]
+          .sort((a, b) => trueRelationSign(a, b))
+          .map(fracKey)
+          .join(',')}`,
       };
     }
     default:

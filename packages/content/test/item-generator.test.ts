@@ -172,6 +172,21 @@ describe('item generator', () => {
     expect(rels.has('eq')).toBe(true);
   });
 
+  it('order items are distinct as fraction SETS, not just string permutations', () => {
+    const items = generateItems('SK-FR-order', 15, 6, 'stretch').filter(
+      (i) => i.task.kind === 'fraction_order',
+    );
+    const sets = items.map((i) =>
+      i.task.kind === 'fraction_order'
+        ? i.task.fractions
+            .map((x) => x.numerator / x.denominator)
+            .sort((a, b) => a - b)
+            .join('|')
+        : '',
+    );
+    expect(new Set(sets).size).toBe(items.length);
+  });
+
   it('ordering includes unlike-denominator problems (not only like denominators)', () => {
     const items = [
       ...generateItems('SK-FR-order', 20, 7, 'core'),
