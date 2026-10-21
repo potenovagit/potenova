@@ -210,6 +210,11 @@ interface Requirements {
 function checkRequirements(
   eligible: readonly ConceptualEvidence[],
   policy: ConceptualSkillPolicy,
+  /** Item families the learner has met in ANY non-transfer evidence (any
+   *  correctness/mode). A transfer demonstration must be a genuinely NEW item,
+   *  so a transfer whose family appears here does not count — distinct-dimension
+   *  family counting alone does not guarantee this (educator edge case 1). */
+  nonTransferFamilies: ReadonlySet<string> = new Set(),
 ): Requirements {
   const usedFamilies = new Map<EvidenceDimension, Set<string>>();
   const countedEvents: ConceptualEvidence[] = [];
@@ -221,11 +226,15 @@ function checkRequirements(
       if (e.dimension !== dim) continue;
       // Transfer evidence must be a genuine TRANSFER check — a novel uncoached
       // item — regardless of when reasoning was demonstrated. There is NO
-      // temporal-ordering gate: the educator's E4/R6 decision keeps sequencing
-      // as an instructional rule, not a mastery gate, so a correct transfer is
-      // not excluded by scheduling. Novelty across dimensions is enforced by the
-      // distinct-family count (minIndependent = sum of quotas).
-      if (dim === 'transfer' && e.mode !== 'transfer_check') continue;
+      // temporal-ordering gate (educator E4/R6: sequencing is an instructional
+      // rule, not a mastery gate). Novelty is enforced explicitly: a transfer
+      // must be in transfer_check mode AND its family must not have been used by
+      // any non-transfer evidence (educator edge case 1).
+      if (
+        dim === 'transfer' &&
+        (e.mode !== 'transfer_check' || nonTransferFamilies.has(e.itemFamilyId))
+      )
+        continue;
       if (seen.has(e.itemFamilyId)) continue;
       seen.add(e.itemFamilyId);
       countedEvents.push(e);
@@ -276,10 +285,11 @@ function checkRequirements(
 function independenceAchievedAt(
   eligible: readonly ConceptualEvidence[],
   policy: ConceptualSkillPolicy,
+  nonTransferFamilies: ReadonlySet<string>,
 ): number | null {
   const chron = [...eligible].sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt));
   for (let i = 0; i < chron.length; i++) {
-    if (checkRequirements(chron.slice(0, i + 1), policy).met)
+    if (checkRequirements(chron.slice(0, i + 1), policy, nonTransferFamilies).met)
       return Date.parse(chron[i]!.observedAt);
   }
   return null;
@@ -309,35 +319,39 @@ export function evaluateConceptualMastery(
   );
   const eligible = mine.filter(isEligible);
 
-  const req = checkRequirements(eligible, policy);
+  // Families the learner has met in any NON-transfer evidence (any correctness
+  // or mode) — a transfer item sharing one of these is not novel (edge case 1).
+  const nonTransferFamilies = new Set(
+    mine.filter((e) => e.dimension !== 'transfer').map((e) => e.itemFamilyId),
+  );
+
+  const req = checkRequirements(eligible, policy, nonTransferFamilies);
 
   // The moment independence was first achieved, if ever. The retention window is
   // measured from HERE, not from first evidence (educator Stage-1 correction).
-  const anchor = req.met ? independenceAchievedAt(eligible, policy) : null;
+  const anchor = req.met ? independenceAchievedAt(eligible, policy, nonTransferFamilies) : null;
 
   let state: ConceptualState;
   if (mine.length === 0) state = 'UNKNOWN';
   else if (!req.met) state = 'NOT_YET_DEMONSTRATED';
   else {
-    // Families seen up to and including independence — a delayed check on one of
-    // these is a repeat, not fresh retention evidence (educator E3).
-    const seenByIndependence = new Set(
-      eligible
-        .filter((e) => Date.parse(e.observedAt) <= (anchor ?? Infinity))
-        .map((e) => e.itemFamilyId),
-    );
     // RETAINED needs a delayed unaided check (independent/transfer/retention
     // mode; retention_check counts only here, R3) at least the delay after
-    // independence AND from a family NOT already seen by independence (E3).
+    // independence, on a FRESH family. Freshness is measured against ALL prior
+    // exposure to that family — any earlier encounter, including incorrect or
+    // assisted/teaching ones, not only successful mastery evidence (educator
+    // edge case 2 / E3).
     const delayMs = policy.retentionDelayHours * 3_600_000;
     const retained =
       anchor !== null &&
-      mine
-        .filter(isRetentionEligible)
-        .some(
-          (e) =>
-            Date.parse(e.observedAt) >= anchor + delayMs && !seenByIndependence.has(e.itemFamilyId),
+      mine.filter(isRetentionEligible).some((e) => {
+        const t = Date.parse(e.observedAt);
+        if (t < anchor + delayMs) return false;
+        const priorExposure = mine.some(
+          (o) => o !== e && o.itemFamilyId === e.itemFamilyId && Date.parse(o.observedAt) < t,
         );
+        return !priorExposure;
+      });
     state = retained ? 'RETAINED' : 'INDEPENDENT';
   }
 

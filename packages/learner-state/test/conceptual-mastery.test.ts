@@ -285,4 +285,55 @@ describe('conceptual mastery (ER-03 candidate v0.2)', () => {
     expect(ungated.state).toBe('INDEPENDENT');
     expect(ungated.gradeTarget).toBeNull();
   });
+
+  // Edge case 1 — a transfer that REUSES a non-transfer family is not novel, so
+  // the transfer gate is not satisfied even though the total family count is.
+  it('a transfer reusing a value family does NOT satisfy the transfer gate', () => {
+    const events: ConceptualEvidence[] = [
+      ev('model', true, { rep: 'area-model', family: 'm1', day: 1 }),
+      ev('value', true, { rep: 'symbolic', family: 'v1', day: 1 }),
+      ev('value', true, { rep: 'area-model', family: 'v2', day: 2 }),
+      ev('value', true, { rep: 'number-line', family: 'v3', day: 2 }), // 3rd value family
+      ev('reasoning', true, { rep: 'symbolic', family: 'r1', day: 2 }),
+      // transfer item reuses value family v1 — not a novel item
+      ev('transfer', true, { mode: 'transfer_check', rep: 'number-line', family: 'v1', day: 2 }),
+    ];
+    const r = evaluateConceptualMastery(events, EQUIV);
+    expect(r.state).toBe('NOT_YET_DEMONSTRATED');
+    expect(r.dimensions.find((d) => d.dimension === 'transfer')!.met).toBe(false);
+    // a genuinely novel transfer family DOES satisfy it
+    const withNovel = [
+      ...events.slice(0, 5),
+      ev('transfer', true, { mode: 'transfer_check', rep: 'number-line', family: 'tNEW', day: 2 }),
+    ];
+    expect(evaluateConceptualMastery(withNovel, EQUIV).state).toBe('INDEPENDENT');
+  });
+
+  // Edge case 2 — retention freshness is measured against ALL prior exposure,
+  // including an earlier teaching/assisted encounter, not only mastery evidence.
+  it('a delayed check on a family first seen in TEACHING is not fresh retention', () => {
+    const teachingExposure: ConceptualEvidence = {
+      eventId: 'teach-fam',
+      skillId: 'SK-FR-equiv',
+      gradeTarget: 5,
+      dimension: 'value',
+      correct: true,
+      assistanceBand: 'A0',
+      mode: 'teaching', // not eligible, but it IS prior exposure
+      representation: 'area-model',
+      itemFamilyId: 'fam-ret',
+      observedAt: '2026-10-01T09:00:00Z',
+    };
+    const delayedOnTaught: ConceptualEvidence = {
+      ...teachingExposure,
+      eventId: 'ret-taught',
+      mode: 'retention_check',
+      observedAt: '2026-10-09T10:00:00Z', // > 168h after independence (day 2)
+    };
+    const r = evaluateConceptualMastery(
+      [teachingExposure, ...fullBundle(), delayedOnTaught],
+      EQUIV,
+    );
+    expect(r.state).toBe('INDEPENDENT'); // NOT retained — family was seen in teaching
+  });
 });
