@@ -1,0 +1,120 @@
+import { describe, it, expect } from 'vitest';
+import {
+  evaluateConceptualMastery,
+  ER03_CANDIDATE_V02,
+  type ConceptualEvidence,
+  type EvidenceDimension,
+} from '@potenova/learner-state';
+
+/**
+ * Conceptual-mastery gate (ER-03 candidate v0.2) — the behaviours the educator
+ * asked to see demonstrated. CANDIDATE policy; synthetic only.
+ */
+
+const EQUIV = ER03_CANDIDATE_V02.skills['SK-FR-equiv']!;
+
+let seq = 0;
+function ev(
+  dimension: EvidenceDimension,
+  correct: boolean,
+  o: {
+    band?: 'A0' | 'A1' | 'A4';
+    mode?: 'independent_check' | 'transfer_check' | 'teaching';
+    rep?: string;
+    family?: string;
+    day?: number;
+  } = {},
+): ConceptualEvidence {
+  seq += 1;
+  return {
+    eventId: `e${seq}`,
+    skillId: 'SK-FR-equiv',
+    gradeTarget: 5,
+    dimension,
+    correct,
+    assistanceBand: o.band ?? 'A0',
+    mode: o.mode ?? 'independent_check',
+    representation: o.rep ?? 'area-model',
+    itemFamilyId: o.family ?? `fam-${dimension}-${seq}`,
+    observedAt: `2026-10-${String(o.day ?? 1).padStart(2, '0')}T10:00:00Z`,
+  };
+}
+
+/** A complete, independent, well-diversified bundle across 2 sessions and 3 reps. */
+function fullBundle(): ConceptualEvidence[] {
+  return [
+    ev('model', true, { rep: 'area-model', family: 'm1', day: 1 }),
+    ev('value', true, { rep: 'symbolic', family: 'v1', day: 1 }),
+    ev('value', true, { rep: 'area-model', family: 'v2', day: 2 }),
+    ev('reasoning', true, { rep: 'symbolic', family: 'r1', day: 2 }),
+    ev('transfer', true, { mode: 'transfer_check', rep: 'number-line', family: 't1', day: 2 }),
+  ];
+}
+
+describe('conceptual mastery (ER-03 candidate v0.2)', () => {
+  it('reaches INDEPENDENT on a complete, diversified, unaided bundle', () => {
+    const r = evaluateConceptualMastery(fullBundle(), EQUIV);
+    expect(r.state).toBe('INDEPENDENT');
+    expect(r.unmet).toHaveLength(0);
+    expect(r.sessions).toBeGreaterThanOrEqual(2);
+    expect(r.representations).toBeGreaterThanOrEqual(2);
+  });
+
+  // The behaviour the educator specifically wanted demonstrated.
+  it('does NOT reach INDEPENDENT when VALUE is right but REASONING is wrong', () => {
+    const events: ConceptualEvidence[] = [
+      ev('model', true, { rep: 'area-model', family: 'm1', day: 1 }),
+      ev('value', true, { rep: 'symbolic', family: 'v1', day: 1 }),
+      ev('value', true, { rep: 'area-model', family: 'v2', day: 2 }),
+      ev('reasoning', false, { rep: 'symbolic', family: 'r1', day: 2 }), // picked a misconception distractor
+      ev('transfer', true, { mode: 'transfer_check', rep: 'number-line', family: 't1', day: 2 }),
+    ];
+    const r = evaluateConceptualMastery(events, EQUIV);
+    expect(r.state).toBe('NOT_YET_DEMONSTRATED');
+    expect(r.unmet.some((u) => u.startsWith('reasoning'))).toBe(true);
+    const reasoning = r.dimensions.find((d) => d.dimension === 'reasoning')!;
+    expect(reasoning.have).toBe(0);
+    expect(reasoning.met).toBe(false);
+  });
+
+  it('does NOT count assisted (A4) success toward INDEPENDENT (AT-09)', () => {
+    const assisted = fullBundle().map((e) => ({ ...e, assistanceBand: 'A4' as const }));
+    const r = evaluateConceptualMastery(assisted, EQUIV);
+    expect(r.state).toBe('NOT_YET_DEMONSTRATED');
+    expect(r.eligibleCount).toBe(0);
+  });
+
+  it('does NOT reach INDEPENDENT from a single session', () => {
+    const oneDay = fullBundle().map((e) => ({ ...e, observedAt: '2026-10-01T10:00:00Z' }));
+    const r = evaluateConceptualMastery(oneDay, EQUIV);
+    expect(r.state).toBe('NOT_YET_DEMONSTRATED');
+    expect(r.unmet.some((u) => u.includes('session'))).toBe(true);
+  });
+
+  it('a repeated template cannot satisfy two value slots (distinct families required)', () => {
+    const events: ConceptualEvidence[] = [
+      ev('model', true, { rep: 'area-model', family: 'm1', day: 1 }),
+      ev('value', true, { rep: 'symbolic', family: 'SAME', day: 1 }),
+      ev('value', true, { rep: 'area-model', family: 'SAME', day: 2 }), // same family — not a 2nd demonstration
+      ev('reasoning', true, { rep: 'symbolic', family: 'r1', day: 2 }),
+      ev('transfer', true, { mode: 'transfer_check', rep: 'number-line', family: 't1', day: 2 }),
+    ];
+    const r = evaluateConceptualMastery(events, EQUIV);
+    expect(r.state).toBe('NOT_YET_DEMONSTRATED');
+    const value = r.dimensions.find((d) => d.dimension === 'value')!;
+    expect(value.have).toBe(1); // deduped to one family
+  });
+
+  it('reaches RETAINED when an independent check lands after the retention delay', () => {
+    const events = [
+      ...fullBundle(),
+      ev('value', true, { rep: 'number-line', family: 'v3', day: 12 }), // > 7 days later
+    ];
+    const r = evaluateConceptualMastery(events, EQUIV);
+    expect(r.state).toBe('RETAINED');
+  });
+
+  it('is UNKNOWN with no evidence', () => {
+    expect(evaluateConceptualMastery([], EQUIV).state).toBe('UNKNOWN');
+  });
+});
