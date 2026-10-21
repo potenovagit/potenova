@@ -58,6 +58,14 @@ describe('conceptual mastery (ER-03 candidate v0.2)', () => {
     expect(r.unmet).toHaveLength(0);
     expect(r.sessions).toBeGreaterThanOrEqual(2);
     expect(r.representations).toBeGreaterThanOrEqual(2);
+    // the anchor is the moment the LAST requirement was met — day 2, not day 1
+    expect(r.independenceAt).toBe('2026-10-02T10:00:00.000Z');
+  });
+
+  it('independenceAt is null when mastery is not demonstrated', () => {
+    expect(evaluateConceptualMastery([], EQUIV).independenceAt).toBeNull();
+    const oneDay = fullBundle().map((e) => ({ ...e, observedAt: '2026-10-01T10:00:00Z' }));
+    expect(evaluateConceptualMastery(oneDay, EQUIV).independenceAt).toBeNull();
   });
 
   // The behaviour the educator specifically wanted demonstrated.
@@ -138,8 +146,8 @@ describe('conceptual mastery (ER-03 candidate v0.2)', () => {
     expect(r.state).toBe('RETAINED');
   });
 
-  // Retention boundary, timestamp-level. The bundle's earliest event is
-  // 2026-10-01T10:00:00Z; the retention delay is 168h (7 days).
+  // Retention is anchored to INDEPENDENCE. The bundle first satisfies all
+  // requirements on day 2 (2026-10-02T10:00:00Z); the delay is 168h (7 days).
   const retentionEvent = (iso: string): ConceptualEvidence => ({
     eventId: 'ret',
     skillId: 'SK-FR-equiv',
@@ -153,17 +161,28 @@ describe('conceptual mastery (ER-03 candidate v0.2)', () => {
     observedAt: iso,
   });
 
-  it('retention boundary: an independent check 1h SHORT of 168h stays INDEPENDENT', () => {
+  // Educator correction: the window starts at independence, not first evidence.
+  it('retention anchors to INDEPENDENCE, not first evidence', () => {
+    // A check 168h after the FIRST event (2026-10-08) is only 144h after
+    // independence (2026-10-02) — it must NOT count as retained.
     const r = evaluateConceptualMastery(
-      [...fullBundle(), retentionEvent('2026-10-08T09:00:00Z')], // 167h after earliest
+      [...fullBundle(), retentionEvent('2026-10-08T10:00:00Z')],
       EQUIV,
     );
     expect(r.state).toBe('INDEPENDENT');
   });
 
-  it('retention boundary: an independent check AT 168h becomes RETAINED', () => {
+  it('retention boundary: a check 1h SHORT of 168h after independence stays INDEPENDENT', () => {
     const r = evaluateConceptualMastery(
-      [...fullBundle(), retentionEvent('2026-10-08T10:00:00Z')], // exactly 168h after earliest
+      [...fullBundle(), retentionEvent('2026-10-09T09:00:00Z')], // 167h after independence
+      EQUIV,
+    );
+    expect(r.state).toBe('INDEPENDENT');
+  });
+
+  it('retention boundary: a check AT 168h after independence becomes RETAINED', () => {
+    const r = evaluateConceptualMastery(
+      [...fullBundle(), retentionEvent('2026-10-09T10:00:00Z')], // exactly 168h after independence
       EQUIV,
     );
     expect(r.state).toBe('RETAINED');

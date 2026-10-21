@@ -46,6 +46,10 @@ export interface ConceptualEvidence {
   readonly representation: string;
   /** Canonical item-family id — distinct families prevent double-counting a template. */
   readonly itemFamilyId: string;
+  /** Explicit assessment-session id. When absent, a session is derived as the
+   *  UTC calendar day of observedAt (educator note: sessions must be identifiable,
+   *  not merely inferred — supply this in production). */
+  readonly sessionId?: string;
   readonly observedAt: string; // ISO 8601
 }
 
@@ -149,6 +153,9 @@ export interface ConceptualMasteryResult {
   readonly dimensions: readonly DimensionProgress[];
   /** Human-readable reasons a skill is not yet INDEPENDENT (empty when it is). */
   readonly unmet: readonly string[];
+  /** ISO timestamp at which all independent-mastery requirements were first met
+   *  — the anchor the retention window is measured from. null until INDEPENDENT. */
+  readonly independenceAt: string | null;
 }
 
 const isEligible = (e: ConceptualEvidence): boolean =>
@@ -156,22 +163,28 @@ const isEligible = (e: ConceptualEvidence): boolean =>
   MASTERY_ELIGIBLE_BANDS.includes(e.assistanceBand) &&
   MASTERY_COUNTED_MODES.includes(e.mode);
 
-const dayOf = (iso: string): string => iso.slice(0, 10);
+/** An assessment session: the explicit sessionId when present, else the UTC
+ *  calendar day of observedAt (the documented derivation when none is supplied). */
+const sessionOf = (e: ConceptualEvidence): string => e.sessionId ?? e.observedAt.slice(0, 10);
+
+interface Requirements {
+  readonly met: boolean;
+  readonly dimensions: DimensionProgress[];
+  readonly sessions: number;
+  readonly representations: number;
+  readonly eligibleFamilies: number;
+  readonly unmet: string[];
+}
 
 /**
- * Evaluate conceptual mastery for one skill from its evidence. Pure and
- * deterministic. Greedily assigns each eligible event to at most one dimension
- * quota, counting only DISTINCT item families per dimension so a repeated
- * template cannot satisfy two slots.
+ * Check the non-retention requirements against a set of eligible events. Pure.
+ * Counts only DISTINCT item families per dimension, so a repeated template
+ * cannot satisfy two slots.
  */
-export function evaluateConceptualMastery(
-  events: readonly ConceptualEvidence[],
+function checkRequirements(
+  eligible: readonly ConceptualEvidence[],
   policy: ConceptualSkillPolicy,
-): ConceptualMasteryResult {
-  const mine = events.filter((e) => e.skillId === policy.skillId);
-  const eligible = mine.filter(isEligible);
-
-  // Count distinct-family eligible correct events per dimension.
+): Requirements {
   const usedFamilies = new Map<EvidenceDimension, Set<string>>();
   const countedEvents: ConceptualEvidence[] = [];
   for (const dim of EVIDENCE_DIMENSIONS) {
@@ -195,14 +208,13 @@ export function evaluateConceptualMastery(
     return { dimension: d, have, need, met: have >= need };
   });
 
-  const sessions = new Set(countedEvents.map((e) => dayOf(e.observedAt))).size;
+  const sessions = new Set(countedEvents.map(sessionOf)).size;
   const representations = new Set(countedEvents.map((e) => e.representation)).size;
   const eligibleFamilies = new Set(eligible.map((e) => e.itemFamilyId)).size;
 
   const unmet: string[] = [];
-  for (const d of dimensions) {
+  for (const d of dimensions)
     if (!d.met) unmet.push(`${d.dimension}: ${d.have}/${d.need} independent demonstrations`);
-  }
   if (eligibleFamilies < policy.minIndependent)
     unmet.push(
       `only ${eligibleFamilies}/${policy.minIndependent} distinct independent item families`,
@@ -212,33 +224,69 @@ export function evaluateConceptualMastery(
   if (representations < policy.minRepresentations)
     unmet.push(`only ${representations}/${policy.minRepresentations} representations`);
 
+  return {
+    met: unmet.length === 0,
+    dimensions,
+    sessions,
+    representations,
+    eligibleFamilies,
+    unmet,
+  };
+}
+
+/**
+ * The instant independence is first achieved: processing eligible events in
+ * chronological order, the timestamp of the event that COMPLETES every
+ * non-retention requirement, or null if they are never met. The retention
+ * window starts here — NOT at first evidence (educator Stage-1 correction).
+ */
+function independenceAchievedAt(
+  eligible: readonly ConceptualEvidence[],
+  policy: ConceptualSkillPolicy,
+): number | null {
+  const chron = [...eligible].sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt));
+  for (let i = 0; i < chron.length; i++) {
+    if (checkRequirements(chron.slice(0, i + 1), policy).met)
+      return Date.parse(chron[i]!.observedAt);
+  }
+  return null;
+}
+
+/**
+ * Evaluate conceptual mastery for one skill from its evidence. Pure and
+ * deterministic.
+ */
+export function evaluateConceptualMastery(
+  events: readonly ConceptualEvidence[],
+  policy: ConceptualSkillPolicy,
+): ConceptualMasteryResult {
+  const mine = events.filter((e) => e.skillId === policy.skillId);
+  const eligible = mine.filter(isEligible);
+  const req = checkRequirements(eligible, policy);
+
+  // The moment independence was first achieved, if ever. The retention window is
+  // measured from HERE, not from first evidence (educator Stage-1 correction).
+  const anchor = req.met ? independenceAchievedAt(eligible, policy) : null;
+
   let state: ConceptualState;
   if (mine.length === 0) state = 'UNKNOWN';
-  else if (unmet.length > 0) state = 'NOT_YET_DEMONSTRATED';
-  else state = hasRetention(eligible, policy) ? 'RETAINED' : 'INDEPENDENT';
+  else if (!req.met) state = 'NOT_YET_DEMONSTRATED';
+  else {
+    const delayMs = policy.retentionDelayHours * 3_600_000;
+    const retained =
+      anchor !== null && eligible.some((e) => Date.parse(e.observedAt) >= anchor + delayMs);
+    state = retained ? 'RETAINED' : 'INDEPENDENT';
+  }
 
   return {
     skillId: policy.skillId,
     policyVersion: ER03_CANDIDATE_V02.policyVersion,
     state,
-    eligibleCount: eligibleFamilies,
-    sessions,
-    representations,
-    dimensions,
-    unmet,
+    eligibleCount: req.eligibleFamilies,
+    sessions: req.sessions,
+    representations: req.representations,
+    dimensions: req.dimensions,
+    unmet: req.unmet,
+    independenceAt: anchor === null ? null : new Date(anchor).toISOString(),
   };
-}
-
-/** RETAINED needs one additional eligible correct event at least `retentionDelayHours`
- *  after the LATEST of the events that first satisfied the requirements. */
-function hasRetention(
-  eligible: readonly ConceptualEvidence[],
-  policy: ConceptualSkillPolicy,
-): boolean {
-  if (eligible.length === 0) return false;
-  const times = eligible.map((e) => Date.parse(e.observedAt)).sort((a, b) => a - b);
-  // Qualifying window = all but the latest; a later event beyond the delay is retention.
-  const earliestQualifier = times[0]!;
-  const delayMs = policy.retentionDelayHours * 3_600_000;
-  return times.some((t) => t - earliestQualifier >= delayMs);
 }
