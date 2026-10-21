@@ -126,14 +126,50 @@ describe('conceptual probes (DRAFT)', () => {
     for (const p of areaModels) {
       for (const o of p.options) {
         expect(o.visual?.kind).toBe('bars');
-        expect(o.visual!.wholes.length).toBeGreaterThan(0);
+        if (o.visual?.kind === 'bars') expect(o.visual.wholes.length).toBeGreaterThan(0);
       }
     }
   });
 
-  // Correction #4: the retired G4 reasoning distractor is gone.
+  // R4: number-line MODEL options carry an actual number-line drawing.
+  it('every number-line MODEL-dimension option carries a numberline visual to render', () => {
+    const nlModels = CONCEPTUAL_PROBES.filter(
+      (x) => x.dimension === 'model' && x.representation === 'number-line',
+    );
+    expect(nlModels.length).toBeGreaterThan(0);
+    for (const p of nlModels) {
+      for (const o of p.options) {
+        expect(o.visual?.kind).toBe('numberline');
+        if (o.visual?.kind === 'numberline') expect(o.visual.lines.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  // R2: each assessed-core grade cell can meet the candidate quota from authored
+  // content — ≥5 distinct families with ≥2 distinct value families.
+  it('each assessed-core grade cell has ≥5 families incl. ≥2 value families', () => {
+    for (const skillId of ['SK-FR-equiv', 'SK-FR-compare']) {
+      for (const grade of [3, 4, 5]) {
+        const cell = CONCEPTUAL_PROBES.filter(
+          (p) => p.skillId === skillId && p.gradeTarget === grade,
+        );
+        const families = new Set(cell.map((p) => p.itemFamilyId));
+        const valueFamilies = new Set(
+          cell.filter((p) => p.dimension === 'value').map((p) => p.itemFamilyId),
+        );
+        expect(families.size, `${skillId} G${grade} families`).toBeGreaterThanOrEqual(5);
+        expect(valueFamilies.size, `${skillId} G${grade} value families`).toBeGreaterThanOrEqual(2);
+      }
+    }
+  });
+
+  // R1: the retired G4 reasoning distractor is gone and the replacement is a
+  // clearly false generalisation.
   it('the Grade-4 reasoning probe no longer uses the "2 is half of 4" distractor', () => {
     const g4reason = EQUIV_PROBES_G4.find((p) => p.dimension === 'reasoning')!;
     expect(g4reason.options.some((o) => /2 is half of 4/i.test(o.text))).toBe(false);
+    expect(
+      g4reason.options.some((o) => /adding 1 to the top and 1 to the bottom/i.test(o.text)),
+    ).toBe(true);
   });
 });

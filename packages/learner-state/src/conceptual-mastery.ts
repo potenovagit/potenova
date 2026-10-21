@@ -69,10 +69,23 @@ export interface ConceptualSkillPolicy {
  *  non-cognitive; until the ledger records that distinguishably, treat A1 with
  *  care — see Stage-1 Annex C). A2+ never count. */
 export const MASTERY_ELIGIBLE_BANDS: readonly AssistanceBand[] = ['A0', 'A1'];
-/** Modes whose correct events may count toward independence. */
+/** Modes whose correct events may count toward INITIAL independence. Note that
+ *  `retention_check` is deliberately NOT here: a delayed-retrieval check can
+ *  confirm retention of an already-independent skill but can never, by itself,
+ *  establish initial independence (educator R3). */
 export const MASTERY_COUNTED_MODES: readonly EvidenceMode[] = [
   'independent_check',
   'transfer_check',
+];
+/** Modes whose correct unaided events may satisfy the POST-INDEPENDENCE
+ *  retention gate. This is a superset of MASTERY_COUNTED_MODES: a real delayed
+ *  check is recorded as `retention_check`, and it counts only here — never
+ *  toward the initial requirements above (educator R3). Teaching/diagnostic
+ *  modes are excluded from both. */
+export const RETENTION_ELIGIBLE_MODES: readonly EvidenceMode[] = [
+  'independent_check',
+  'transfer_check',
+  'retention_check',
 ];
 
 export interface ER03CandidatePolicy {
@@ -163,6 +176,14 @@ const isEligible = (e: ConceptualEvidence): boolean =>
   MASTERY_ELIGIBLE_BANDS.includes(e.assistanceBand) &&
   MASTERY_COUNTED_MODES.includes(e.mode);
 
+/** A correct, unaided check that may satisfy the post-independence retention
+ *  gate — includes `retention_check`, which never counts toward initial
+ *  independence (educator R3). */
+const isRetentionEligible = (e: ConceptualEvidence): boolean =>
+  e.correct &&
+  MASTERY_ELIGIBLE_BANDS.includes(e.assistanceBand) &&
+  RETENTION_ELIGIBLE_MODES.includes(e.mode);
+
 /** An assessment session: the explicit sessionId when present, else the UTC
  *  calendar day of observedAt (the documented derivation when none is supplied). */
 const sessionOf = (e: ConceptualEvidence): string => e.sessionId ?? e.observedAt.slice(0, 10);
@@ -184,6 +205,13 @@ interface Requirements {
 function checkRequirements(
   eligible: readonly ConceptualEvidence[],
   policy: ConceptualSkillPolicy,
+  /** Timestamp (ms) of the learner's earliest reasoning ATTEMPT (any
+   *  correctness), or null if none. A transfer demonstration counts only if it
+   *  occurs at or after this — transfer is a novel item the learner meets AFTER
+   *  engaging the reasoning (educator R6; spec 04 §1). A wrong reasoning attempt
+   *  still establishes the ordering, so this does not couple the reasoning and
+   *  transfer gates. */
+  earliestReasoningAt: number | null = null,
 ): Requirements {
   const usedFamilies = new Map<EvidenceDimension, Set<string>>();
   const countedEvents: ConceptualEvidence[] = [];
@@ -193,6 +221,12 @@ function checkRequirements(
     const seen = new Set<string>();
     for (const e of eligible) {
       if (e.dimension !== dim) continue;
+      // transfer must follow a reasoning attempt (R6)
+      if (
+        dim === 'transfer' &&
+        (earliestReasoningAt === null || Date.parse(e.observedAt) < earliestReasoningAt)
+      )
+        continue;
       if (seen.has(e.itemFamilyId)) continue;
       seen.add(e.itemFamilyId);
       countedEvents.push(e);
@@ -243,10 +277,11 @@ function checkRequirements(
 function independenceAchievedAt(
   eligible: readonly ConceptualEvidence[],
   policy: ConceptualSkillPolicy,
+  earliestReasoningAt: number | null,
 ): number | null {
   const chron = [...eligible].sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt));
   for (let i = 0; i < chron.length; i++) {
-    if (checkRequirements(chron.slice(0, i + 1), policy).met)
+    if (checkRequirements(chron.slice(0, i + 1), policy, earliestReasoningAt).met)
       return Date.parse(chron[i]!.observedAt);
   }
   return null;
@@ -256,25 +291,49 @@ function independenceAchievedAt(
  * Evaluate conceptual mastery for one skill from its evidence. Pure and
  * deterministic.
  */
+export interface ConceptualEvalOptions {
+  /** When set, only evidence tagged with this grade counts — the learner's
+   *  target grade is then a separate gate and grade-crossing evidence is
+   *  excluded (educator R7). When omitted, evidence is not filtered by grade
+   *  and grade targeting is left to the caller's content-band gate. */
+  readonly gradeTarget?: number;
+}
+
 export function evaluateConceptualMastery(
   events: readonly ConceptualEvidence[],
   policy: ConceptualSkillPolicy,
+  options: ConceptualEvalOptions = {},
 ): ConceptualMasteryResult {
-  const mine = events.filter((e) => e.skillId === policy.skillId);
+  const mine = events.filter(
+    (e) =>
+      e.skillId === policy.skillId &&
+      (options.gradeTarget === undefined || e.gradeTarget === options.gradeTarget),
+  );
   const eligible = mine.filter(isEligible);
-  const req = checkRequirements(eligible, policy);
+
+  // Earliest reasoning ATTEMPT (any correctness) — anchors the transfer-ordering
+  // rule (R6). Computed from all in-scope events, not just the eligible ones.
+  const reasoningTimes = mine
+    .filter((e) => e.dimension === 'reasoning')
+    .map((e) => Date.parse(e.observedAt));
+  const earliestReasoningAt = reasoningTimes.length ? Math.min(...reasoningTimes) : null;
+
+  const req = checkRequirements(eligible, policy, earliestReasoningAt);
 
   // The moment independence was first achieved, if ever. The retention window is
   // measured from HERE, not from first evidence (educator Stage-1 correction).
-  const anchor = req.met ? independenceAchievedAt(eligible, policy) : null;
+  const anchor = req.met ? independenceAchievedAt(eligible, policy, earliestReasoningAt) : null;
 
   let state: ConceptualState;
   if (mine.length === 0) state = 'UNKNOWN';
   else if (!req.met) state = 'NOT_YET_DEMONSTRATED';
   else {
+    // A delayed check (independent/transfer/retention mode) at least the delay
+    // after independence confirms retention (R3). retention_check counts only here.
     const delayMs = policy.retentionDelayHours * 3_600_000;
     const retained =
-      anchor !== null && eligible.some((e) => Date.parse(e.observedAt) >= anchor + delayMs);
+      anchor !== null &&
+      mine.filter(isRetentionEligible).some((e) => Date.parse(e.observedAt) >= anchor + delayMs);
     state = retained ? 'RETAINED' : 'INDEPENDENT';
   }
 

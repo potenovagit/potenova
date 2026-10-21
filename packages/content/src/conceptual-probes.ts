@@ -53,12 +53,24 @@ export interface WholeSpec {
   readonly widthScale?: number;
 }
 
-/** A drawable model for a MODEL-dimension option, so the child chooses between
- *  actual alternative pictures rather than reading a description of each. */
-export interface OptionVisual {
-  readonly kind: 'bars';
-  readonly wholes: readonly WholeSpec[];
+/** A point placed on a 0–1 number line (pos in 0..1). */
+export interface NumberLinePoint {
+  readonly label: string;
+  readonly pos: number;
 }
+/** One 0–1 number line in an option's picture; scale ≠ 1 draws a shorter/longer
+ *  line (a different-wholes distractor when two lines differ). */
+export interface NumberLineSpec {
+  readonly points: readonly NumberLinePoint[];
+  readonly scale?: number;
+}
+
+/** A drawable model for a MODEL-dimension option, so the child chooses between
+ *  actual alternative pictures rather than reading a description of each. Bars
+ *  for area-model tasks; number lines for number-line tasks (educator R4). */
+export type OptionVisual =
+  | { readonly kind: 'bars'; readonly wholes: readonly WholeSpec[] }
+  | { readonly kind: 'numberline'; readonly lines: readonly NumberLineSpec[] };
 
 export interface ProbeOption {
   readonly id: string;
@@ -112,6 +124,8 @@ const whole = (
   equalParts,
   ...(widthScale !== undefined ? { widthScale } : {}),
 });
+const numberlines = (...lines: NumberLineSpec[]): OptionVisual => ({ kind: 'numberline', lines });
+const pt = (label: string, pos: number): NumberLinePoint => ({ label, pos });
 
 type RawProbe = Omit<ConceptualProbe, 'approved' | 'approvalRef'>;
 const stamp = (p: RawProbe): ConceptualProbe => ({ ...p, approved: false, approvalRef: REF });
@@ -204,6 +218,24 @@ const RAW_EQUIV_G3: readonly RawProbe[] = [
       opt('f', 'No, different amounts', false, 'MC-FR-equiv-missed'),
     ],
   },
+  // R2: a SECOND value family so the assessed-core quota (2 distinct value
+  // families, 5 families total) can be met from authored content, not only from
+  // synthetically constructed families.
+  {
+    probeId: 'PR-FR-equiv-value2-G3',
+    skillId: 'SK-FR-equiv',
+    gradeTarget: 3,
+    sourceExpectationCode: 'B1.7',
+    dimension: 'value',
+    itemFamilyId: 'equiv-g3-value-quarters',
+    representation: 'area-model',
+    prompt:
+      'Two identical sheets of stickers are the same size. One is split into 4 equal parts and 1 part is coloured (1/4). The other is split into 8 equal parts and 2 parts are coloured (2/8). Is the same amount coloured on each sheet?',
+    options: [
+      opt('t', 'Yes, the same amount', true),
+      opt('f', 'No, different amounts', false, 'MC-FR-equiv-missed'),
+    ],
+  },
 ];
 
 export const EQUIV_PROBES_G3: readonly ConceptualProbe[] = RAW_EQUIV_G3.map(stamp);
@@ -269,11 +301,12 @@ const RAW_EQUIV_G4: readonly RawProbe[] = [
         '2 of 4 equal parts covers the same amount as 1 of 2 equal parts of the same-size whole',
         true,
       ),
-      // correction #4: replace the valid-but-incomplete "2 is half of 4" with an
-      // unambiguous additive error (adding to top and bottom of 1/2 to make 2/4).
+      // R1: a clearly FALSE generalisation (counterexample 1/2 vs 2/3: adding 1
+      // to top and bottom of 1/2 gives 2/3, which is NOT equal). Replaces the
+      // earlier additive statement that was only true for this one example.
       opt(
         'b',
-        'Because you add 1 to the top and 2 to the bottom of 1/2 to get 2/4',
+        'Because adding 1 to the top and 1 to the bottom of any fraction keeps it equal',
         false,
         'MC-FR-equiv-additive',
       ),
@@ -296,6 +329,18 @@ const RAW_EQUIV_G4: readonly RawProbe[] = [
     // genuine NON-equivalence, new family (fifths) — answer is "No" (correction #2)
     prompt: 'A new, different problem on a number line (no hints): is 2/5 equal to 1/2?',
     options: [opt('f', 'No', true), opt('t', 'Yes', false, 'MC-FR-nonequiv-assumed')],
+  },
+  // R2: second value family.
+  {
+    probeId: 'PR-FR-equiv-value2-G4',
+    skillId: 'SK-FR-equiv',
+    gradeTarget: 4,
+    sourceExpectationCode: 'B1.9',
+    dimension: 'value',
+    itemFamilyId: 'equiv-g4-value-thirds',
+    representation: 'symbolic',
+    prompt: 'Is 2/6 equal to 1/3?',
+    options: [opt('t', 'Yes', true), opt('f', 'No', false, 'MC-FR-equiv-missed')],
   },
 ];
 export const EQUIV_PROBES_G4: readonly ConceptualProbe[] = RAW_EQUIV_G4.map(stamp);
@@ -381,6 +426,18 @@ const RAW_EQUIV_G5: readonly RawProbe[] = [
     // genuine NON-equivalence, new family — answer is "No" (correction #2)
     prompt: 'A new, different problem on a number line (no hints): is 2/3 equal to 3/4?',
     options: [opt('t', 'Yes', false, 'MC-FR-nonequiv-assumed'), opt('f', 'No', true)],
+  },
+  // R2: second value family.
+  {
+    probeId: 'PR-FR-equiv-value2-G5',
+    skillId: 'SK-FR-equiv',
+    gradeTarget: 5,
+    sourceExpectationCode: 'B1.3',
+    dimension: 'value',
+    itemFamilyId: 'equiv-g5-value-threequarters',
+    representation: 'symbolic',
+    prompt: 'Is 3/4 equal to 6/8?',
+    options: [opt('t', 'Yes', true), opt('f', 'No', false, 'MC-FR-equiv-missed')],
   },
 ];
 
@@ -474,6 +531,23 @@ const RAW_COMPARE_G3: readonly RawProbe[] = [
       opt('c', 'The same', false, 'MC-FR-equiv-missed'),
     ],
   },
+  // R2: second value family.
+  {
+    probeId: 'PR-FR-compare-value2-G3',
+    skillId: 'SK-FR-compare',
+    gradeTarget: 3,
+    sourceExpectationCode: 'B1.8',
+    dimension: 'value',
+    itemFamilyId: 'compare-g3-value-half-sixth',
+    representation: 'area-model',
+    prompt:
+      'Two same-size chocolate bars. You take 1 piece from the bar shared equally by 2 (1/2); your friend takes 1 piece from the bar shared equally by 6 (1/6). Who gets more chocolate?',
+    options: [
+      opt('a', 'You do (1/2 is bigger)', true),
+      opt('b', 'Your friend (1/6 is bigger)', false, 'MC-FR-denom-size'),
+      opt('c', 'The same', false, 'MC-FR-equiv-missed'),
+    ],
+  },
 ];
 export const COMPARE_PROBES_G3: readonly ConceptualProbe[] = RAW_COMPARE_G3.map(stamp);
 
@@ -561,6 +635,22 @@ const RAW_COMPARE_G4: readonly RawProbe[] = [
       opt('c', 'They are equal', false, 'MC-FR-equiv-missed'),
     ],
   },
+  // R2: second value family.
+  {
+    probeId: 'PR-FR-compare-value2-G4',
+    skillId: 'SK-FR-compare',
+    gradeTarget: 4,
+    sourceExpectationCode: 'B1.5',
+    dimension: 'value',
+    itemFamilyId: 'compare-g4-value-thirds',
+    representation: 'symbolic',
+    prompt: 'Which is bigger: 3/4 or 3/8?',
+    options: [
+      opt('a', '3/4', true),
+      opt('b', '3/8', false, 'MC-FR-denom-size'),
+      opt('c', 'They are equal', false, 'MC-FR-equiv-missed'),
+    ],
+  },
 ];
 export const COMPARE_PROBES_G4: readonly ConceptualProbe[] = RAW_COMPARE_G4.map(stamp);
 
@@ -576,14 +666,33 @@ const RAW_COMPARE_G5: readonly RawProbe[] = [
     representation: 'number-line',
     prompt: 'Which number line correctly places 3/4 and 5/8 on the same 0–1 line?',
     options: [
+      // R4: each option draws its own number line(s) so the alternatives are
+      // visual, not text-only.
       opt(
         'b',
         '3/4 and 5/8 placed by their top number only (3 before 5)',
         false,
         'MC-FR-whole-number-compare',
+        // misconception render: ordered by numerator, 3/4 left of 5/8
+        numberlines({ points: [pt('3/4', 0.375), pt('5/8', 0.625)] }),
       ),
-      opt('a', '3/4 at the 6/8 mark and 5/8 at the 5/8 mark', true),
-      opt('c', 'Two number lines of different lengths', false, 'MC-FR-different-wholes'),
+      opt(
+        'a',
+        '3/4 at the 6/8 mark and 5/8 at the 5/8 mark',
+        true,
+        undefined,
+        numberlines({ points: [pt('3/4', 0.75), pt('5/8', 0.625)] }),
+      ),
+      opt(
+        'c',
+        'Two number lines of different lengths',
+        false,
+        'MC-FR-different-wholes',
+        numberlines(
+          { points: [pt('3/4', 0.75)], scale: 1 },
+          { points: [pt('5/8', 0.625)], scale: 0.6 },
+        ),
+      ),
     ],
   },
   {
@@ -633,6 +742,22 @@ const RAW_COMPARE_G5: readonly RawProbe[] = [
     options: [
       opt('a', '2/3', true),
       opt('b', '3/5', false, 'MC-FR-whole-number-compare'),
+      opt('c', 'They are equal', false, 'MC-FR-equiv-missed'),
+    ],
+  },
+  // R2: second value family (unlike denominators).
+  {
+    probeId: 'PR-FR-compare-value2-G5',
+    skillId: 'SK-FR-compare',
+    gradeTarget: 5,
+    sourceExpectationCode: 'B1.4',
+    dimension: 'value',
+    itemFamilyId: 'compare-g5-value-sixths-ninths',
+    representation: 'symbolic',
+    prompt: 'Which is bigger: 5/6 or 7/9?',
+    options: [
+      opt('a', '5/6', true),
+      opt('b', '7/9', false, 'MC-FR-whole-number-compare'),
       opt('c', 'They are equal', false, 'MC-FR-equiv-missed'),
     ],
   },
