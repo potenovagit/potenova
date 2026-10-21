@@ -210,7 +210,7 @@ describe('conceptual mastery (ER-03 candidate v0.2)', () => {
     observedAt: iso,
   });
 
-  it('a delayed retention_check at the delay confirms RETAINED', () => {
+  it('a delayed retention_check from a NEW family at the delay confirms RETAINED', () => {
     const r = evaluateConceptualMastery(
       [...fullBundle(), delayedEvent('2026-10-09T10:00:00Z', 'retention_check')],
       EQUIV,
@@ -235,9 +235,19 @@ describe('conceptual mastery (ER-03 candidate v0.2)', () => {
     expect(r.eligibleCount).toBe(0);
   });
 
-  // R6 — a transfer demonstration counts only after a reasoning attempt.
-  it('a transfer recorded BEFORE any reasoning attempt does not count', () => {
-    // transfer on day 1, every reasoning attempt on day 2 → transfer precedes reasoning
+  // E3 — a delayed check that REPEATS a family seen by independence is not fresh
+  // retention evidence; it must be an unseen family.
+  it('a delayed check reusing an ALREADY-SEEN family does not confirm retention', () => {
+    const repeat = {
+      ...delayedEvent('2026-10-09T10:00:00Z', 'retention_check'),
+      itemFamilyId: 'v1',
+    };
+    const r = evaluateConceptualMastery([...fullBundle(), repeat], EQUIV);
+    expect(r.state).toBe('INDEPENDENT');
+  });
+
+  // E4 / R6 — transfer sequencing is NOT a mastery gate; mode IS required.
+  it('a transfer recorded before reasoning still counts (no ordering gate)', () => {
     const events: ConceptualEvidence[] = [
       ev('model', true, { rep: 'area-model', family: 'm1', day: 1 }),
       ev('value', true, { rep: 'symbolic', family: 'v1', day: 1 }),
@@ -245,23 +255,34 @@ describe('conceptual mastery (ER-03 candidate v0.2)', () => {
       ev('transfer', true, { mode: 'transfer_check', rep: 'number-line', family: 't1', day: 1 }),
       ev('reasoning', true, { rep: 'symbolic', family: 'r1', day: 2 }),
     ];
+    expect(evaluateConceptualMastery(events, EQUIV).state).toBe('INDEPENDENT');
+  });
+
+  it('a transfer-dimension event NOT in transfer_check mode does not count', () => {
+    const events: ConceptualEvidence[] = [
+      ev('model', true, { rep: 'area-model', family: 'm1', day: 1 }),
+      ev('value', true, { rep: 'symbolic', family: 'v1', day: 1 }),
+      ev('value', true, { rep: 'area-model', family: 'v2', day: 2 }),
+      ev('reasoning', true, { rep: 'symbolic', family: 'r1', day: 2 }),
+      // a transfer item answered as an ordinary independent check — not a transfer_check
+      ev('transfer', true, { mode: 'independent_check', rep: 'number-line', family: 't1', day: 2 }),
+    ];
     const r = evaluateConceptualMastery(events, EQUIV);
     expect(r.state).toBe('NOT_YET_DEMONSTRATED');
-    const transfer = r.dimensions.find((d) => d.dimension === 'transfer')!;
-    expect(transfer.met).toBe(false);
+    expect(r.dimensions.find((d) => d.dimension === 'transfer')!.met).toBe(false);
   });
 
-  it('a transfer at or after the reasoning attempt counts (ordering satisfied)', () => {
-    const r = evaluateConceptualMastery(fullBundle(), EQUIV); // reasoning & transfer both day 2
-    expect(r.state).toBe('INDEPENDENT');
-  });
-
-  // R7 — optional grade gate: grade-crossing evidence is excluded when set.
-  it('grade gate excludes evidence tagged to another grade', () => {
+  // R7 / E5 — optional grade gate excludes grade-crossing evidence and the
+  // grade used is recorded on the result.
+  it('grade gate excludes evidence tagged to another grade and records the grade', () => {
     const bundle = fullBundle(); // all gradeTarget 5
-    expect(evaluateConceptualMastery(bundle, EQUIV, { gradeTarget: 5 }).state).toBe('INDEPENDENT');
+    const g5 = evaluateConceptualMastery(bundle, EQUIV, { gradeTarget: 5 });
+    expect(g5.state).toBe('INDEPENDENT');
+    expect(g5.gradeTarget).toBe(5);
     expect(evaluateConceptualMastery(bundle, EQUIV, { gradeTarget: 3 }).state).toBe('UNKNOWN');
-    // without the gate, grade is not filtered
-    expect(evaluateConceptualMastery(bundle, EQUIV).state).toBe('INDEPENDENT');
+    // without the gate, grade is not filtered and no grade is recorded
+    const ungated = evaluateConceptualMastery(bundle, EQUIV);
+    expect(ungated.state).toBe('INDEPENDENT');
+    expect(ungated.gradeTarget).toBeNull();
   });
 });

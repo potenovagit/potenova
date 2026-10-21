@@ -17,7 +17,9 @@ import type { AssistanceBand, EvidenceMode } from './evidence';
  *   - model     — valid equal-partition representation of the same whole
  *   - value     — the two fractions are the same quantity (the bare answer)
  *   - reasoning — WHY they are equal (chosen among misconception-based options)
- *   - transfer  — an uncoached new item, in a different family, after reasoning
+ *   - transfer  — an uncoached new item (transfer_check mode), in a different
+ *                 family; sequencing after reasoning is an instructional rule,
+ *                 not a mastery gate (educator E4/R6)
  *
  * The property the educator asked to see demonstrated: a child who answers the
  * `value` correctly but the `reasoning` WRONG does NOT reach INDEPENDENT — a
@@ -169,6 +171,9 @@ export interface ConceptualMasteryResult {
   /** ISO timestamp at which all independent-mastery requirements were first met
    *  — the anchor the retention window is measured from. null until INDEPENDENT. */
   readonly independenceAt: string | null;
+  /** The grade this evaluation was gated to, or null when no grade gate was
+   *  applied (educator E5 — grade-specific claims must record the grade used). */
+  readonly gradeTarget: number | null;
 }
 
 const isEligible = (e: ConceptualEvidence): boolean =>
@@ -205,13 +210,6 @@ interface Requirements {
 function checkRequirements(
   eligible: readonly ConceptualEvidence[],
   policy: ConceptualSkillPolicy,
-  /** Timestamp (ms) of the learner's earliest reasoning ATTEMPT (any
-   *  correctness), or null if none. A transfer demonstration counts only if it
-   *  occurs at or after this — transfer is a novel item the learner meets AFTER
-   *  engaging the reasoning (educator R6; spec 04 §1). A wrong reasoning attempt
-   *  still establishes the ordering, so this does not couple the reasoning and
-   *  transfer gates. */
-  earliestReasoningAt: number | null = null,
 ): Requirements {
   const usedFamilies = new Map<EvidenceDimension, Set<string>>();
   const countedEvents: ConceptualEvidence[] = [];
@@ -221,12 +219,13 @@ function checkRequirements(
     const seen = new Set<string>();
     for (const e of eligible) {
       if (e.dimension !== dim) continue;
-      // transfer must follow a reasoning attempt (R6)
-      if (
-        dim === 'transfer' &&
-        (earliestReasoningAt === null || Date.parse(e.observedAt) < earliestReasoningAt)
-      )
-        continue;
+      // Transfer evidence must be a genuine TRANSFER check — a novel uncoached
+      // item — regardless of when reasoning was demonstrated. There is NO
+      // temporal-ordering gate: the educator's E4/R6 decision keeps sequencing
+      // as an instructional rule, not a mastery gate, so a correct transfer is
+      // not excluded by scheduling. Novelty across dimensions is enforced by the
+      // distinct-family count (minIndependent = sum of quotas).
+      if (dim === 'transfer' && e.mode !== 'transfer_check') continue;
       if (seen.has(e.itemFamilyId)) continue;
       seen.add(e.itemFamilyId);
       countedEvents.push(e);
@@ -277,11 +276,10 @@ function checkRequirements(
 function independenceAchievedAt(
   eligible: readonly ConceptualEvidence[],
   policy: ConceptualSkillPolicy,
-  earliestReasoningAt: number | null,
 ): number | null {
   const chron = [...eligible].sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt));
   for (let i = 0; i < chron.length; i++) {
-    if (checkRequirements(chron.slice(0, i + 1), policy, earliestReasoningAt).met)
+    if (checkRequirements(chron.slice(0, i + 1), policy).met)
       return Date.parse(chron[i]!.observedAt);
   }
   return null;
@@ -311,29 +309,35 @@ export function evaluateConceptualMastery(
   );
   const eligible = mine.filter(isEligible);
 
-  // Earliest reasoning ATTEMPT (any correctness) — anchors the transfer-ordering
-  // rule (R6). Computed from all in-scope events, not just the eligible ones.
-  const reasoningTimes = mine
-    .filter((e) => e.dimension === 'reasoning')
-    .map((e) => Date.parse(e.observedAt));
-  const earliestReasoningAt = reasoningTimes.length ? Math.min(...reasoningTimes) : null;
-
-  const req = checkRequirements(eligible, policy, earliestReasoningAt);
+  const req = checkRequirements(eligible, policy);
 
   // The moment independence was first achieved, if ever. The retention window is
   // measured from HERE, not from first evidence (educator Stage-1 correction).
-  const anchor = req.met ? independenceAchievedAt(eligible, policy, earliestReasoningAt) : null;
+  const anchor = req.met ? independenceAchievedAt(eligible, policy) : null;
 
   let state: ConceptualState;
   if (mine.length === 0) state = 'UNKNOWN';
   else if (!req.met) state = 'NOT_YET_DEMONSTRATED';
   else {
-    // A delayed check (independent/transfer/retention mode) at least the delay
-    // after independence confirms retention (R3). retention_check counts only here.
+    // Families seen up to and including independence — a delayed check on one of
+    // these is a repeat, not fresh retention evidence (educator E3).
+    const seenByIndependence = new Set(
+      eligible
+        .filter((e) => Date.parse(e.observedAt) <= (anchor ?? Infinity))
+        .map((e) => e.itemFamilyId),
+    );
+    // RETAINED needs a delayed unaided check (independent/transfer/retention
+    // mode; retention_check counts only here, R3) at least the delay after
+    // independence AND from a family NOT already seen by independence (E3).
     const delayMs = policy.retentionDelayHours * 3_600_000;
     const retained =
       anchor !== null &&
-      mine.filter(isRetentionEligible).some((e) => Date.parse(e.observedAt) >= anchor + delayMs);
+      mine
+        .filter(isRetentionEligible)
+        .some(
+          (e) =>
+            Date.parse(e.observedAt) >= anchor + delayMs && !seenByIndependence.has(e.itemFamilyId),
+        );
     state = retained ? 'RETAINED' : 'INDEPENDENT';
   }
 
@@ -347,5 +351,6 @@ export function evaluateConceptualMastery(
     dimensions: req.dimensions,
     unmet: req.unmet,
     independenceAt: anchor === null ? null : new Date(anchor).toISOString(),
+    gradeTarget: options.gradeTarget ?? null,
   };
 }

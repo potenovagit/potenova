@@ -210,12 +210,13 @@ const RAW_EQUIV_G3: readonly RawProbe[] = [
     dimension: 'transfer',
     itemFamilyId: 'equiv-g3-transfer-thirds',
     representation: 'set-model',
-    // genuine equivalence, NEW family (thirds/sixths) — mix with the non-equivalent G4/G5 (correction #2)
+    // E2: a GENUINE discrete-set (collection) task, not a bar relabelled. Two
+    // equal collections of 12 counters; 1/3 of one vs 2/6 of the other.
     prompt:
-      'A new, different problem (no hints): Sam cuts an identical bar into 3 equal pieces and eats 1 (1/3). Pat cuts an identical bar into 6 equal pieces and eats 2 (2/6). Did Sam and Pat eat the same amount?',
+      'A new, different problem (no hints). Here are two equal groups of 12 counters, shown as counters you can count. Sam takes 1/3 of his group of 12. Pat takes 2/6 of her group of 12. Did Sam and Pat take the same NUMBER of counters?',
     options: [
-      opt('t', 'Yes, the same amount', true),
-      opt('f', 'No, different amounts', false, 'MC-FR-equiv-missed'),
+      opt('t', 'Yes, the same number', true),
+      opt('f', 'No, a different number', false, 'MC-FR-equiv-missed'),
     ],
   },
   // R2: a SECOND value family so the assessed-core quota (2 distinct value
@@ -443,14 +444,14 @@ const RAW_EQUIV_G5: readonly RawProbe[] = [
 
 export const EQUIV_PROBES_G5: readonly ConceptualProbe[] = RAW_EQUIV_G5.map(stamp);
 
-/** Grade 3 — comparison in an authentic fair-sharing story (Ontario B1.8).
+/** Grade 3 — comparison in an authentic fair-sharing story (Ontario B1.6; comparing fair-share results).
  *  Two identical pizzas, one shared by 4 and one by 8; 1/4 vs 1/8. */
 const RAW_COMPARE_G3: readonly RawProbe[] = [
   {
     probeId: 'PR-FR-compare-model-G3',
     skillId: 'SK-FR-compare',
     gradeTarget: 3,
-    sourceExpectationCode: 'B1.8',
+    sourceExpectationCode: 'B1.6',
     dimension: 'model',
     itemFamilyId: 'compare-g3-model-unit',
     representation: 'area-model',
@@ -484,7 +485,7 @@ const RAW_COMPARE_G3: readonly RawProbe[] = [
     probeId: 'PR-FR-compare-value-G3',
     skillId: 'SK-FR-compare',
     gradeTarget: 3,
-    sourceExpectationCode: 'B1.8',
+    sourceExpectationCode: 'B1.6',
     dimension: 'value',
     itemFamilyId: 'compare-g3-value-unit',
     representation: 'area-model',
@@ -500,7 +501,7 @@ const RAW_COMPARE_G3: readonly RawProbe[] = [
     probeId: 'PR-FR-compare-reason-G3',
     skillId: 'SK-FR-compare',
     gradeTarget: 3,
-    sourceExpectationCode: 'B1.8',
+    sourceExpectationCode: 'B1.6',
     dimension: 'reasoning',
     itemFamilyId: 'compare-g3-reason-unit',
     representation: 'area-model',
@@ -519,15 +520,17 @@ const RAW_COMPARE_G3: readonly RawProbe[] = [
     probeId: 'PR-FR-compare-transfer-G3',
     skillId: 'SK-FR-compare',
     gradeTarget: 3,
-    sourceExpectationCode: 'B1.8',
+    sourceExpectationCode: 'B1.6',
     dimension: 'transfer',
     itemFamilyId: 'compare-g3-transfer-thirds',
     representation: 'set-model',
+    // E2: a GENUINE discrete-set (collection) task. 12 stickers shared fairly
+    // among 3 vs among 6, shown as counted groups; compares one child's share.
     prompt:
-      'A new, different problem (no hints): one identical cake is shared fairly among 3 friends and another among 6 friends. Is one slice of the cake shared by 3 bigger, smaller, or the same as one slice of the cake shared by 6?',
+      'A new, different problem (no hints). A group of 12 stickers is shared fairly among 3 children, shown as counted piles. The same 12 stickers are instead shared fairly among 6 children. Does ONE child get MORE, FEWER, or the SAME number of stickers when there are 3 children than when there are 6?',
     options: [
-      opt('a', 'Bigger', true),
-      opt('b', 'Smaller', false, 'MC-FR-denom-size'),
+      opt('a', 'More', true),
+      opt('b', 'Fewer', false, 'MC-FR-denom-size'),
       opt('c', 'The same', false, 'MC-FR-equiv-missed'),
     ],
   },
@@ -536,7 +539,7 @@ const RAW_COMPARE_G3: readonly RawProbe[] = [
     probeId: 'PR-FR-compare-value2-G3',
     skillId: 'SK-FR-compare',
     gradeTarget: 3,
-    sourceExpectationCode: 'B1.8',
+    sourceExpectationCode: 'B1.6',
     dimension: 'value',
     itemFamilyId: 'compare-g3-value-half-sixth',
     representation: 'area-model',

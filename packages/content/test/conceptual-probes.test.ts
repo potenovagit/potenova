@@ -172,4 +172,28 @@ describe('conceptual probes (DRAFT)', () => {
       g4reason.options.some((o) => /adding 1 to the top and 1 to the bottom/i.test(o.text)),
     ).toBe(true);
   });
+
+  // E1: Grade-3 comparison probes use a valid Grade-3 expectation (B1.6), not B1.8.
+  it('Grade-3 comparison probes are tagged B1.6 (not the invalid B1.8)', () => {
+    const g3compare = CONCEPTUAL_PROBES.filter(
+      (p) => p.skillId === 'SK-FR-compare' && p.gradeTarget === 3,
+    );
+    expect(g3compare.length).toBeGreaterThan(0);
+    for (const p of g3compare) {
+      expect(p.sourceExpectationCode).toBe('B1.6');
+      expect(p.sourceExpectationCode).not.toBe('B1.8');
+    }
+  });
+
+  // E2: set-model probes are genuine discrete-collection tasks (reference counted
+  // objects), not area/bar tasks wearing a set-model label.
+  it('set-model probes describe a genuine counted collection', () => {
+    const setProbes = CONCEPTUAL_PROBES.filter((p) => p.representation === 'set-model');
+    expect(setProbes.length).toBeGreaterThan(0);
+    for (const p of setProbes) {
+      expect(/counter|sticker|object|group|pile/i.test(p.prompt), p.probeId).toBe(true);
+      expect(/\b\d+\b/.test(p.prompt), p.probeId).toBe(true); // an explicit count
+      expect(/\bbar\b/i.test(p.prompt), p.probeId).toBe(false); // not a bar task
+    }
+  });
 });
