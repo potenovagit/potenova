@@ -77,6 +77,30 @@ describe('conceptual mastery (ER-03 candidate v0.2)', () => {
     expect(reasoning.met).toBe(false);
   });
 
+  // Educator correction: isolate the REASONING gate. Everything else passes —
+  // 5 distinct eligible families, both sessions, representations, and the model/
+  // value/transfer quotas — and ONLY reasoning is unmet (0/1).
+  it('reasoning gate ALONE withholds mastery (all other requirements pass)', () => {
+    const events: ConceptualEvidence[] = [
+      ev('model', true, { rep: 'area-model', family: 'm1', day: 1 }),
+      ev('value', true, { rep: 'symbolic', family: 'v1', day: 1 }),
+      ev('value', true, { rep: 'area-model', family: 'v2', day: 2 }),
+      ev('value', true, { rep: 'number-line', family: 'v3', day: 2 }), // 5th eligible family
+      ev('transfer', true, { mode: 'transfer_check', rep: 'number-line', family: 't1', day: 2 }),
+      ev('reasoning', false, { rep: 'symbolic', family: 'r1', day: 2 }), // wrong — not eligible
+    ];
+    const r = evaluateConceptualMastery(events, EQUIV);
+    expect(r.state).toBe('NOT_YET_DEMONSTRATED');
+    expect(r.eligibleCount).toBe(5); // family minimum IS met
+    expect(r.sessions).toBeGreaterThanOrEqual(2);
+    expect(r.representations).toBeGreaterThanOrEqual(2);
+    // every dimension met EXCEPT reasoning
+    for (const d of r.dimensions) expect(d.met).toBe(d.dimension !== 'reasoning');
+    // and the ONLY unmet reason is reasoning
+    expect(r.unmet).toHaveLength(1);
+    expect(r.unmet[0]!.startsWith('reasoning')).toBe(true);
+  });
+
   it('does NOT count assisted (A4) success toward INDEPENDENT (AT-09)', () => {
     const assisted = fullBundle().map((e) => ({ ...e, assistanceBand: 'A4' as const }));
     const r = evaluateConceptualMastery(assisted, EQUIV);
@@ -111,6 +135,37 @@ describe('conceptual mastery (ER-03 candidate v0.2)', () => {
       ev('value', true, { rep: 'number-line', family: 'v3', day: 12 }), // > 7 days later
     ];
     const r = evaluateConceptualMastery(events, EQUIV);
+    expect(r.state).toBe('RETAINED');
+  });
+
+  // Retention boundary, timestamp-level. The bundle's earliest event is
+  // 2026-10-01T10:00:00Z; the retention delay is 168h (7 days).
+  const retentionEvent = (iso: string): ConceptualEvidence => ({
+    eventId: 'ret',
+    skillId: 'SK-FR-equiv',
+    gradeTarget: 5,
+    dimension: 'value',
+    correct: true,
+    assistanceBand: 'A0',
+    mode: 'independent_check',
+    representation: 'number-line',
+    itemFamilyId: 'ret-fam',
+    observedAt: iso,
+  });
+
+  it('retention boundary: an independent check 1h SHORT of 168h stays INDEPENDENT', () => {
+    const r = evaluateConceptualMastery(
+      [...fullBundle(), retentionEvent('2026-10-08T09:00:00Z')], // 167h after earliest
+      EQUIV,
+    );
+    expect(r.state).toBe('INDEPENDENT');
+  });
+
+  it('retention boundary: an independent check AT 168h becomes RETAINED', () => {
+    const r = evaluateConceptualMastery(
+      [...fullBundle(), retentionEvent('2026-10-08T10:00:00Z')], // exactly 168h after earliest
+      EQUIV,
+    );
     expect(r.state).toBe('RETAINED');
   });
 

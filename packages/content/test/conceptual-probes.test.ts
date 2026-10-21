@@ -11,6 +11,19 @@ import {
 describe('conceptual probes (DRAFT)', () => {
   const dims: EvidenceDimension[] = ['model', 'value', 'reasoning', 'transfer'];
 
+  it('covers both skills (equiv + compare) across Grades 3–5, all four dimensions', () => {
+    for (const skillId of ['SK-FR-equiv', 'SK-FR-compare']) {
+      for (const grade of [3, 4, 5]) {
+        for (const d of dims) {
+          const hit = CONCEPTUAL_PROBES.some(
+            (p) => p.skillId === skillId && p.gradeTarget === grade && p.dimension === d,
+          );
+          expect(hit, `${skillId} G${grade} ${d}`).toBe(true);
+        }
+      }
+    }
+  });
+
   it('covers all four dimensions at BOTH Grade 3 and Grade 5', () => {
     for (const set of [EQUIV_PROBES_G3, EQUIV_PROBES_G5]) {
       for (const d of dims) {
