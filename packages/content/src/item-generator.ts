@@ -101,11 +101,12 @@ function rng(seed: number): () => number {
   };
 }
 
-/** Denominator pool by difficulty — small/unit-ish for intro, wider for stretch. */
+/** Denominator pool by difficulty. Tiers are DISJOINT so an intro item can never
+ *  duplicate a core/stretch one (educator round-2: repeated questions across tiers). */
 const DENOMS: Record<Difficulty, readonly number[]> = {
   intro: [2, 3, 4],
-  core: [2, 3, 4, 5, 6, 8],
-  stretch: [3, 5, 6, 7, 8, 9, 10, 12],
+  core: [5, 6, 8],
+  stretch: [7, 9, 10, 12],
 };
 
 const pick = <T>(r: () => number, xs: readonly T[]): T => xs[Math.floor(r() * xs.length)]!;
@@ -122,8 +123,24 @@ function buildTask(
 ): { task: MathTask; dedupeKey: string } | null {
   switch (skillId) {
     case COMPARE_SKILL: {
-      const left = f(1 + Math.floor(r() * (pick(r, DENOMS[d]) - 1)), pick(r, DENOMS[d]));
-      const right = f(1 + Math.floor(r() * (pick(r, DENOMS[d]) - 1)), pick(r, DENOMS[d]));
+      // From core up, ~1/4 of the time build an EQUALITY case (right is an
+      // equivalent of left), so the bank actually exercises the `eq` answer
+      // (educator round-2: no equality answers). Intro stays lt/gt with small
+      // denominators. Otherwise two independent proper fractions.
+      let left: Fraction;
+      let right: Fraction;
+      if (d !== 'intro' && r() < 0.25) {
+        const b = pick(r, DENOMS[d]);
+        const num = 1 + Math.floor(r() * (b - 1));
+        const k = 2 + Math.floor(r() * 2);
+        left = f(num, b);
+        right = f(num * k, b * k);
+      } else {
+        const bl = pick(r, DENOMS[d]);
+        const br = pick(r, DENOMS[d]);
+        left = f(1 + Math.floor(r() * (bl - 1)), bl);
+        right = f(1 + Math.floor(r() * (br - 1)), br);
+      }
       if (!isWellFormed(left) || !isWellFormed(right)) return null;
       return {
         task: {
@@ -136,15 +153,16 @@ function buildTask(
       };
     }
     case EQUIV_SKILL: {
+      // Deliberate ~50/50 true/false balance (educator round-2: 89% were true).
+      // The FALSE case is a near-miss (scaled, then the numerator nudged by 1) so
+      // it is a real discriminator, not an obvious mismatch. Labels still come
+      // from the oracle, never assumed.
       const base = f(1 + Math.floor(r() * 2), pick(r, DENOMS[d]));
-      let right: Fraction;
-      if (r() < 0.5) {
-        const k = 2 + Math.floor(r() * (d === 'stretch' ? 4 : 2));
-        right = f(base.numerator * k, base.denominator * k);
-      } else {
-        const dr = pick(r, DENOMS[d]);
-        right = f(1 + Math.floor(r() * (dr - 1)), dr);
-      }
+      const k = 2 + Math.floor(r() * (d === 'stretch' ? 4 : 2));
+      const right =
+        r() < 0.5
+          ? f(base.numerator * k, base.denominator * k) // equivalent
+          : f(base.numerator * k + 1, base.denominator * k); // near-miss, non-equivalent
       if (!isWellFormed(base) || !isWellFormed(right)) return null;
       return {
         task: {
@@ -201,20 +219,38 @@ function buildTask(
       };
     }
     case ORDER_SKILL: {
-      const denom = pick(r, DENOMS[d]);
-      const n = 3; // order three proper fractions over a common denominator
-      const nums = new Set<number>();
+      const n = 3;
+      // From core up, ~half the time use UNLIKE denominators so ordering requires
+      // real comparison, not just numerator order (educator round-2: all like-denominator).
+      const unlike = d !== 'intro' && r() < 0.5;
+      const fractions: Fraction[] = [];
       let g = 0;
-      while (nums.size < n && g++ < 50) nums.add(1 + Math.floor(r() * (denom - 1)));
-      if (nums.size < n) return null;
-      const fractions = [...nums].map((num) => f(num, denom));
-      // ascending order over a common denominator is numerator order
+      if (unlike) {
+        while (fractions.length < n && g++ < 80) {
+          const b = pick(r, DENOMS[d]);
+          const cand = f(1 + Math.floor(r() * (b - 1)), b);
+          // keep values distinct so the order is strict
+          if (fractions.every((x) => trueRelation(x, cand) !== 'eq')) fractions.push(cand);
+        }
+      } else {
+        const denom = pick(r, DENOMS[d]);
+        const nums = new Set<number>();
+        while (nums.size < n && g++ < 80) nums.add(1 + Math.floor(r() * (denom - 1)));
+        for (const num of nums) fractions.push(f(num, denom));
+      }
+      if (fractions.length < n) return null;
       const claimedOrder = fractions
         .map((_, i) => i)
         .sort((a, b) => trueRelationSign(fractions[a]!, fractions[b]!));
       return {
         task: { kind: 'fraction_order', fractions, claimedOrder },
-        dedupeKey: `o:${fractions.map(fracKey).join(',')}`,
+        // Canonical (value-sorted) set key, so permutations of the SAME three
+        // fractions are one problem, not several (educator: permutations counted
+        // as distinct strings).
+        dedupeKey: `o:${[...fractions]
+          .sort((a, b) => trueRelationSign(a, b))
+          .map(fracKey)
+          .join(',')}`,
       };
     }
     default:

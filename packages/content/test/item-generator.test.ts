@@ -145,4 +145,58 @@ describe('item generator', () => {
     expect(introMax).toBeLessThanOrEqual(4);
     expect(stretchMax).toBeGreaterThan(4);
   });
+
+  // Educator round-2: the practice bank must be balanced, not answer-biased.
+  it('equivalence answers are balanced true/false (not ~90% true)', () => {
+    const items = [
+      ...generateItems('SK-FR-equiv', 24, 7, 'core'),
+      ...generateItems('SK-FR-equiv', 24, 13, 'stretch'),
+    ].filter((i) => i.task.kind === 'fraction_equivalence');
+    expect(items.length).toBeGreaterThan(12);
+    const trueRate =
+      items.filter((i) => i.task.kind === 'fraction_equivalence' && i.task.claimedEquivalent)
+        .length / items.length;
+    expect(trueRate).toBeGreaterThan(0.3);
+    expect(trueRate).toBeLessThan(0.7);
+  });
+
+  it('comparison bank exercises all three relations incl. equality', () => {
+    const rels = new Set(
+      [
+        ...generateItems('SK-FR-compare', 30, 7, 'core'),
+        ...generateItems('SK-FR-compare', 30, 13, 'stretch'),
+      ].flatMap((i) => (i.task.kind === 'fraction_comparison' ? [i.task.claimedAnswer] : [])),
+    );
+    expect(rels.has('lt')).toBe(true);
+    expect(rels.has('gt')).toBe(true);
+    expect(rels.has('eq')).toBe(true);
+  });
+
+  it('order items are distinct as fraction SETS, not just string permutations', () => {
+    const items = generateItems('SK-FR-order', 15, 6, 'stretch').filter(
+      (i) => i.task.kind === 'fraction_order',
+    );
+    const sets = items.map((i) =>
+      i.task.kind === 'fraction_order'
+        ? i.task.fractions
+            .map((x) => x.numerator / x.denominator)
+            .sort((a, b) => a - b)
+            .join('|')
+        : '',
+    );
+    expect(new Set(sets).size).toBe(items.length);
+  });
+
+  it('ordering includes unlike-denominator problems (not only like denominators)', () => {
+    const items = [
+      ...generateItems('SK-FR-order', 20, 7, 'core'),
+      ...generateItems('SK-FR-order', 20, 13, 'stretch'),
+    ];
+    const anyUnlike = items.some(
+      (i) =>
+        i.task.kind === 'fraction_order' &&
+        new Set(i.task.fractions.map((x) => x.denominator)).size > 1,
+    );
+    expect(anyUnlike).toBe(true);
+  });
 });

@@ -115,8 +115,8 @@ export const FRACTIONS_OVERLAY: readonly ProposedSkillMapping[] = [
     4,
     'B1.4',
     'SK-FR-unit',
-    'full',
-    'Standard fractional notation with the meaning of numerator and denominator.',
+    'partial',
+    'Expectation spans halves–tenths, standard notation and numerator/denominator meaning — broader than unit-fraction naming (pre-review NFR-10: was over-claimed as full).',
   ),
   // Build non-unit fractions as counts of unit fractions.
   link(
@@ -132,8 +132,8 @@ export const FRACTIONS_OVERLAY: readonly ProposedSkillMapping[] = [
     4,
     'B2.7',
     'SK-FR-nonunit',
-    'full',
-    'Repeated addition of a unit fraction as multiplication by a whole number.',
+    'partial',
+    'Expectation frames this as MULTIPLICATION of a unit fraction by a whole number; SK-FR-nonunit covers the repeated-addition view only (educator round-2: was over-claimed as full).',
   ),
   // Place fractions on a number line.
   link(
@@ -155,6 +155,22 @@ export const FRACTIONS_OVERLAY: readonly ProposedSkillMapping[] = [
   // Recognize equivalent fractions.
   link(
     'math',
+    1,
+    'B1.7',
+    'SK-FR-equiv',
+    'partial',
+    'One half and two fourths of the same whole are equal — first concrete equivalence (pre-review NFR-10: previously unmapped to equivalence).',
+  ),
+  link(
+    'math',
+    2,
+    'B1.7',
+    'SK-FR-equiv',
+    'partial',
+    'One third and two sixths of the same whole are equal — concrete equivalence (pre-review NFR-10: previously unmapped).',
+  ),
+  link(
+    'math',
     3,
     'B1.7',
     'SK-FR-equiv',
@@ -174,10 +190,17 @@ export const FRACTIONS_OVERLAY: readonly ProposedSkillMapping[] = [
     5,
     'B1.3',
     'SK-FR-equiv',
-    'full',
-    'Equivalent fractions from halves to twelfths, incl. improper/mixed.',
+    'partial',
+    'Expectation includes improper fractions and mixed numbers, beyond recognizing equivalent proper fractions (educator round-2: was over-claimed as full).',
   ),
-  link('math', 7, 'B1.4', 'SK-FR-equiv', 'full', 'Using equivalent fractions to simplify.'),
+  link(
+    'math',
+    7,
+    'B1.4',
+    'SK-FR-equiv',
+    'partial',
+    'Expectation is using equivalence to SIMPLIFY, not just recognizing it — needs a simplification skill (educator round-2: recognition mistaken for full simplification).',
+  ),
   // Compare two fractions.
   link(
     'math',
@@ -203,7 +226,14 @@ export const FRACTIONS_OVERLAY: readonly ProposedSkillMapping[] = [
     'partial',
     'Comparing fractions from fair-share scenarios.',
   ),
-  link('math', 5, 'B1.4', 'SK-FR-compare', 'full', 'Comparing and ordering fractions to twelfths.'),
+  link(
+    'math',
+    5,
+    'B1.4',
+    'SK-FR-compare',
+    'partial',
+    'Expectation requires compare AND order (incl. improper/mixed) — ordering is the separate SK-FR-order skill (pre-review NFR-10: was over-claimed as full).',
+  ),
   link(
     'math',
     6,
@@ -336,8 +366,8 @@ export const ADDITION_OVERLAY: readonly ProposedSkillMapping[] = [
     1,
     'B2.2',
     'SK-NS-add-within10',
-    'full',
-    'Recall of addition facts to 10 is exactly within-10 fluency.',
+    'partial',
+    'Expectation also includes related subtraction facts (unmapped) — addition fluency is only part (pre-review NFR-10: was over-claimed as full).',
   ),
   link(
     'math',
@@ -360,8 +390,8 @@ export const ADDITION_OVERLAY: readonly ProposedSkillMapping[] = [
     2,
     'B2.2',
     'SK-NS-add-within20',
-    'full',
-    'Recall of addition facts to 20 (crossing ten) is within-20 fluency.',
+    'partial',
+    'Expectation also includes related subtraction facts (unmapped) — addition fluency is only part (pre-review NFR-10: was over-claimed as full).',
   ),
   link(
     'math',
