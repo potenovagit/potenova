@@ -28,4 +28,15 @@ exception/risk approval. **Never** place child content in evidence folders or ti
   blocked/fallen-back, never delivered — recorded as `result: PASS|FAIL`. The `reviewer`
   field is left null until a human signs the artifact toward the gate.
 
+- `G2/GATE-DRYRUN/<run-id>/report.md` + `transcript.json` — Stage-2 gate-checklist
+  dry-run: an end-to-end pass that stands up the live API over an in-memory synthetic
+  database and drives it through each fail-closed non-negotiable at the HTTP edge
+  (consent fence incl. revocation, content gate, Canadian residency, mastery-authority
+  integrity + tenant isolation, right-to-erasure incl. fail-closed-until-attested,
+  retention dry-run, AI-routing fail-closed), recording actual status/code vs expected.
+  Regenerate: `npm run gate:dryrun`. Synthetic only; no model, no child data, no child
+  content in the transcript. It demonstrates the MECHANISMS hold — it is **not** the
+  specialist sign-off that decides the policy VALUES (privacy/legal, child-safety,
+  accessibility). The CI test `gate-dryrun.test.ts` fails if any gate regresses.
+
 Gate directories for G1, G3, G4 are created as those gates are approached.
