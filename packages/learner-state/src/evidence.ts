@@ -39,6 +39,17 @@ export interface MasteryEvidence {
   readonly observedAt: string;
   readonly curriculumReleaseId: string;
   readonly schemaVersion: string;
+  /** Conceptual-assessment fields (ER-03). Present only on conceptual probe
+   *  responses; the representation-based projection ignores them, and the
+   *  conceptual projection consumes only events that carry them. Optional and
+   *  non-breaking for existing evidence. */
+  readonly evidenceDimension?: 'model' | 'value' | 'reasoning' | 'transfer';
+  /** Canonical item-family id — distinct families prevent double-counting a template. */
+  readonly itemFamilyId?: string;
+  /** The grade this item asserts — the assessed-core grade gate filters on it. */
+  readonly gradeTarget?: number;
+  /** Explicit assessment-session id (else a session is derived as the UTC day). */
+  readonly sessionId?: string;
 }
 
 /** A correction linked to a prior event — appended, never a rewrite (LRN-003). */

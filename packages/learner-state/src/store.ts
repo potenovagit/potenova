@@ -3,6 +3,13 @@ import { promoteProjection, type SkillState } from '@potenova/domain-core';
 import type { MasteryEvidence, EvidenceCorrectionRecord } from './evidence';
 import { type MasteryPolicy, DRAFT_MASTERY_POLICY } from './policy';
 import { projectShadow, type SkillProjection } from './projection';
+import {
+  evaluateConceptualMastery,
+  evaluateAssessedCoreMastery,
+  type ConceptualEvidence,
+  type ConceptualSkillPolicy,
+  type ConceptualMasteryResult,
+} from './conceptual-mastery';
 
 /**
  * Learner-state store (WP-03) — storage-agnostic reference implementation.
@@ -101,6 +108,51 @@ export class LearnerStateStore {
     const stored = this.getState(learnerAlias, skillId).state;
     const recomputed = this.shadow(learnerAlias, skillId).state;
     return { match: stored === recomputed, stored, recomputed };
+  }
+
+  /**
+   * Conceptual-mastery projection (ER-03) — a pure replay of the SAME immutable
+   * ledger, honouring retraction corrections, never a separate store. Only
+   * events that carry a conceptual `evidenceDimension` + `itemFamilyId` count;
+   * everything else is ignored. Mastery stays derived-from-evidence — there is
+   * no path to set it directly (TM-07/08). Pass `gradeTarget` to use the
+   * fail-closed assessed-core gate (a grade-specific INDEPENDENT/RETAINED claim
+   * requires it); omit it for the generic, internal projection.
+   */
+  conceptualProjection(
+    learnerAlias: string,
+    policy: ConceptualSkillPolicy,
+    opts: { readonly gradeTarget?: number } = {},
+  ): ConceptualMasteryResult {
+    const retracted = new Set(
+      (this.#corrections.get(learnerAlias) ?? [])
+        .filter((c) => c.retract)
+        .map((c) => c.targetEventId),
+    );
+    const events: ConceptualEvidence[] = (this.#evidence.get(learnerAlias) ?? [])
+      .filter(
+        (e) =>
+          e.skillId === policy.skillId &&
+          !retracted.has(e.eventId) &&
+          e.evidenceDimension !== undefined &&
+          e.itemFamilyId !== undefined,
+      )
+      .map((e) => ({
+        eventId: e.eventId,
+        skillId: e.skillId,
+        gradeTarget: e.gradeTarget ?? 0,
+        dimension: e.evidenceDimension!,
+        correct: e.correct,
+        assistanceBand: e.assistanceBand,
+        mode: e.mode,
+        representation: e.representation,
+        itemFamilyId: e.itemFamilyId!,
+        ...(e.sessionId ? { sessionId: e.sessionId } : {}),
+        observedAt: e.observedAt,
+      }));
+    return opts.gradeTarget === undefined
+      ? evaluateConceptualMastery(events, policy)
+      : evaluateAssessedCoreMastery(events, policy, opts.gradeTarget);
   }
 
   /** Internal: replay → promote via mastery-authority (projector-only, replay-derived). */
