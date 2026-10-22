@@ -368,3 +368,28 @@ export function evaluateConceptualMastery(
     gradeTarget: options.gradeTarget ?? null,
   };
 }
+
+/**
+ * Fail-closed entry point for the assessed-core pipeline (educator decision #10,
+ * 2026-10-21): a grade-specific INDEPENDENT/RETAINED claim MUST be gated on the
+ * learner's target grade. Unlike the generic evaluator — whose grade filter is
+ * optional for internal uses — this refuses to run without a `gradeTarget` and
+ * only accepts an assessed-core policy, so ungated or on-ramp evidence can never
+ * produce a grade-specific assessed-core mastery claim. The returned result
+ * always records the grade it was evaluated at.
+ */
+export function evaluateAssessedCoreMastery(
+  events: readonly ConceptualEvidence[],
+  policy: ConceptualSkillPolicy,
+  gradeTarget: number,
+): ConceptualMasteryResult {
+  if (policy.role !== 'assessed-core')
+    throw new Error(
+      `evaluateAssessedCoreMastery requires an assessed-core policy; ${policy.skillId} is ${policy.role}`,
+    );
+  if (!Number.isInteger(gradeTarget))
+    throw new Error(
+      'evaluateAssessedCoreMastery requires an explicit integer gradeTarget (fail-closed)',
+    );
+  return evaluateConceptualMastery(events, policy, { gradeTarget });
+}

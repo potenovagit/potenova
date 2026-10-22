@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   evaluateConceptualMastery,
+  evaluateAssessedCoreMastery,
   ER03_CANDIDATE_V02,
   type ConceptualEvidence,
   type EvidenceDimension,
@@ -335,5 +336,22 @@ describe('conceptual mastery (ER-03 candidate v0.2)', () => {
       EQUIV,
     );
     expect(r.state).toBe('INDEPENDENT'); // NOT retained — family was seen in teaching
+  });
+
+  // Decision #10 — the assessed-core entry point is fail-closed on the grade gate.
+  const ONRAMP = ER03_CANDIDATE_V02.skills['SK-FR-partition']!;
+  it('evaluateAssessedCoreMastery enforces the grade gate and records the grade', () => {
+    const r = evaluateAssessedCoreMastery(fullBundle(), EQUIV, 5);
+    expect(r.state).toBe('INDEPENDENT');
+    expect(r.gradeTarget).toBe(5);
+    // grade-crossing evidence is excluded: a Grade-5 bundle under a Grade-3 claim is UNKNOWN
+    expect(evaluateAssessedCoreMastery(fullBundle(), EQUIV, 3).state).toBe('UNKNOWN');
+  });
+
+  it('evaluateAssessedCoreMastery fails closed without a valid grade or on a non-core policy', () => {
+    // @ts-expect-error — missing grade must be a compile-time and runtime error
+    expect(() => evaluateAssessedCoreMastery(fullBundle(), EQUIV)).toThrow();
+    expect(() => evaluateAssessedCoreMastery(fullBundle(), EQUIV, NaN)).toThrow();
+    expect(() => evaluateAssessedCoreMastery(fullBundle(), ONRAMP, 3)).toThrow(/assessed-core/);
   });
 });
