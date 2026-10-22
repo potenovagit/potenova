@@ -310,6 +310,39 @@ describe('conceptual mastery (ER-03 candidate v0.2)', () => {
     expect(evaluateConceptualMastery(withNovel, EQUIV).state).toBe('INDEPENDENT');
   });
 
+  // Educator Stage-2 amendment — transfer novelty is CHRONOLOGICAL. A later
+  // encounter of the transfer family must NOT retroactively invalidate a
+  // transfer that was novel when it was taken.
+  it('a later same-family encounter does not retroactively invalidate a transfer', () => {
+    const events: ConceptualEvidence[] = [
+      ev('model', true, { rep: 'area-model', family: 'm1', day: 1 }),
+      ev('value', true, { rep: 'symbolic', family: 'v1', day: 1 }),
+      ev('value', true, { rep: 'area-model', family: 'v2', day: 2 }),
+      ev('reasoning', true, { rep: 'symbolic', family: 'r1', day: 2 }),
+      // transfer on family tX on day 1 — novel at the time it was taken
+      ev('transfer', true, { mode: 'transfer_check', rep: 'number-line', family: 'tX', day: 1 }),
+      // the SAME family later appears as a value item (day 3) — must not reach back
+      ev('value', true, { rep: 'number-line', family: 'tX', day: 3 }),
+    ];
+    const r = evaluateConceptualMastery(events, EQUIV);
+    expect(r.state).toBe('INDEPENDENT');
+    expect(r.dimensions.find((d) => d.dimension === 'transfer')!.met).toBe(true);
+  });
+
+  it('an EARLIER same-family encounter does invalidate a later transfer', () => {
+    const events: ConceptualEvidence[] = [
+      ev('value', true, { rep: 'number-line', family: 'tX', day: 1 }), // earlier encounter
+      ev('model', true, { rep: 'area-model', family: 'm1', day: 1 }),
+      ev('value', true, { rep: 'symbolic', family: 'v1', day: 1 }),
+      ev('value', true, { rep: 'area-model', family: 'v2', day: 2 }),
+      ev('reasoning', true, { rep: 'symbolic', family: 'r1', day: 2 }),
+      ev('transfer', true, { mode: 'transfer_check', rep: 'number-line', family: 'tX', day: 2 }),
+    ];
+    const r = evaluateConceptualMastery(events, EQUIV);
+    expect(r.dimensions.find((d) => d.dimension === 'transfer')!.met).toBe(false);
+    expect(r.state).toBe('NOT_YET_DEMONSTRATED');
+  });
+
   // Edge case 2 — retention freshness is measured against ALL prior exposure,
   // including an earlier teaching/assisted encounter, not only mastery evidence.
   it('a delayed check on a family first seen in TEACHING is not fresh retention', () => {
