@@ -4,3 +4,4 @@ node_modules/
 spec/*.csv
 evidence/**/*.json
 evidence/G2/GATE-DRYRUN/**/*.md
+evidence/G2/ER-03/**/*.md

@@ -39,4 +39,14 @@ exception/risk approval. **Never** place child content in evidence folders or ti
   specialist sign-off that decides the policy VALUES (privacy/legal, child-safety,
   accessibility). The CI test `gate-dryrun.test.ts` fails if any gate regresses.
 
+- `G2/ER-03/<run-id>/report.md` + `evidence.json` — ER-03 conceptual-mastery
+  evidence pack: drives the **authored** conceptual probes (both assessed-core
+  skills — equivalence and comparison — at Grades 3–5) through the production
+  scorer and evaluator. Each (skill × grade) set is run correct (→ INDEPENDENT)
+  and with the reasoning probe answered wrong (→ NOT_YET_DEMONSTRATED, reasoning
+  unmet), demonstrating that a right answer with wrong reasoning earns no mastery.
+  `evidence.json` holds the raw synthetic events. Regenerate: `npm run er03:evidence`.
+  The CI test `er03-evidence.test.ts` fails on any regression. CANDIDATE policy,
+  advisory; synthetic only; no child, no model.
+
 Gate directories for G1, G3, G4 are created as those gates are approached.
