@@ -34,6 +34,10 @@ export class EvidenceRepository {
         observedAt: e.observedAt,
         curriculumReleaseId: e.curriculumReleaseId,
         schemaVersion: e.schemaVersion,
+        evidenceDimension: e.evidenceDimension ?? null,
+        itemFamilyId: e.itemFamilyId ?? null,
+        gradeTarget: e.gradeTarget ?? null,
+        sessionId: e.sessionId ?? null,
       })
       .onConflictDoNothing();
   }
@@ -52,15 +56,11 @@ export class EvidenceRepository {
       .onConflictDoNothing();
   }
 
-  async listEvidence(learnerAlias: string, skillId: string): Promise<MasteryEvidence[]> {
-    const db = await this.h.ready();
-    const rows = await db
-      .select()
-      .from(masteryEvidence)
-      .where(
-        and(eq(masteryEvidence.learnerAlias, learnerAlias), eq(masteryEvidence.skillId, skillId)),
-      );
-    return rows.map((r) => ({
+  /** Map a stored row back to MasteryEvidence, normalising nullable conceptual
+   *  columns to the optional fields (null → absent) so the conceptual projection
+   *  filter (`evidenceDimension !== undefined`) behaves identically to in-memory. */
+  private static toEvidence(r: typeof masteryEvidence.$inferSelect): MasteryEvidence {
+    return {
       eventId: r.eventId,
       learnerAlias: r.learnerAlias,
       skillId: r.skillId,
@@ -72,7 +72,24 @@ export class EvidenceRepository {
       observedAt: r.observedAt,
       curriculumReleaseId: r.curriculumReleaseId,
       schemaVersion: r.schemaVersion,
-    }));
+      ...(r.evidenceDimension != null
+        ? { evidenceDimension: r.evidenceDimension as MasteryEvidence['evidenceDimension'] }
+        : {}),
+      ...(r.itemFamilyId != null ? { itemFamilyId: r.itemFamilyId } : {}),
+      ...(r.gradeTarget != null ? { gradeTarget: r.gradeTarget } : {}),
+      ...(r.sessionId != null ? { sessionId: r.sessionId } : {}),
+    };
+  }
+
+  async listEvidence(learnerAlias: string, skillId: string): Promise<MasteryEvidence[]> {
+    const db = await this.h.ready();
+    const rows = await db
+      .select()
+      .from(masteryEvidence)
+      .where(
+        and(eq(masteryEvidence.learnerAlias, learnerAlias), eq(masteryEvidence.skillId, skillId)),
+      );
+    return rows.map((r) => EvidenceRepository.toEvidence(r));
   }
 
   /** All evidence for a learner across skills (for session-scoped reports). */
@@ -82,19 +99,7 @@ export class EvidenceRepository {
       .select()
       .from(masteryEvidence)
       .where(eq(masteryEvidence.learnerAlias, learnerAlias));
-    return rows.map((r) => ({
-      eventId: r.eventId,
-      learnerAlias: r.learnerAlias,
-      skillId: r.skillId,
-      mode: r.mode as EvidenceMode,
-      assistanceBand: r.assistanceBand as AssistanceBand,
-      correct: r.correct,
-      representation: r.representation,
-      recognitionConfidence: r.recognitionConfidence,
-      observedAt: r.observedAt,
-      curriculumReleaseId: r.curriculumReleaseId,
-      schemaVersion: r.schemaVersion,
-    }));
+    return rows.map((r) => EvidenceRepository.toEvidence(r));
   }
 
   async listCorrections(targetEventIds: readonly string[]): Promise<EvidenceCorrectionRecord[]> {

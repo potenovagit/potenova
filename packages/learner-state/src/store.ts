@@ -6,7 +6,7 @@ import { projectShadow, type SkillProjection } from './projection';
 import {
   evaluateConceptualMastery,
   evaluateAssessedCoreMastery,
-  type ConceptualEvidence,
+  conceptualEvidenceFromLedger,
   type ConceptualSkillPolicy,
   type ConceptualMasteryResult,
 } from './conceptual-mastery';
@@ -124,32 +124,11 @@ export class LearnerStateStore {
     policy: ConceptualSkillPolicy,
     opts: { readonly gradeTarget?: number } = {},
   ): ConceptualMasteryResult {
-    const retracted = new Set(
-      (this.#corrections.get(learnerAlias) ?? [])
-        .filter((c) => c.retract)
-        .map((c) => c.targetEventId),
+    const events = conceptualEvidenceFromLedger(
+      this.#evidence.get(learnerAlias) ?? [],
+      this.#corrections.get(learnerAlias) ?? [],
+      policy.skillId,
     );
-    const events: ConceptualEvidence[] = (this.#evidence.get(learnerAlias) ?? [])
-      .filter(
-        (e) =>
-          e.skillId === policy.skillId &&
-          !retracted.has(e.eventId) &&
-          e.evidenceDimension !== undefined &&
-          e.itemFamilyId !== undefined,
-      )
-      .map((e) => ({
-        eventId: e.eventId,
-        skillId: e.skillId,
-        gradeTarget: e.gradeTarget ?? 0,
-        dimension: e.evidenceDimension!,
-        correct: e.correct,
-        assistanceBand: e.assistanceBand,
-        mode: e.mode,
-        representation: e.representation,
-        itemFamilyId: e.itemFamilyId!,
-        ...(e.sessionId ? { sessionId: e.sessionId } : {}),
-        observedAt: e.observedAt,
-      }));
     return opts.gradeTarget === undefined
       ? evaluateConceptualMastery(events, policy)
       : evaluateAssessedCoreMastery(events, policy, opts.gradeTarget);

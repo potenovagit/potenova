@@ -67,6 +67,40 @@ describe('evidence persistence (WP-03 · ADR-0002/0017)', () => {
     await repo.close();
   });
 
+  it('round-trips the conceptual fields (ER-03) and survives a restart', async () => {
+    const dir = await freshDir();
+    const repo1 = openEvidenceRepository(dir);
+    await repo1.appendEvidence(
+      ev('conc-1', 'area-model', {
+        evidenceDimension: 'reasoning',
+        itemFamilyId: 'fam-eq-A',
+        gradeTarget: 3,
+        sessionId: 's-1',
+      }),
+    );
+    // a plain (non-conceptual) event leaves the new columns null
+    await repo1.appendEvidence(ev('plain-1', 'symbolic'));
+    await repo1.close();
+
+    const repo2 = openEvidenceRepository(dir);
+    const events = await repo2.listEvidence('lnr-alias', 'SK-FR-compare');
+    const conc = events.find((e) => e.eventId === 'conc-1')!;
+    expect(conc.evidenceDimension).toBe('reasoning');
+    expect(conc.itemFamilyId).toBe('fam-eq-A');
+    expect(conc.gradeTarget).toBe(3);
+    expect(conc.sessionId).toBe('s-1');
+
+    // null columns normalise back to absent, not null — so the conceptual
+    // projection filter (evidenceDimension !== undefined) excludes them.
+    const plain = events.find((e) => e.eventId === 'plain-1')!;
+    expect(plain.evidenceDimension).toBeUndefined();
+    expect(plain.itemFamilyId).toBeUndefined();
+    expect(plain.gradeTarget).toBeUndefined();
+    expect(plain.sessionId).toBeUndefined();
+    expect('evidenceDimension' in plain).toBe(false);
+    await repo2.close();
+  });
+
   it('a persisted correction retracts an observation on replay (AT-25 lineage)', async () => {
     const dir = await freshDir();
     const repo1 = openEvidenceRepository(dir);

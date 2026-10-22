@@ -1,7 +1,12 @@
 import {
   projectShadow,
   assertMasteryPolicyApproved,
+  conceptualEvidenceFromLedger,
+  evaluateConceptualMastery,
+  evaluateAssessedCoreMastery,
+  ER03_CANDIDATE_V02,
   type SkillProjection,
+  type ConceptualMasteryResult,
 } from '@potenova/learner-state';
 import { DomainError } from '@potenova/contracts';
 import {
@@ -352,6 +357,48 @@ export async function projectSkill(
   const events = await deps.evidence.listEvidence(alias, skillId);
   const corrections = await deps.evidence.listCorrections(events.map((e) => e.eventId));
   return projectShadow(alias, skillId, events, corrections, deps.policies.mastery);
+}
+
+/** The conceptual-mastery result, wrapped with the policy-approval status so the
+ *  surface is honest about whether this is an approved or candidate claim. */
+export interface ConceptualProjection {
+  readonly result: ConceptualMasteryResult;
+  /** The ER-03 conceptual policy is still a CANDIDATE — not an approved
+   *  child-release rule, not an independent educator sign-off. Always false
+   *  until a signed ER-03 approval replaces the candidate (Gate G2). */
+  readonly policyApproved: boolean;
+}
+
+/**
+ * Re-derive conceptual mastery (ER-03) for one assessed skill from the SAME
+ * immutable ledger as `projectSkill` — a pure replay over persisted evidence +
+ * corrections, never a separate store and never hand-set (TM-07/08). Only
+ * conceptually-tagged events count; everything else is ignored.
+ *
+ * Fail-closed on grade: an assessed-core skill uses the grade-gated entry point,
+ * so a grade-specific INDEPENDENT/RETAINED claim requires the learner's target
+ * grade and grade-crossing evidence is excluded. The ER-03 policy is a CANDIDATE,
+ * so `policyApproved` is false and this is an advisory projection — it must not
+ * be presented as an approved mastery decision.
+ */
+export async function projectConceptual(
+  deps: Deps,
+  alias: string,
+  skillId: string,
+  gradeTarget: number,
+): Promise<ConceptualProjection> {
+  const policy = ER03_CANDIDATE_V02.skills[skillId];
+  if (!policy) {
+    throw new DomainError('NOT_FOUND', `no conceptual policy for skill ${skillId}`);
+  }
+  const events = await deps.evidence.listEvidence(alias, skillId);
+  const corrections = await deps.evidence.listCorrections(events.map((e) => e.eventId));
+  const conceptual = conceptualEvidenceFromLedger(events, corrections, skillId);
+  const result =
+    policy.role === 'assessed-core'
+      ? evaluateAssessedCoreMastery(conceptual, policy, gradeTarget)
+      : evaluateConceptualMastery(conceptual, policy, { gradeTarget });
+  return { result, policyApproved: ER03_CANDIDATE_V02.approved };
 }
 
 /**
