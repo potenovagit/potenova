@@ -1,0 +1,159 @@
+{
+  "runId": "dryrun-1792698168220",
+  "at": "2026-10-22T19:42:48.220Z",
+  "environment": "staging",
+  "dataset": "synthetic",
+  "checks": [
+    {
+      "id": "G-CONSENT-BEFORE",
+      "gate": "Consent fence",
+      "reqIds": [
+        "NFR-04",
+        "ER-10"
+      ],
+      "property": "A child session cannot start before an active child_learning consent grant",
+      "expected": "403 CONSENT_REQUIRED",
+      "observed": "403 CONSENT_REQUIRED",
+      "result": "PASS"
+    },
+    {
+      "id": "G-CONSENT-AFTER",
+      "gate": "Consent fence",
+      "reqIds": [
+        "NFR-04"
+      ],
+      "property": "With consent + entitlement, a session starts and is ACTIVE",
+      "expected": "201 session ACTIVE",
+      "observed": "201 ACTIVE",
+      "result": "PASS"
+    },
+    {
+      "id": "G-CONTENT-UNSERVABLE",
+      "gate": "Content gate",
+      "reqIds": [
+        "SEC-015",
+        "AI-001"
+      ],
+      "property": "The delivery path refuses to serve content for an unservable/unknown skill",
+      "expected": "422 POLICY_BLOCKED",
+      "observed": "422 POLICY_BLOCKED",
+      "result": "PASS"
+    },
+    {
+      "id": "G-CONTENT-VALIDATED",
+      "gate": "Content gate",
+      "reqIds": [
+        "SEC-015",
+        "AI-001"
+      ],
+      "property": "A validated bank task is delivered (answer key checked by the oracle)",
+      "expected": "200 task delivered",
+      "observed": "200",
+      "result": "PASS"
+    },
+    {
+      "id": "G-RESIDENCY",
+      "gate": "Canadian residency",
+      "reqIds": [
+        "NFR-02",
+        "AT-55"
+      ],
+      "property": "A request whose processing region is outside the Canadian allowlist is refused",
+      "expected": "451 REGION_DISALLOWED",
+      "observed": "451 REGION_DISALLOWED",
+      "result": "PASS"
+    },
+    {
+      "id": "G-MASTERY-ADVISORY",
+      "gate": "Mastery authority",
+      "reqIds": [
+        "TM-07",
+        "TM-08",
+        "ER-03"
+      ],
+      "property": "The conceptual-mastery read is advisory (candidate policy, not an approved claim)",
+      "expected": "200 policyApproved=false",
+      "observed": "200 policyApproved=false",
+      "result": "PASS"
+    },
+    {
+      "id": "G-MASTERY-ISOLATION",
+      "gate": "Mastery authority",
+      "reqIds": [
+        "TM-45",
+        "SEC-013"
+      ],
+      "property": "A guardian cannot read a learner outside their own family (tenant isolation)",
+      "expected": "403 FORBIDDEN_ROLE",
+      "observed": "403 FORBIDDEN_ROLE",
+      "result": "PASS"
+    },
+    {
+      "id": "G-CONSENT-REVOKE",
+      "gate": "Consent fence",
+      "reqIds": [
+        "NFR-04",
+        "ER-10"
+      ],
+      "property": "After consent is revoked, a new session is blocked again (stop on revocation)",
+      "expected": "403 CONSENT_REQUIRED",
+      "observed": "403 CONSENT_REQUIRED",
+      "result": "PASS"
+    },
+    {
+      "id": "G-ERASURE-FIRSTPARTY",
+      "gate": "Right to erasure",
+      "reqIds": [
+        "NFR-17",
+        "PRIV-005",
+        "TM-48"
+      ],
+      "property": "An operator erasure deletes first-party rows immediately and stays PENDING (fail-closed) until external targets attest",
+      "expected": "201 state=PENDING, 0 first-party rows remain",
+      "observed": "201 state=PENDING remainingRows=0",
+      "result": "PASS"
+    },
+    {
+      "id": "G-ERASURE-COMPLETE",
+      "gate": "Right to erasure",
+      "reqIds": [
+        "NFR-17",
+        "PRIV-005"
+      ],
+      "property": "Once every target is attested, the erasure request reads COMPLETE",
+      "expected": "state=COMPLETE",
+      "observed": "200 state=COMPLETE",
+      "result": "PASS"
+    },
+    {
+      "id": "G-RETENTION-DRYRUN",
+      "gate": "Retention schedule",
+      "reqIds": [
+        "ER-07",
+        "NFR-17"
+      ],
+      "property": "A retention dry-run deletes nothing (no class swept, totalActioned=0) — safe to run before an approved schedule exists",
+      "expected": "dryRun=true, totalActioned=0, no class swept",
+      "observed": "200 dryRun=true actioned=0 noneSwept=true",
+      "result": "PASS"
+    },
+    {
+      "id": "G-AI-FAILCLOSED",
+      "gate": "AI routing",
+      "reqIds": [
+        "NFR-02",
+        "ER-16"
+      ],
+      "property": "With no approved in-region provider configured, the eval path fails closed (no model reached)",
+      "expected": "503 DEPENDENCY_UNAVAILABLE",
+      "observed": "503 DEPENDENCY_UNAVAILABLE",
+      "result": "PASS"
+    }
+  ],
+  "summary": {
+    "total": 12,
+    "passed": 12,
+    "failed": 0
+  },
+  "allPass": true
+}
