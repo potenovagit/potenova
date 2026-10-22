@@ -1,0 +1,138 @@
+{
+  "strandId": "fractions",
+  "version": "frac-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-FR-partition",
+      "competency": "number:fractions",
+      "skill": "Partition a whole into equal parts"
+    },
+    {
+      "skillId": "SK-FR-unit",
+      "competency": "number:fractions",
+      "skill": "Name unit fractions (1/2, 1/3, 1/4)"
+    },
+    {
+      "skillId": "SK-FR-nonunit",
+      "competency": "number:fractions",
+      "skill": "Build non-unit fractions as counts of unit fractions"
+    },
+    {
+      "skillId": "SK-FR-numberline",
+      "competency": "number:fractions",
+      "skill": "Place fractions on a number line"
+    },
+    {
+      "skillId": "SK-FR-equiv",
+      "competency": "number:fractions",
+      "skill": "Recognize equivalent fractions"
+    },
+    {
+      "skillId": "SK-FR-compare",
+      "competency": "number:fractions",
+      "skill": "Compare two fractions"
+    },
+    {
+      "skillId": "SK-FR-order",
+      "competency": "number:fractions",
+      "skill": "Order fractions in context"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependencyId": "D-fr-1",
+      "fromSkillId": "SK-FR-partition",
+      "toSkillId": "SK-FR-unit",
+      "type": "hardPrerequisite",
+      "weight": 1.0
+    },
+    {
+      "dependencyId": "D-fr-2",
+      "fromSkillId": "SK-FR-unit",
+      "toSkillId": "SK-FR-nonunit",
+      "type": "hardPrerequisite",
+      "weight": 0.9
+    },
+    {
+      "dependencyId": "D-fr-3",
+      "fromSkillId": "SK-FR-unit",
+      "toSkillId": "SK-FR-equiv",
+      "type": "strong",
+      "weight": 0.7
+    },
+    {
+      "dependencyId": "D-fr-4",
+      "fromSkillId": "SK-FR-nonunit",
+      "toSkillId": "SK-FR-equiv",
+      "type": "strong",
+      "weight": 0.8
+    },
+    {
+      "dependencyId": "D-fr-5",
+      "fromSkillId": "SK-FR-nonunit",
+      "toSkillId": "SK-FR-compare",
+      "type": "strong",
+      "weight": 0.7
+    },
+    {
+      "dependencyId": "D-fr-6",
+      "fromSkillId": "SK-FR-equiv",
+      "toSkillId": "SK-FR-compare",
+      "type": "strong",
+      "weight": 0.8
+    },
+    {
+      "dependencyId": "D-fr-7",
+      "fromSkillId": "SK-FR-numberline",
+      "toSkillId": "SK-FR-compare",
+      "type": "supporting",
+      "weight": 0.5
+    },
+    {
+      "dependencyId": "D-fr-8",
+      "fromSkillId": "SK-FR-compare",
+      "toSkillId": "SK-FR-order",
+      "type": "transfer",
+      "weight": 0.6
+    }
+  ],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-FR-denom-size",
+      "skillId": "SK-FR-compare",
+      "pattern": "Treats a larger denominator as a larger fraction (1/8 > 1/4).",
+      "probeIds": ["PR-FR-compare-unit"],
+      "remediationStrategyIds": ["ST-area-model", "ST-number-line"]
+    },
+    {
+      "misconceptionId": "MC-FR-independent-whole",
+      "skillId": "SK-FR-nonunit",
+      "pattern": "Treats numerator and denominator as independent whole numbers.",
+      "probeIds": ["PR-FR-build-nonunit"],
+      "remediationStrategyIds": ["ST-area-model"]
+    },
+    {
+      "misconceptionId": "MC-FR-unequal-parts",
+      "skillId": "SK-FR-partition",
+      "pattern": "Counts unequal parts as if they were equal fractional parts.",
+      "probeIds": ["PR-FR-equal-parts"],
+      "remediationStrategyIds": ["ST-area-model"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-area-model",
+      "intent": "Represent fractions as equal areas of a whole.",
+      "approvedBands": ["primary", "junior"],
+      "representations": ["area-model"]
+    },
+    {
+      "strategyId": "ST-number-line",
+      "intent": "Locate fractions as points between 0 and 1.",
+      "approvedBands": ["junior"],
+      "representations": ["number-line"]
+    }
+  ]
+}

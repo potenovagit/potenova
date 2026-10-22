@@ -1,0 +1,60 @@
+{
+  "strandId": "english",
+  "version": "eng-draft-0.1",
+  "domain": "english",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-EN-plural-base",
+      "competency": "language:morphology",
+      "skill": "Form regular plurals by adding -s"
+    },
+    {
+      "skillId": "SK-EN-plural-sibilant",
+      "competency": "language:morphology",
+      "skill": "Form plurals with -es and consonant-y → -ies"
+    },
+    {
+      "skillId": "SK-EN-past-regular",
+      "competency": "language:morphology",
+      "skill": "Form the regular simple past (-ed, with doubling / drop-e / y→ied)"
+    },
+    {
+      "skillId": "SK-EN-comparative",
+      "competency": "language:morphology",
+      "skill": "Form the regular comparative (-er, with doubling / drop-e / y→ier)"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependencyId": "D-en-1",
+      "fromSkillId": "SK-EN-plural-base",
+      "toSkillId": "SK-EN-plural-sibilant",
+      "type": "hardPrerequisite",
+      "weight": 1.0
+    }
+  ],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-EN-sibilant-bare-s",
+      "skillId": "SK-EN-plural-sibilant",
+      "pattern": "Adds a bare -s after a sibilant (writes \"boxs\" instead of \"boxes\").",
+      "probeIds": ["PR-EN-sibilant"],
+      "remediationStrategyIds": ["ST-en-say-aloud", "ST-en-ending-pattern"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-en-say-aloud",
+      "intent": "Say the word aloud — if the ending hisses (s, x, z, ch, sh), add -es, not just -s.",
+      "approvedBands": ["primary", "junior"],
+      "representations": ["spoken"]
+    },
+    {
+      "strategyId": "ST-en-ending-pattern",
+      "intent": "Check the last letters: -es after s/x/z/ch/sh, and consonant + y becomes -ies.",
+      "approvedBands": ["junior"],
+      "representations": ["written"]
+    }
+  ]
+}
