@@ -1,0 +1,849 @@
+{
+  "runId": "er03-1792700240095",
+  "at": "2026-10-22T20:17:20.095Z",
+  "policyVersion": "er03-fractions-g3g5-CANDIDATE-v0.2",
+  "policyApproved": false,
+  "dataset": "synthetic",
+  "groups": [
+    {
+      "skillId": "SK-FR-equiv",
+      "gradeTarget": 3,
+      "probeCount": 5,
+      "sourceExpectationCodes": [
+        "B1.7"
+      ],
+      "correctRun": {
+        "state": "INDEPENDENT",
+        "dimensions": [
+          {
+            "dimension": "model",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "value",
+            "have": 2,
+            "need": 2,
+            "met": true
+          },
+          {
+            "dimension": "reasoning",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "transfer",
+            "have": 1,
+            "need": 1,
+            "met": true
+          }
+        ],
+        "unmet": []
+      },
+      "wrongReasoningRun": {
+        "state": "NOT_YET_DEMONSTRATED",
+        "dimensions": [
+          {
+            "dimension": "model",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "value",
+            "have": 2,
+            "need": 2,
+            "met": true
+          },
+          {
+            "dimension": "reasoning",
+            "have": 0,
+            "need": 1,
+            "met": false
+          },
+          {
+            "dimension": "transfer",
+            "have": 1,
+            "need": 1,
+            "met": true
+          }
+        ],
+        "unmet": [
+          "reasoning: 0/1 independent demonstrations",
+          "only 4/5 distinct independent item families"
+        ]
+      },
+      "result": "PASS",
+      "correctEvents": [
+        {
+          "eventId": "PR-FR-equiv-model-G3",
+          "skillId": "SK-FR-equiv",
+          "gradeTarget": 3,
+          "dimension": "model",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "area-model",
+          "itemFamilyId": "equiv-g3-fairshare-half",
+          "sessionId": "s1",
+          "observedAt": "2026-10-01T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-equiv-value-G3",
+          "skillId": "SK-FR-equiv",
+          "gradeTarget": 3,
+          "dimension": "value",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "area-model",
+          "itemFamilyId": "equiv-g3-value-half",
+          "sessionId": "s1",
+          "observedAt": "2026-10-01T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-equiv-reason-G3",
+          "skillId": "SK-FR-equiv",
+          "gradeTarget": 3,
+          "dimension": "reasoning",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "area-model",
+          "itemFamilyId": "equiv-g3-reason-half",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-equiv-transfer-G3",
+          "skillId": "SK-FR-equiv",
+          "gradeTarget": 3,
+          "dimension": "transfer",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "transfer_check",
+          "representation": "set-model",
+          "itemFamilyId": "equiv-g3-transfer-thirds",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-equiv-value2-G3",
+          "skillId": "SK-FR-equiv",
+          "gradeTarget": 3,
+          "dimension": "value",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "area-model",
+          "itemFamilyId": "equiv-g3-value-quarters",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        }
+      ]
+    },
+    {
+      "skillId": "SK-FR-equiv",
+      "gradeTarget": 4,
+      "probeCount": 5,
+      "sourceExpectationCodes": [
+        "B1.9"
+      ],
+      "correctRun": {
+        "state": "INDEPENDENT",
+        "dimensions": [
+          {
+            "dimension": "model",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "value",
+            "have": 2,
+            "need": 2,
+            "met": true
+          },
+          {
+            "dimension": "reasoning",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "transfer",
+            "have": 1,
+            "need": 1,
+            "met": true
+          }
+        ],
+        "unmet": []
+      },
+      "wrongReasoningRun": {
+        "state": "NOT_YET_DEMONSTRATED",
+        "dimensions": [
+          {
+            "dimension": "model",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "value",
+            "have": 2,
+            "need": 2,
+            "met": true
+          },
+          {
+            "dimension": "reasoning",
+            "have": 0,
+            "need": 1,
+            "met": false
+          },
+          {
+            "dimension": "transfer",
+            "have": 1,
+            "need": 1,
+            "met": true
+          }
+        ],
+        "unmet": [
+          "reasoning: 0/1 independent demonstrations",
+          "only 4/5 distinct independent item families"
+        ]
+      },
+      "result": "PASS",
+      "correctEvents": [
+        {
+          "eventId": "PR-FR-equiv-model-G4",
+          "skillId": "SK-FR-equiv",
+          "gradeTarget": 4,
+          "dimension": "model",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "area-model",
+          "itemFamilyId": "equiv-g4-model-half",
+          "sessionId": "s1",
+          "observedAt": "2026-10-01T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-equiv-value-G4",
+          "skillId": "SK-FR-equiv",
+          "gradeTarget": 4,
+          "dimension": "value",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "symbolic",
+          "itemFamilyId": "equiv-g4-value-half",
+          "sessionId": "s1",
+          "observedAt": "2026-10-01T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-equiv-reason-G4",
+          "skillId": "SK-FR-equiv",
+          "gradeTarget": 4,
+          "dimension": "reasoning",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "area-model",
+          "itemFamilyId": "equiv-g4-reason-half",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-equiv-transfer-G4",
+          "skillId": "SK-FR-equiv",
+          "gradeTarget": 4,
+          "dimension": "transfer",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "transfer_check",
+          "representation": "number-line",
+          "itemFamilyId": "equiv-g4-transfer-fifths",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-equiv-value2-G4",
+          "skillId": "SK-FR-equiv",
+          "gradeTarget": 4,
+          "dimension": "value",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "symbolic",
+          "itemFamilyId": "equiv-g4-value-thirds",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        }
+      ]
+    },
+    {
+      "skillId": "SK-FR-equiv",
+      "gradeTarget": 5,
+      "probeCount": 5,
+      "sourceExpectationCodes": [
+        "B1.3"
+      ],
+      "correctRun": {
+        "state": "INDEPENDENT",
+        "dimensions": [
+          {
+            "dimension": "model",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "value",
+            "have": 2,
+            "need": 2,
+            "met": true
+          },
+          {
+            "dimension": "reasoning",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "transfer",
+            "have": 1,
+            "need": 1,
+            "met": true
+          }
+        ],
+        "unmet": []
+      },
+      "wrongReasoningRun": {
+        "state": "NOT_YET_DEMONSTRATED",
+        "dimensions": [
+          {
+            "dimension": "model",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "value",
+            "have": 2,
+            "need": 2,
+            "met": true
+          },
+          {
+            "dimension": "reasoning",
+            "have": 0,
+            "need": 1,
+            "met": false
+          },
+          {
+            "dimension": "transfer",
+            "have": 1,
+            "need": 1,
+            "met": true
+          }
+        ],
+        "unmet": [
+          "reasoning: 0/1 independent demonstrations",
+          "only 4/5 distinct independent item families"
+        ]
+      },
+      "result": "PASS",
+      "correctEvents": [
+        {
+          "eventId": "PR-FR-equiv-model-G5",
+          "skillId": "SK-FR-equiv",
+          "gradeTarget": 5,
+          "dimension": "model",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "area-model",
+          "itemFamilyId": "equiv-g5-model-twothirds",
+          "sessionId": "s1",
+          "observedAt": "2026-10-01T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-equiv-value-G5",
+          "skillId": "SK-FR-equiv",
+          "gradeTarget": 5,
+          "dimension": "value",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "symbolic",
+          "itemFamilyId": "equiv-g5-value-twothirds",
+          "sessionId": "s1",
+          "observedAt": "2026-10-01T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-equiv-reason-G5",
+          "skillId": "SK-FR-equiv",
+          "gradeTarget": 5,
+          "dimension": "reasoning",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "symbolic",
+          "itemFamilyId": "equiv-g5-reason-twothirds",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-equiv-transfer-G5",
+          "skillId": "SK-FR-equiv",
+          "gradeTarget": 5,
+          "dimension": "transfer",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "transfer_check",
+          "representation": "number-line",
+          "itemFamilyId": "equiv-g5-transfer-quarters-thirds",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-equiv-value2-G5",
+          "skillId": "SK-FR-equiv",
+          "gradeTarget": 5,
+          "dimension": "value",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "symbolic",
+          "itemFamilyId": "equiv-g5-value-threequarters",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        }
+      ]
+    },
+    {
+      "skillId": "SK-FR-compare",
+      "gradeTarget": 3,
+      "probeCount": 5,
+      "sourceExpectationCodes": [
+        "B1.6"
+      ],
+      "correctRun": {
+        "state": "INDEPENDENT",
+        "dimensions": [
+          {
+            "dimension": "model",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "value",
+            "have": 2,
+            "need": 2,
+            "met": true
+          },
+          {
+            "dimension": "reasoning",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "transfer",
+            "have": 1,
+            "need": 1,
+            "met": true
+          }
+        ],
+        "unmet": []
+      },
+      "wrongReasoningRun": {
+        "state": "NOT_YET_DEMONSTRATED",
+        "dimensions": [
+          {
+            "dimension": "model",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "value",
+            "have": 2,
+            "need": 2,
+            "met": true
+          },
+          {
+            "dimension": "reasoning",
+            "have": 0,
+            "need": 1,
+            "met": false
+          },
+          {
+            "dimension": "transfer",
+            "have": 1,
+            "need": 1,
+            "met": true
+          }
+        ],
+        "unmet": [
+          "reasoning: 0/1 independent demonstrations",
+          "only 4/5 distinct independent item families"
+        ]
+      },
+      "result": "PASS",
+      "correctEvents": [
+        {
+          "eventId": "PR-FR-compare-model-G3",
+          "skillId": "SK-FR-compare",
+          "gradeTarget": 3,
+          "dimension": "model",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "area-model",
+          "itemFamilyId": "compare-g3-model-unit",
+          "sessionId": "s1",
+          "observedAt": "2026-10-01T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-compare-value-G3",
+          "skillId": "SK-FR-compare",
+          "gradeTarget": 3,
+          "dimension": "value",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "area-model",
+          "itemFamilyId": "compare-g3-value-unit",
+          "sessionId": "s1",
+          "observedAt": "2026-10-01T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-compare-reason-G3",
+          "skillId": "SK-FR-compare",
+          "gradeTarget": 3,
+          "dimension": "reasoning",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "area-model",
+          "itemFamilyId": "compare-g3-reason-unit",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-compare-transfer-G3",
+          "skillId": "SK-FR-compare",
+          "gradeTarget": 3,
+          "dimension": "transfer",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "transfer_check",
+          "representation": "set-model",
+          "itemFamilyId": "compare-g3-transfer-thirds",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-compare-value2-G3",
+          "skillId": "SK-FR-compare",
+          "gradeTarget": 3,
+          "dimension": "value",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "area-model",
+          "itemFamilyId": "compare-g3-value-half-sixth",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        }
+      ]
+    },
+    {
+      "skillId": "SK-FR-compare",
+      "gradeTarget": 4,
+      "probeCount": 5,
+      "sourceExpectationCodes": [
+        "B1.5"
+      ],
+      "correctRun": {
+        "state": "INDEPENDENT",
+        "dimensions": [
+          {
+            "dimension": "model",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "value",
+            "have": 2,
+            "need": 2,
+            "met": true
+          },
+          {
+            "dimension": "reasoning",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "transfer",
+            "have": 1,
+            "need": 1,
+            "met": true
+          }
+        ],
+        "unmet": []
+      },
+      "wrongReasoningRun": {
+        "state": "NOT_YET_DEMONSTRATED",
+        "dimensions": [
+          {
+            "dimension": "model",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "value",
+            "have": 2,
+            "need": 2,
+            "met": true
+          },
+          {
+            "dimension": "reasoning",
+            "have": 0,
+            "need": 1,
+            "met": false
+          },
+          {
+            "dimension": "transfer",
+            "have": 1,
+            "need": 1,
+            "met": true
+          }
+        ],
+        "unmet": [
+          "reasoning: 0/1 independent demonstrations",
+          "only 4/5 distinct independent item families"
+        ]
+      },
+      "result": "PASS",
+      "correctEvents": [
+        {
+          "eventId": "PR-FR-compare-model-G4",
+          "skillId": "SK-FR-compare",
+          "gradeTarget": 4,
+          "dimension": "model",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "area-model",
+          "itemFamilyId": "compare-g4-model",
+          "sessionId": "s1",
+          "observedAt": "2026-10-01T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-compare-value-G4",
+          "skillId": "SK-FR-compare",
+          "gradeTarget": 4,
+          "dimension": "value",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "symbolic",
+          "itemFamilyId": "compare-g4-value",
+          "sessionId": "s1",
+          "observedAt": "2026-10-01T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-compare-reason-G4",
+          "skillId": "SK-FR-compare",
+          "gradeTarget": 4,
+          "dimension": "reasoning",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "area-model",
+          "itemFamilyId": "compare-g4-reason",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-compare-transfer-G4",
+          "skillId": "SK-FR-compare",
+          "gradeTarget": 4,
+          "dimension": "transfer",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "transfer_check",
+          "representation": "number-line",
+          "itemFamilyId": "compare-g4-transfer",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-compare-value2-G4",
+          "skillId": "SK-FR-compare",
+          "gradeTarget": 4,
+          "dimension": "value",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "symbolic",
+          "itemFamilyId": "compare-g4-value-thirds",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        }
+      ]
+    },
+    {
+      "skillId": "SK-FR-compare",
+      "gradeTarget": 5,
+      "probeCount": 5,
+      "sourceExpectationCodes": [
+        "B1.4"
+      ],
+      "correctRun": {
+        "state": "INDEPENDENT",
+        "dimensions": [
+          {
+            "dimension": "model",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "value",
+            "have": 2,
+            "need": 2,
+            "met": true
+          },
+          {
+            "dimension": "reasoning",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "transfer",
+            "have": 1,
+            "need": 1,
+            "met": true
+          }
+        ],
+        "unmet": []
+      },
+      "wrongReasoningRun": {
+        "state": "NOT_YET_DEMONSTRATED",
+        "dimensions": [
+          {
+            "dimension": "model",
+            "have": 1,
+            "need": 1,
+            "met": true
+          },
+          {
+            "dimension": "value",
+            "have": 2,
+            "need": 2,
+            "met": true
+          },
+          {
+            "dimension": "reasoning",
+            "have": 0,
+            "need": 1,
+            "met": false
+          },
+          {
+            "dimension": "transfer",
+            "have": 1,
+            "need": 1,
+            "met": true
+          }
+        ],
+        "unmet": [
+          "reasoning: 0/1 independent demonstrations",
+          "only 4/5 distinct independent item families"
+        ]
+      },
+      "result": "PASS",
+      "correctEvents": [
+        {
+          "eventId": "PR-FR-compare-model-G5",
+          "skillId": "SK-FR-compare",
+          "gradeTarget": 5,
+          "dimension": "model",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "number-line",
+          "itemFamilyId": "compare-g5-model",
+          "sessionId": "s1",
+          "observedAt": "2026-10-01T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-compare-value-G5",
+          "skillId": "SK-FR-compare",
+          "gradeTarget": 5,
+          "dimension": "value",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "symbolic",
+          "itemFamilyId": "compare-g5-value",
+          "sessionId": "s1",
+          "observedAt": "2026-10-01T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-compare-reason-G5",
+          "skillId": "SK-FR-compare",
+          "gradeTarget": 5,
+          "dimension": "reasoning",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "symbolic",
+          "itemFamilyId": "compare-g5-reason",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-compare-transfer-G5",
+          "skillId": "SK-FR-compare",
+          "gradeTarget": 5,
+          "dimension": "transfer",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "transfer_check",
+          "representation": "area-model",
+          "itemFamilyId": "compare-g5-transfer",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        },
+        {
+          "eventId": "PR-FR-compare-value2-G5",
+          "skillId": "SK-FR-compare",
+          "gradeTarget": 5,
+          "dimension": "value",
+          "correct": true,
+          "assistanceBand": "A0",
+          "mode": "independent_check",
+          "representation": "symbolic",
+          "itemFamilyId": "compare-g5-value-sixths-ninths",
+          "sessionId": "s2",
+          "observedAt": "2026-10-02T10:00:00Z"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0
+  },
+  "allPass": true
+}

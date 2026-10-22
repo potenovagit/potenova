@@ -388,3 +388,95 @@ describe('conceptual mastery (ER-03 candidate v0.2)', () => {
     expect(() => evaluateAssessedCoreMastery(fullBundle(), ONRAMP, 3)).toThrow(/assessed-core/);
   });
 });
+
+/**
+ * The three isolating properties the educator named, proven for BOTH assessed-core
+ * skills (equivalence AND comparison) — the gate is a property of the policy, not
+ * of one skill. Each isolation changes exactly one thing from an otherwise-passing
+ * bundle so the cause of withholding is unambiguous.
+ */
+describe.each(['SK-FR-equiv', 'SK-FR-compare'] as const)(
+  'assessed-core isolations hold for %s',
+  (skillId) => {
+    const policy = ER03_CANDIDATE_V02.skills[skillId]!;
+    let n = 0;
+    const mk = (
+      dimension: EvidenceDimension,
+      correct: boolean,
+      o: {
+        band?: 'A0' | 'A1' | 'A4';
+        mode?: 'independent_check' | 'transfer_check' | 'retention_check';
+        rep?: string;
+        family?: string;
+        day?: number;
+      } = {},
+    ): ConceptualEvidence => {
+      n += 1;
+      return {
+        eventId: `${skillId}-${n}`,
+        skillId,
+        gradeTarget: 5,
+        dimension,
+        correct,
+        assistanceBand: o.band ?? 'A0',
+        mode: o.mode ?? (dimension === 'transfer' ? 'transfer_check' : 'independent_check'),
+        representation: o.rep ?? 'area-model',
+        itemFamilyId: o.family ?? `${skillId}-fam-${dimension}-${n}`,
+        observedAt: `2026-10-${String(o.day ?? 1).padStart(2, '0')}T10:00:00Z`,
+      };
+    };
+    // A complete, passing bundle: 5 distinct families, 2 sessions, 2+ reps.
+    const full = (): ConceptualEvidence[] => [
+      mk('model', true, { rep: 'area-model', family: 'm1', day: 1 }),
+      mk('value', true, { rep: 'symbolic', family: 'v1', day: 1 }),
+      mk('value', true, { rep: 'area-model', family: 'v2', day: 2 }),
+      mk('reasoning', true, { rep: 'symbolic', family: 'r1', day: 2 }),
+      mk('transfer', true, { rep: 'number-line', family: 't1', day: 2 }),
+    ];
+
+    it('sanity: the full bundle reaches INDEPENDENT', () => {
+      expect(evaluateAssessedCoreMastery(full(), policy, 5).state).toBe('INDEPENDENT');
+    });
+
+    it('reasoning-only isolation: value right but reasoning wrong → NOT_YET, reasoning unmet', () => {
+      const events = full();
+      // keep a 5th eligible family so ONLY the reasoning dimension is short
+      events.push(mk('value', true, { rep: 'number-line', family: 'v3', day: 2 }));
+      events[3] = mk('reasoning', false, { rep: 'symbolic', family: 'r1', day: 2 });
+      const r = evaluateAssessedCoreMastery(events, policy, 5);
+      expect(r.state).toBe('NOT_YET_DEMONSTRATED');
+      expect(r.unmet).toHaveLength(1);
+      expect(r.unmet[0]!.startsWith('reasoning')).toBe(true);
+      expect(r.dimensions.find((d) => d.dimension === 'reasoning')!.met).toBe(false);
+    });
+
+    it('single-session isolation: everything in one sitting → NOT_YET, sessions unmet', () => {
+      const oneDay = full().map((e) => ({ ...e, observedAt: '2026-10-01T10:00:00Z' }));
+      const r = evaluateAssessedCoreMastery(oneDay, policy, 5);
+      expect(r.state).toBe('NOT_YET_DEMONSTRATED');
+      expect(r.unmet.some((u) => u.includes('session'))).toBe(true);
+    });
+
+    it('retention boundary isolation: 1h short of the delay stays INDEPENDENT; at the delay, RETAINED', () => {
+      // independence is first met on day 2 (2026-10-02T10:00:00Z); delay is 168h.
+      const delayMs = policy.retentionDelayHours * 3_600_000;
+      const anchor = Date.parse('2026-10-02T10:00:00Z');
+      const short = [
+        ...full(),
+        {
+          ...mk('value', true, { rep: 'number-line', family: 'ret-fam', mode: 'retention_check' }),
+          observedAt: new Date(anchor + delayMs - 3_600_000).toISOString(),
+        },
+      ];
+      expect(evaluateAssessedCoreMastery(short, policy, 5).state).toBe('INDEPENDENT');
+      const at = [
+        ...full(),
+        {
+          ...mk('value', true, { rep: 'number-line', family: 'ret-fam2', mode: 'retention_check' }),
+          observedAt: new Date(anchor + delayMs).toISOString(),
+        },
+      ];
+      expect(evaluateAssessedCoreMastery(at, policy, 5).state).toBe('RETAINED');
+    });
+  },
+);
