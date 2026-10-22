@@ -210,11 +210,12 @@ interface Requirements {
 function checkRequirements(
   eligible: readonly ConceptualEvidence[],
   policy: ConceptualSkillPolicy,
-  /** Item families the learner has met in ANY non-transfer evidence (any
-   *  correctness/mode). A transfer demonstration must be a genuinely NEW item,
-   *  so a transfer whose family appears here does not count — distinct-dimension
-   *  family counting alone does not guarantee this (educator edge case 1). */
-  nonTransferFamilies: ReadonlySet<string> = new Set(),
+  /** All in-scope events for this learner+skill (any dimension, correctness or
+   *  mode), used for the CHRONOLOGICAL transfer-novelty test. A transfer counts
+   *  only if the learner had no EARLIER encounter with that item family; a later
+   *  encounter must never retroactively invalidate a previously legitimate
+   *  transfer (educator Stage-2 amendment, edge case 1 made chronological). */
+  inScope: readonly ConceptualEvidence[] = [],
 ): Requirements {
   const usedFamilies = new Map<EvidenceDimension, Set<string>>();
   const countedEvents: ConceptualEvidence[] = [];
@@ -226,15 +227,19 @@ function checkRequirements(
       if (e.dimension !== dim) continue;
       // Transfer evidence must be a genuine TRANSFER check — a novel uncoached
       // item — regardless of when reasoning was demonstrated. There is NO
-      // temporal-ordering gate (educator E4/R6: sequencing is an instructional
-      // rule, not a mastery gate). Novelty is enforced explicitly: a transfer
-      // must be in transfer_check mode AND its family must not have been used by
-      // any non-transfer evidence (educator edge case 1).
-      if (
-        dim === 'transfer' &&
-        (e.mode !== 'transfer_check' || nonTransferFamilies.has(e.itemFamilyId))
-      )
-        continue;
+      // temporal-ordering gate against reasoning (educator E4/R6: sequencing is
+      // an instructional rule, not a mastery gate). Novelty is enforced
+      // chronologically: a transfer must be in transfer_check mode AND the
+      // learner must not have met that item family in any STRICTLY EARLIER
+      // encounter. A later encounter does not invalidate it (educator Stage-2).
+      if (dim === 'transfer') {
+        if (e.mode !== 'transfer_check') continue;
+        const t = Date.parse(e.observedAt);
+        const earlierEncounter = inScope.some(
+          (o) => o !== e && o.itemFamilyId === e.itemFamilyId && Date.parse(o.observedAt) < t,
+        );
+        if (earlierEncounter) continue;
+      }
       if (seen.has(e.itemFamilyId)) continue;
       seen.add(e.itemFamilyId);
       countedEvents.push(e);
@@ -285,11 +290,11 @@ function checkRequirements(
 function independenceAchievedAt(
   eligible: readonly ConceptualEvidence[],
   policy: ConceptualSkillPolicy,
-  nonTransferFamilies: ReadonlySet<string>,
+  inScope: readonly ConceptualEvidence[],
 ): number | null {
   const chron = [...eligible].sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt));
   for (let i = 0; i < chron.length; i++) {
-    if (checkRequirements(chron.slice(0, i + 1), policy, nonTransferFamilies).met)
+    if (checkRequirements(chron.slice(0, i + 1), policy, inScope).met)
       return Date.parse(chron[i]!.observedAt);
   }
   return null;
@@ -319,17 +324,14 @@ export function evaluateConceptualMastery(
   );
   const eligible = mine.filter(isEligible);
 
-  // Families the learner has met in any NON-transfer evidence (any correctness
-  // or mode) — a transfer item sharing one of these is not novel (edge case 1).
-  const nonTransferFamilies = new Set(
-    mine.filter((e) => e.dimension !== 'transfer').map((e) => e.itemFamilyId),
-  );
-
-  const req = checkRequirements(eligible, policy, nonTransferFamilies);
+  // All in-scope events drive the chronological transfer-novelty test: a transfer
+  // is novel unless the learner met that family in a STRICTLY earlier encounter
+  // (educator Stage-2 amendment — a later encounter never retroactively invalidates).
+  const req = checkRequirements(eligible, policy, mine);
 
   // The moment independence was first achieved, if ever. The retention window is
   // measured from HERE, not from first evidence (educator Stage-1 correction).
-  const anchor = req.met ? independenceAchievedAt(eligible, policy, nonTransferFamilies) : null;
+  const anchor = req.met ? independenceAchievedAt(eligible, policy, mine) : null;
 
   let state: ConceptualState;
   if (mine.length === 0) state = 'UNKNOWN';
