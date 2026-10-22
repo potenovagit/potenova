@@ -7,4 +7,5 @@ export * from './addition-draft';
 export * from './lessons';
 export * from './ontario';
 export * from './overlay';
+export * from './overlay/worksheet-review';
 export * from './strands';
