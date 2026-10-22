@@ -9,12 +9,12 @@
  */
 import { writeFileSync } from 'node:fs';
 import {
-  buildOverlayWorksheet,
+  buildScaffoldedWorksheet,
   overlayCoverage,
   allOverlayMappings,
 } from '../packages/curriculum/src/index.ts';
 
-const rows = buildOverlayWorksheet();
+const rows = buildScaffoldedWorksheet();
 const header = [
   'subject',
   'grade',
@@ -28,6 +28,8 @@ const header = [
   'coverage',
   'proposedBy',
   'rationale',
+  // scaffolding: skills already proposed under the same overall code (reuse hint):
+  'nearbySkillIds',
   // educator-authoring columns (blank for review):
   'educator_skillIds',
   'educator_coverage',
@@ -55,6 +57,7 @@ for (const r of rows) {
       r.coverage,
       r.proposedBy,
       r.rationale,
+      r.nearbySkillIds,
       '',
       '',
       '',

@@ -28,6 +28,8 @@
     "eval:model": "tsx --tsconfig tsconfig.dev.json services/api/src/eval-cli.ts",
     "gate:dryrun": "tsx --tsconfig tsconfig.dev.json services/api/src/gate-dryrun-cli.ts",
     "er03:evidence": "tsx --tsconfig tsconfig.dev.json services/api/src/er03-evidence-cli.ts",
+    "overlay:worksheet": "tsx scripts/build-overlay-worksheet.ts",
+    "overlay:review": "tsx scripts/review-overlay-worksheet.ts",
     "ci": "npm run format:check && npm run typecheck && npm run test && npm run trace && npm run build:web && npm run build:api"
   },
   "devDependencies": {
