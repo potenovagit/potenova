@@ -1,4 +1,9 @@
-import type { AssistanceBand, EvidenceMode } from './evidence';
+import type {
+  AssistanceBand,
+  EvidenceMode,
+  MasteryEvidence,
+  EvidenceCorrectionRecord,
+} from './evidence';
 
 /**
  * Conceptual-mastery evaluation for the Grades 3–5 fractions beta (ER-03 candidate
@@ -148,6 +153,47 @@ export const ER03_CANDIDATE_V02: ER03CandidatePolicy = {
     },
   },
 };
+
+/**
+ * Project the conceptual-evidence view off a raw ledger slice (immutable events +
+ * their corrections) for one skill. The single, shared adapter from the
+ * append-only ledger to `ConceptualEvidence` — used by both the in-memory store
+ * and the persisted API path, so the two can never drift. Pure:
+ *   - drops events retracted by a correction (AT-25),
+ *   - keeps only this skill's conceptually-tagged events (an `evidenceDimension`
+ *     AND an `itemFamilyId`); everything else is ignored,
+ *   - never fabricates a dimension or grade — an untagged event is simply not
+ *     conceptual evidence.
+ * Mastery stays derived-from-evidence: this maps, it does not decide (TM-07/08).
+ */
+export function conceptualEvidenceFromLedger(
+  events: readonly MasteryEvidence[],
+  corrections: readonly EvidenceCorrectionRecord[],
+  skillId: string,
+): ConceptualEvidence[] {
+  const retracted = new Set(corrections.filter((c) => c.retract).map((c) => c.targetEventId));
+  return events
+    .filter(
+      (e) =>
+        e.skillId === skillId &&
+        !retracted.has(e.eventId) &&
+        e.evidenceDimension !== undefined &&
+        e.itemFamilyId !== undefined,
+    )
+    .map((e) => ({
+      eventId: e.eventId,
+      skillId: e.skillId,
+      gradeTarget: e.gradeTarget ?? 0,
+      dimension: e.evidenceDimension!,
+      correct: e.correct,
+      assistanceBand: e.assistanceBand,
+      mode: e.mode,
+      representation: e.representation,
+      itemFamilyId: e.itemFamilyId!,
+      ...(e.sessionId ? { sessionId: e.sessionId } : {}),
+      observedAt: e.observedAt,
+    }));
+}
 
 export type ConceptualState = 'UNKNOWN' | 'NOT_YET_DEMONSTRATED' | 'INDEPENDENT' | 'RETAINED';
 

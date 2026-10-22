@@ -33,6 +33,12 @@ export const masteryEvidence = pgTable('mastery_evidence', {
   observedAt: text('observed_at').notNull(),
   curriculumReleaseId: text('curriculum_release_id').notNull(),
   schemaVersion: text('schema_version').notNull(),
+  // Conceptual-assessment fields (ER-03). Nullable — present only on conceptual
+  // probe responses; the representation projection ignores them.
+  evidenceDimension: text('evidence_dimension'),
+  itemFamilyId: text('item_family_id'),
+  gradeTarget: integer('grade_target'),
+  sessionId: text('session_id'),
   ingestedAt: timestamp('ingested_at', { withTimezone: true }).notNull().defaultNow(),
 });
 export const evidenceCorrection = pgTable('evidence_correction', {
@@ -328,7 +334,13 @@ CREATE TABLE IF NOT EXISTS mastery_evidence (
   mode text NOT NULL, assistance_band text NOT NULL, correct boolean NOT NULL,
   representation text NOT NULL, recognition_confidence double precision NOT NULL,
   observed_at text NOT NULL, curriculum_release_id text NOT NULL, schema_version text NOT NULL,
+  evidence_dimension text, item_family_id text, grade_target integer, session_id text,
   ingested_at timestamptz NOT NULL DEFAULT now());
+-- Forward-compat: add the conceptual columns to an already-created table (ER-03).
+ALTER TABLE mastery_evidence ADD COLUMN IF NOT EXISTS evidence_dimension text;
+ALTER TABLE mastery_evidence ADD COLUMN IF NOT EXISTS item_family_id text;
+ALTER TABLE mastery_evidence ADD COLUMN IF NOT EXISTS grade_target integer;
+ALTER TABLE mastery_evidence ADD COLUMN IF NOT EXISTS session_id text;
 CREATE INDEX IF NOT EXISTS idx_evidence_learner_skill ON mastery_evidence (learner_alias, skill_id);
 CREATE TABLE IF NOT EXISTS evidence_correction (
   correction_id text PRIMARY KEY, target_event_id text NOT NULL, reason text NOT NULL,

@@ -3,7 +3,14 @@ import { DomainError } from '@potenova/contracts';
 import type { GuardianPreferenceRow } from '@potenova/persistence';
 import { readAuth, requireActorType, requireStepUp, assertRegion, type AuthCtx } from '../auth';
 import { now, type Deps } from '../deps';
-import { COURSES_BY_SUBJECT, courseCoachableSkills, courseFor, type Subject } from '../adaptive';
+import {
+  COURSES_BY_SUBJECT,
+  courseCoachableSkills,
+  courseFor,
+  projectConceptual,
+  type Subject,
+} from '../adaptive';
+import { ER03_CANDIDATE_V02 } from '@potenova/learner-state';
 
 /**
  * Guardian controls (PAR): a subject→strand focus and tightened usage caps.
@@ -135,6 +142,45 @@ export function registerParent(app: Hono, deps: Deps): void {
     const usedTodayMinutes = await deps.session.getUsageMinutes(alias, day);
     const pref = await deps.session.getGuardianPreference(alias);
     return c.json({ day, usedTodayMinutes, maxDailyMinutes: pref?.maxDailyMinutes ?? null });
+  });
+
+  // Conceptual-understanding read (ER-03), derived off the immutable ledger for
+  // one assessed-core skill. Read-only and advisory: the grade is taken from the
+  // learner record (never a caller-chosen value — educator R7), the result is
+  // grade-gated fail-closed, and the ER-03 policy is a CANDIDATE, so the response
+  // says `policyApproved: false`. This surfaces WHY a skill is or isn't shown as
+  // understood (the four dimensions + unmet reasons); it never sets mastery.
+  app.get('/learners/:alias/conceptual/:skillId', async (c) => {
+    const a = authed(c);
+    requireActorType(a, 'guardian');
+    const alias = c.req.param('alias');
+    await assertOwnsLearner(a, alias);
+    const skillId = c.req.param('skillId');
+
+    // Only assessed-core skills carry a conceptual policy; anything else is a 404
+    // rather than a silent empty result.
+    const policy = ER03_CANDIDATE_V02.skills[skillId];
+    if (!policy || policy.role !== 'assessed-core') {
+      throw new DomainError('NOT_FOUND', 'no conceptual assessment for this skill');
+    }
+
+    const learner = await deps.identity.getLearner(alias);
+    if (!learner) throw new DomainError('NOT_FOUND', 'learner not found');
+
+    const { result, policyApproved } = await projectConceptual(deps, alias, skillId, learner.grade);
+    return c.json({
+      skillId,
+      gradeTarget: learner.grade,
+      policyVersion: result.policyVersion,
+      policyApproved, // ER-03 candidate → false; advisory, not an approved decision
+      state: result.state,
+      dimensions: result.dimensions,
+      sessions: result.sessions,
+      representations: result.representations,
+      eligibleCount: result.eligibleCount,
+      unmet: result.unmet,
+      independenceAt: result.independenceAt,
+    });
   });
 
   // DSAR intake: a guardian REQUESTS access/export or erasure of their own child's
