@@ -2,14 +2,29 @@ import { describe, it, expect } from 'vitest';
 import {
   CONCEPTUAL_PROBES,
   EQUIV_PROBES_G3,
+  EQUIV_PROBES_G4,
   EQUIV_PROBES_G5,
   scoreProbe,
+  toChildFacing,
   type EvidenceDimension,
 } from '@potenova/content';
 
 /** DRAFT grade-calibrated conceptual probes (educator Stage-1 Annex B). */
 describe('conceptual probes (DRAFT)', () => {
   const dims: EvidenceDimension[] = ['model', 'value', 'reasoning', 'transfer'];
+
+  it('covers both skills (equiv + compare) across Grades 3–5, all four dimensions', () => {
+    for (const skillId of ['SK-FR-equiv', 'SK-FR-compare']) {
+      for (const grade of [3, 4, 5]) {
+        for (const d of dims) {
+          const hit = CONCEPTUAL_PROBES.some(
+            (p) => p.skillId === skillId && p.gradeTarget === grade && p.dimension === d,
+          );
+          expect(hit, `${skillId} G${grade} ${d}`).toBe(true);
+        }
+      }
+    }
+  });
 
   it('covers all four dimensions at BOTH Grade 3 and Grade 5', () => {
     for (const set of [EQUIV_PROBES_G3, EQUIV_PROBES_G5]) {
@@ -51,5 +66,134 @@ describe('conceptual probes (DRAFT)', () => {
     const bad = scoreProbe(reason, distractor.id);
     expect(bad.correct).toBe(false);
     expect(bad.misconceptionId).toBe(distractor.misconceptionId);
+  });
+
+  // Correction #1: the correct option is not uniformly the first in source, and
+  // the child-facing projection never exposes correctness.
+  it('correct option is NOT always the first in source order', () => {
+    const correctFirst = CONCEPTUAL_PROBES.filter((p) => p.options[0]!.correct).length;
+    expect(correctFirst).toBeLessThan(CONCEPTUAL_PROBES.length);
+  });
+
+  it('toChildFacing strips correctness/misconception labels a child must not see', () => {
+    for (const p of CONCEPTUAL_PROBES) {
+      const child = toChildFacing(p, 'seed-1');
+      expect(child.options).toHaveLength(p.options.length);
+      for (const o of child.options) {
+        expect(o).not.toHaveProperty('correct');
+        expect(o).not.toHaveProperty('misconceptionId');
+      }
+      // every option id survives (so scoring can still resolve the choice)
+      expect(new Set(child.options.map((o) => o.id))).toEqual(new Set(p.options.map((o) => o.id)));
+    }
+  });
+
+  it('toChildFacing shuffles deterministically: same seed stable, different seeds vary somewhere', () => {
+    const probe = CONCEPTUAL_PROBES.find((p) => p.options.length >= 3)!;
+    const a = toChildFacing(probe, 's1').options.map((o) => o.id);
+    const aAgain = toChildFacing(probe, 's1').options.map((o) => o.id);
+    expect(aAgain).toEqual(a); // reproducible
+    const anyReordered = CONCEPTUAL_PROBES.some((p) => {
+      const x = toChildFacing(p, 's1')
+        .options.map((o) => o.id)
+        .join();
+      const y = toChildFacing(p, 's2')
+        .options.map((o) => o.id)
+        .join();
+      return x !== y;
+    });
+    expect(anyReordered).toBe(true);
+  });
+
+  // Correction #2: equivalence transfer items mix Yes and No across distinct families.
+  it('equivalence TRANSFER items are not uniformly "Yes" and span distinct families', () => {
+    const transfers = [EQUIV_PROBES_G3, EQUIV_PROBES_G4, EQUIV_PROBES_G5].map(
+      (s) => s.find((p) => p.dimension === 'transfer')!,
+    );
+    const correctTexts = transfers.map((p) => p.options.find((o) => o.correct)!.text.toLowerCase());
+    expect(correctTexts.some((t) => t.startsWith('yes'))).toBe(true);
+    expect(correctTexts.some((t) => t.startsWith('no'))).toBe(true);
+    expect(new Set(transfers.map((p) => p.itemFamilyId)).size).toBe(3);
+  });
+
+  // Correction #3: area-model model options carry an actual drawable picture,
+  // so the child chooses between real alternative visuals, not descriptions.
+  it('every area-model MODEL-dimension option carries a bar visual to render', () => {
+    const areaModels = CONCEPTUAL_PROBES.filter(
+      (x) => x.dimension === 'model' && x.representation === 'area-model',
+    );
+    expect(areaModels.length).toBeGreaterThan(0);
+    for (const p of areaModels) {
+      for (const o of p.options) {
+        expect(o.visual?.kind).toBe('bars');
+        if (o.visual?.kind === 'bars') expect(o.visual.wholes.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  // R4: number-line MODEL options carry an actual number-line drawing.
+  it('every number-line MODEL-dimension option carries a numberline visual to render', () => {
+    const nlModels = CONCEPTUAL_PROBES.filter(
+      (x) => x.dimension === 'model' && x.representation === 'number-line',
+    );
+    expect(nlModels.length).toBeGreaterThan(0);
+    for (const p of nlModels) {
+      for (const o of p.options) {
+        expect(o.visual?.kind).toBe('numberline');
+        if (o.visual?.kind === 'numberline') expect(o.visual.lines.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  // R2: each assessed-core grade cell can meet the candidate quota from authored
+  // content — ≥5 distinct families with ≥2 distinct value families.
+  it('each assessed-core grade cell has ≥5 families incl. ≥2 value families', () => {
+    for (const skillId of ['SK-FR-equiv', 'SK-FR-compare']) {
+      for (const grade of [3, 4, 5]) {
+        const cell = CONCEPTUAL_PROBES.filter(
+          (p) => p.skillId === skillId && p.gradeTarget === grade,
+        );
+        const families = new Set(cell.map((p) => p.itemFamilyId));
+        const valueFamilies = new Set(
+          cell.filter((p) => p.dimension === 'value').map((p) => p.itemFamilyId),
+        );
+        expect(families.size, `${skillId} G${grade} families`).toBeGreaterThanOrEqual(5);
+        expect(valueFamilies.size, `${skillId} G${grade} value families`).toBeGreaterThanOrEqual(2);
+      }
+    }
+  });
+
+  // R1: the retired G4 reasoning distractor is gone and the replacement is a
+  // clearly false generalisation.
+  it('the Grade-4 reasoning probe no longer uses the "2 is half of 4" distractor', () => {
+    const g4reason = EQUIV_PROBES_G4.find((p) => p.dimension === 'reasoning')!;
+    expect(g4reason.options.some((o) => /2 is half of 4/i.test(o.text))).toBe(false);
+    expect(
+      g4reason.options.some((o) => /adding 1 to the top and 1 to the bottom/i.test(o.text)),
+    ).toBe(true);
+  });
+
+  // E1: Grade-3 comparison probes use a valid Grade-3 expectation (B1.6), not B1.8.
+  it('Grade-3 comparison probes are tagged B1.6 (not the invalid B1.8)', () => {
+    const g3compare = CONCEPTUAL_PROBES.filter(
+      (p) => p.skillId === 'SK-FR-compare' && p.gradeTarget === 3,
+    );
+    expect(g3compare.length).toBeGreaterThan(0);
+    for (const p of g3compare) {
+      expect(p.sourceExpectationCode).toBe('B1.6');
+      expect(p.sourceExpectationCode).not.toBe('B1.8');
+    }
+  });
+
+  // E2: set-model probes are genuine discrete-collection tasks (reference counted
+  // objects), not area/bar tasks wearing a set-model label.
+  it('set-model probes describe a genuine counted collection', () => {
+    const setProbes = CONCEPTUAL_PROBES.filter((p) => p.representation === 'set-model');
+    expect(setProbes.length).toBeGreaterThan(0);
+    for (const p of setProbes) {
+      expect(/counter|sticker|object|group|pile/i.test(p.prompt), p.probeId).toBe(true);
+      expect(/\b\d+\b/.test(p.prompt), p.probeId).toBe(true); // an explicit count
+      expect(/\bbar\b/i.test(p.prompt), p.probeId).toBe(false); // not a bar task
+    }
   });
 });

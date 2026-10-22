@@ -17,7 +17,9 @@ import type { AssistanceBand, EvidenceMode } from './evidence';
  *   - model     — valid equal-partition representation of the same whole
  *   - value     — the two fractions are the same quantity (the bare answer)
  *   - reasoning — WHY they are equal (chosen among misconception-based options)
- *   - transfer  — an uncoached new item, in a different family, after reasoning
+ *   - transfer  — an uncoached new item (transfer_check mode), in a different
+ *                 family; sequencing after reasoning is an instructional rule,
+ *                 not a mastery gate (educator E4/R6)
  *
  * The property the educator asked to see demonstrated: a child who answers the
  * `value` correctly but the `reasoning` WRONG does NOT reach INDEPENDENT — a
@@ -46,6 +48,10 @@ export interface ConceptualEvidence {
   readonly representation: string;
   /** Canonical item-family id — distinct families prevent double-counting a template. */
   readonly itemFamilyId: string;
+  /** Explicit assessment-session id. When absent, a session is derived as the
+   *  UTC calendar day of observedAt (educator note: sessions must be identifiable,
+   *  not merely inferred — supply this in production). */
+  readonly sessionId?: string;
   readonly observedAt: string; // ISO 8601
 }
 
@@ -65,10 +71,23 @@ export interface ConceptualSkillPolicy {
  *  non-cognitive; until the ledger records that distinguishably, treat A1 with
  *  care — see Stage-1 Annex C). A2+ never count. */
 export const MASTERY_ELIGIBLE_BANDS: readonly AssistanceBand[] = ['A0', 'A1'];
-/** Modes whose correct events may count toward independence. */
+/** Modes whose correct events may count toward INITIAL independence. Note that
+ *  `retention_check` is deliberately NOT here: a delayed-retrieval check can
+ *  confirm retention of an already-independent skill but can never, by itself,
+ *  establish initial independence (educator R3). */
 export const MASTERY_COUNTED_MODES: readonly EvidenceMode[] = [
   'independent_check',
   'transfer_check',
+];
+/** Modes whose correct unaided events may satisfy the POST-INDEPENDENCE
+ *  retention gate. This is a superset of MASTERY_COUNTED_MODES: a real delayed
+ *  check is recorded as `retention_check`, and it counts only here — never
+ *  toward the initial requirements above (educator R3). Teaching/diagnostic
+ *  modes are excluded from both. */
+export const RETENTION_ELIGIBLE_MODES: readonly EvidenceMode[] = [
+  'independent_check',
+  'transfer_check',
+  'retention_check',
 ];
 
 export interface ER03CandidatePolicy {
@@ -149,6 +168,12 @@ export interface ConceptualMasteryResult {
   readonly dimensions: readonly DimensionProgress[];
   /** Human-readable reasons a skill is not yet INDEPENDENT (empty when it is). */
   readonly unmet: readonly string[];
+  /** ISO timestamp at which all independent-mastery requirements were first met
+   *  — the anchor the retention window is measured from. null until INDEPENDENT. */
+  readonly independenceAt: string | null;
+  /** The grade this evaluation was gated to, or null when no grade gate was
+   *  applied (educator E5 — grade-specific claims must record the grade used). */
+  readonly gradeTarget: number | null;
 }
 
 const isEligible = (e: ConceptualEvidence): boolean =>
@@ -156,22 +181,41 @@ const isEligible = (e: ConceptualEvidence): boolean =>
   MASTERY_ELIGIBLE_BANDS.includes(e.assistanceBand) &&
   MASTERY_COUNTED_MODES.includes(e.mode);
 
-const dayOf = (iso: string): string => iso.slice(0, 10);
+/** A correct, unaided check that may satisfy the post-independence retention
+ *  gate — includes `retention_check`, which never counts toward initial
+ *  independence (educator R3). */
+const isRetentionEligible = (e: ConceptualEvidence): boolean =>
+  e.correct &&
+  MASTERY_ELIGIBLE_BANDS.includes(e.assistanceBand) &&
+  RETENTION_ELIGIBLE_MODES.includes(e.mode);
+
+/** An assessment session: the explicit sessionId when present, else the UTC
+ *  calendar day of observedAt (the documented derivation when none is supplied). */
+const sessionOf = (e: ConceptualEvidence): string => e.sessionId ?? e.observedAt.slice(0, 10);
+
+interface Requirements {
+  readonly met: boolean;
+  readonly dimensions: DimensionProgress[];
+  readonly sessions: number;
+  readonly representations: number;
+  readonly eligibleFamilies: number;
+  readonly unmet: string[];
+}
 
 /**
- * Evaluate conceptual mastery for one skill from its evidence. Pure and
- * deterministic. Greedily assigns each eligible event to at most one dimension
- * quota, counting only DISTINCT item families per dimension so a repeated
- * template cannot satisfy two slots.
+ * Check the non-retention requirements against a set of eligible events. Pure.
+ * Counts only DISTINCT item families per dimension, so a repeated template
+ * cannot satisfy two slots.
  */
-export function evaluateConceptualMastery(
-  events: readonly ConceptualEvidence[],
+function checkRequirements(
+  eligible: readonly ConceptualEvidence[],
   policy: ConceptualSkillPolicy,
-): ConceptualMasteryResult {
-  const mine = events.filter((e) => e.skillId === policy.skillId);
-  const eligible = mine.filter(isEligible);
-
-  // Count distinct-family eligible correct events per dimension.
+  /** Item families the learner has met in ANY non-transfer evidence (any
+   *  correctness/mode). A transfer demonstration must be a genuinely NEW item,
+   *  so a transfer whose family appears here does not count — distinct-dimension
+   *  family counting alone does not guarantee this (educator edge case 1). */
+  nonTransferFamilies: ReadonlySet<string> = new Set(),
+): Requirements {
   const usedFamilies = new Map<EvidenceDimension, Set<string>>();
   const countedEvents: ConceptualEvidence[] = [];
   for (const dim of EVIDENCE_DIMENSIONS) {
@@ -180,6 +224,17 @@ export function evaluateConceptualMastery(
     const seen = new Set<string>();
     for (const e of eligible) {
       if (e.dimension !== dim) continue;
+      // Transfer evidence must be a genuine TRANSFER check — a novel uncoached
+      // item — regardless of when reasoning was demonstrated. There is NO
+      // temporal-ordering gate (educator E4/R6: sequencing is an instructional
+      // rule, not a mastery gate). Novelty is enforced explicitly: a transfer
+      // must be in transfer_check mode AND its family must not have been used by
+      // any non-transfer evidence (educator edge case 1).
+      if (
+        dim === 'transfer' &&
+        (e.mode !== 'transfer_check' || nonTransferFamilies.has(e.itemFamilyId))
+      )
+        continue;
       if (seen.has(e.itemFamilyId)) continue;
       seen.add(e.itemFamilyId);
       countedEvents.push(e);
@@ -195,14 +250,13 @@ export function evaluateConceptualMastery(
     return { dimension: d, have, need, met: have >= need };
   });
 
-  const sessions = new Set(countedEvents.map((e) => dayOf(e.observedAt))).size;
+  const sessions = new Set(countedEvents.map(sessionOf)).size;
   const representations = new Set(countedEvents.map((e) => e.representation)).size;
   const eligibleFamilies = new Set(eligible.map((e) => e.itemFamilyId)).size;
 
   const unmet: string[] = [];
-  for (const d of dimensions) {
+  for (const d of dimensions)
     if (!d.met) unmet.push(`${d.dimension}: ${d.have}/${d.need} independent demonstrations`);
-  }
   if (eligibleFamilies < policy.minIndependent)
     unmet.push(
       `only ${eligibleFamilies}/${policy.minIndependent} distinct independent item families`,
@@ -212,33 +266,130 @@ export function evaluateConceptualMastery(
   if (representations < policy.minRepresentations)
     unmet.push(`only ${representations}/${policy.minRepresentations} representations`);
 
+  return {
+    met: unmet.length === 0,
+    dimensions,
+    sessions,
+    representations,
+    eligibleFamilies,
+    unmet,
+  };
+}
+
+/**
+ * The instant independence is first achieved: processing eligible events in
+ * chronological order, the timestamp of the event that COMPLETES every
+ * non-retention requirement, or null if they are never met. The retention
+ * window starts here — NOT at first evidence (educator Stage-1 correction).
+ */
+function independenceAchievedAt(
+  eligible: readonly ConceptualEvidence[],
+  policy: ConceptualSkillPolicy,
+  nonTransferFamilies: ReadonlySet<string>,
+): number | null {
+  const chron = [...eligible].sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt));
+  for (let i = 0; i < chron.length; i++) {
+    if (checkRequirements(chron.slice(0, i + 1), policy, nonTransferFamilies).met)
+      return Date.parse(chron[i]!.observedAt);
+  }
+  return null;
+}
+
+/**
+ * Evaluate conceptual mastery for one skill from its evidence. Pure and
+ * deterministic.
+ */
+export interface ConceptualEvalOptions {
+  /** When set, only evidence tagged with this grade counts — the learner's
+   *  target grade is then a separate gate and grade-crossing evidence is
+   *  excluded (educator R7). When omitted, evidence is not filtered by grade
+   *  and grade targeting is left to the caller's content-band gate. */
+  readonly gradeTarget?: number;
+}
+
+export function evaluateConceptualMastery(
+  events: readonly ConceptualEvidence[],
+  policy: ConceptualSkillPolicy,
+  options: ConceptualEvalOptions = {},
+): ConceptualMasteryResult {
+  const mine = events.filter(
+    (e) =>
+      e.skillId === policy.skillId &&
+      (options.gradeTarget === undefined || e.gradeTarget === options.gradeTarget),
+  );
+  const eligible = mine.filter(isEligible);
+
+  // Families the learner has met in any NON-transfer evidence (any correctness
+  // or mode) — a transfer item sharing one of these is not novel (edge case 1).
+  const nonTransferFamilies = new Set(
+    mine.filter((e) => e.dimension !== 'transfer').map((e) => e.itemFamilyId),
+  );
+
+  const req = checkRequirements(eligible, policy, nonTransferFamilies);
+
+  // The moment independence was first achieved, if ever. The retention window is
+  // measured from HERE, not from first evidence (educator Stage-1 correction).
+  const anchor = req.met ? independenceAchievedAt(eligible, policy, nonTransferFamilies) : null;
+
   let state: ConceptualState;
   if (mine.length === 0) state = 'UNKNOWN';
-  else if (unmet.length > 0) state = 'NOT_YET_DEMONSTRATED';
-  else state = hasRetention(eligible, policy) ? 'RETAINED' : 'INDEPENDENT';
+  else if (!req.met) state = 'NOT_YET_DEMONSTRATED';
+  else {
+    // RETAINED needs a delayed unaided check (independent/transfer/retention
+    // mode; retention_check counts only here, R3) at least the delay after
+    // independence, on a FRESH family. Freshness is measured against ALL prior
+    // exposure to that family — any earlier encounter, including incorrect or
+    // assisted/teaching ones, not only successful mastery evidence (educator
+    // edge case 2 / E3).
+    const delayMs = policy.retentionDelayHours * 3_600_000;
+    const retained =
+      anchor !== null &&
+      mine.filter(isRetentionEligible).some((e) => {
+        const t = Date.parse(e.observedAt);
+        if (t < anchor + delayMs) return false;
+        const priorExposure = mine.some(
+          (o) => o !== e && o.itemFamilyId === e.itemFamilyId && Date.parse(o.observedAt) < t,
+        );
+        return !priorExposure;
+      });
+    state = retained ? 'RETAINED' : 'INDEPENDENT';
+  }
 
   return {
     skillId: policy.skillId,
     policyVersion: ER03_CANDIDATE_V02.policyVersion,
     state,
-    eligibleCount: eligibleFamilies,
-    sessions,
-    representations,
-    dimensions,
-    unmet,
+    eligibleCount: req.eligibleFamilies,
+    sessions: req.sessions,
+    representations: req.representations,
+    dimensions: req.dimensions,
+    unmet: req.unmet,
+    independenceAt: anchor === null ? null : new Date(anchor).toISOString(),
+    gradeTarget: options.gradeTarget ?? null,
   };
 }
 
-/** RETAINED needs one additional eligible correct event at least `retentionDelayHours`
- *  after the LATEST of the events that first satisfied the requirements. */
-function hasRetention(
-  eligible: readonly ConceptualEvidence[],
+/**
+ * Fail-closed entry point for the assessed-core pipeline (educator decision #10,
+ * 2026-10-21): a grade-specific INDEPENDENT/RETAINED claim MUST be gated on the
+ * learner's target grade. Unlike the generic evaluator — whose grade filter is
+ * optional for internal uses — this refuses to run without a `gradeTarget` and
+ * only accepts an assessed-core policy, so ungated or on-ramp evidence can never
+ * produce a grade-specific assessed-core mastery claim. The returned result
+ * always records the grade it was evaluated at.
+ */
+export function evaluateAssessedCoreMastery(
+  events: readonly ConceptualEvidence[],
   policy: ConceptualSkillPolicy,
-): boolean {
-  if (eligible.length === 0) return false;
-  const times = eligible.map((e) => Date.parse(e.observedAt)).sort((a, b) => a - b);
-  // Qualifying window = all but the latest; a later event beyond the delay is retention.
-  const earliestQualifier = times[0]!;
-  const delayMs = policy.retentionDelayHours * 3_600_000;
-  return times.some((t) => t - earliestQualifier >= delayMs);
+  gradeTarget: number,
+): ConceptualMasteryResult {
+  if (policy.role !== 'assessed-core')
+    throw new Error(
+      `evaluateAssessedCoreMastery requires an assessed-core policy; ${policy.skillId} is ${policy.role}`,
+    );
+  if (!Number.isInteger(gradeTarget))
+    throw new Error(
+      'evaluateAssessedCoreMastery requires an explicit integer gradeTarget (fail-closed)',
+    );
+  return evaluateConceptualMastery(events, policy, { gradeTarget });
 }
