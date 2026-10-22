@@ -11,3 +11,4 @@ export * from './quarantine';
 export * from './item-generator';
 export * from './english-item-generator';
 export * from './conceptual-probes';
+export * from './pool-validate';
