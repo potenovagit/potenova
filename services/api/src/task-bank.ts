@@ -323,7 +323,7 @@ export function present(task: Task): { question: string; options: readonly strin
   }
   if (task.kind === 'fraction_partition') {
     return {
-      question: `A whole is split into ${task.parts} equal parts; ${task.shaded} are shaded. Write the shaded amount as a fraction (a/b).`,
+      question: `A whole is split into ${task.parts} equal parts; ${task.shaded} ${task.shaded === 1 ? 'is' : 'are'} shaded. Write the shaded amount as a fraction (a/b).`,
       options: [],
     };
   }
@@ -737,7 +737,13 @@ function resolveGeneratedTask(taskId: string): Task {
   const d: Difficulty = difficulty === TRANSFER_MARKER ? 'stretch' : difficulty;
 
   if (servable.subject === 'math') {
-    const item = generateItems(skillId, index + 1, seed, d)[index];
+    // The generator yields a finite DISTINCT pool per skill/difficulty. When the
+    // requested index runs past it (e.g. the diagnostic re-probes one skill more
+    // times than it has distinct items), cycle within the pool deterministically
+    // rather than failing to deliver — the same id always resolves to the same
+    // item, and no deliverable turn 404s on an exhausted pool.
+    const pool = generateItems(skillId, index + 1, seed, d);
+    const item = pool[index] ?? (pool.length > 0 ? pool[index % pool.length] : undefined);
     if (!item) throw new DomainError('NOT_FOUND', 'generated item index out of range');
     if (item.task.kind === 'fraction_comparison') return cmp(item.task.left, item.task.right);
     if (item.task.kind === 'fraction_equivalence') return eq(item.task.left, item.task.right);
@@ -751,7 +757,8 @@ function resolveGeneratedTask(taskId: string): Task {
     if (item.task.kind === 'fraction_order') return order(item.task.fractions);
     throw new DomainError('POLICY_BLOCKED', 'generated math kind not servable in the loop yet');
   }
-  const item = generateEnglishItems(skillId, index + 1, seed, d)[index];
+  const enPool = generateEnglishItems(skillId, index + 1, seed, d);
+  const item = enPool[index] ?? (enPool.length > 0 ? enPool[index % enPool.length] : undefined);
   if (!item) throw new DomainError('NOT_FOUND', 'generated item index out of range');
   if (item.task.kind === 'noun_plural') {
     return plural(skillId as PluralTask['skillId'], item.task.word);
