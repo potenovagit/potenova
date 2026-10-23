@@ -41,6 +41,7 @@ import {
   buildWordProblemsG2DraftGraph,
   buildEstimationG2DraftGraph,
   buildRoundingDraftGraph,
+  buildMultiplicationG4DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -105,6 +106,8 @@ import {
   ESTIMATION_G2_STRATEGIES,
   ROUNDING_MISCONCEPTIONS,
   ROUNDING_STRATEGIES,
+  MULTIPLICATION_G4_MISCONCEPTIONS,
+  MULTIPLICATION_G4_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -172,6 +175,7 @@ export type CourseId =
   | 'word-problems-g2'
   | 'estimation-g2'
   | 'rounding'
+  | 'multiplication-g4'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -647,6 +651,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: ROUNDING_STRATEGIES,
     transferTask: { 'SK-NS-round-whole': 'round-xfer' },
   },
+  'multiplication-g4': {
+    subject: 'math',
+    buildGraph: buildMultiplicationG4DraftGraph,
+    coachableSkillIds: ['SK-NS-mult-multidigit'],
+    defaultTask: { 'SK-NS-mult-multidigit': 'mmul-1' },
+    practiceTasks: {
+      'SK-NS-mult-multidigit': ['mmul-1', 'mmul-2', 'mmul-3', 'mmul-4'],
+    },
+    remediationReps: ['area-model', 'symbolic'],
+    misconceptions: MULTIPLICATION_G4_MISCONCEPTIONS,
+    strategies: MULTIPLICATION_G4_STRATEGIES,
+    transferTask: { 'SK-NS-mult-multidigit': 'mmul-xfer' },
+  },
   'place-value-g2': {
     subject: 'math',
     buildGraph: buildPlaceValueG2DraftGraph,
@@ -739,6 +756,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'word-problems-g2',
     'estimation-g2',
     'rounding',
+    'multiplication-g4',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],

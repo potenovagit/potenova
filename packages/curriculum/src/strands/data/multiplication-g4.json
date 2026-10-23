@@ -1,0 +1,31 @@
+{
+  "strandId": "multiplication-g4",
+  "version": "mult-g4-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-mult-multidigit",
+      "competency": "number:multiplication",
+      "skill": "Multiply a two- or three-digit whole number by a one-digit number or by 10, 100, 1000"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-multiplies-ones-only",
+      "skillId": "SK-NS-mult-multidigit",
+      "pattern": "Multiplies only the ones digit of the multi-digit number and ignores the tens/hundreds (e.g. 28 × 5 answered 40 instead of 140), not distributing across every place.",
+      "probeIds": ["PR-NS-partial-products"],
+      "remediationStrategyIds": ["ST-ns-multiply-each-place"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-multiply-each-place",
+      "intent": "Multiply each place of the larger number by the one-digit factor (expanded form / partial products), then add the parts; for ×10/100/1000 shift every digit up and fill with zeros.",
+      "approvedBands": ["junior"],
+      "representations": ["area-model", "symbolic"]
+    }
+  ]
+}

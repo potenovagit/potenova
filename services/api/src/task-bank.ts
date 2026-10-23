@@ -47,6 +47,7 @@ import {
   checkRoundWholeTask,
   roundToPlace,
   type RoundPlace,
+  checkMultidigitMultiplicationTask,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -129,6 +130,7 @@ export const CALENDAR_DAY = 'SK-TIME-calendar-day';
 export const ESTIMATE_50 = 'SK-NS-estimate-50';
 export const ESTIMATE_200 = 'SK-NS-estimate-200';
 export const ROUND_WHOLE = 'SK-NS-round-whole';
+export const MULT_MULTIDIGIT = 'SK-NS-mult-multidigit';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -323,6 +325,14 @@ interface RoundWholeTaskT {
   readonly value: number;
   readonly place: RoundPlace;
 }
+interface MultidigitMultTaskT {
+  readonly subject: 'math';
+  readonly course: 'multiplication-g4';
+  readonly skillId: typeof MULT_MULTIDIGIT;
+  readonly kind: 'multidigit_multiplication';
+  readonly multiplicand: number;
+  readonly multiplier: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -446,6 +456,7 @@ export type Task =
   | CalendarTaskT
   | EstimateTaskT
   | RoundWholeTaskT
+  | MultidigitMultTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -702,6 +713,14 @@ const roundWhole = (value: number, place: RoundPlace): RoundWholeTaskT => ({
   kind: 'round_whole',
   value,
   place,
+});
+const multidigitMult = (multiplicand: number, multiplier: number): MultidigitMultTaskT => ({
+  subject: 'math',
+  course: 'multiplication-g4',
+  skillId: MULT_MULTIDIGIT,
+  kind: 'multidigit_multiplication',
+  multiplicand,
+  multiplier,
 });
 const dateOffset = (
   year: number,
@@ -1031,6 +1050,10 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'round-2': roundWhole(432, 100), // 400 (nearest hundred)
   'round-3': roundWhole(2750, 1000), // 3000 (half rounds up)
   'round-4': roundWhole(1489, 100), // 1500 (truncate-trap → 1400)
+  'mmul-1': multidigitMult(34, 6), // 204 (2-digit × 1-digit)
+  'mmul-2': multidigitMult(125, 3), // 375 (3-digit × 1-digit)
+  'mmul-3': multidigitMult(47, 100), // 4700 (× a power of ten)
+  'mmul-4': multidigitMult(28, 5), // 140 (ones-digit-only trap → 40)
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1146,6 +1169,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'est-xfer': estimate(18, 14, 22), // ~18 (novel collection)
   'est200-xfer': estimate200(140, 120, 160), // ~140 (novel collection)
   'round-xfer': roundWhole(6512, 1000), // 7000 (novel)
+  'mmul-xfer': multidigitMult(216, 4), // 864 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -1197,6 +1221,7 @@ export const TRANSFER_TASKS = new Set([
   'est-xfer',
   'est200-xfer',
   'round-xfer',
+  'mmul-xfer',
   'date-xfer',
   'code-xfer',
   'wp-xfer',
@@ -1448,6 +1473,12 @@ export function present(task: Task): { question: string; options: readonly strin
     const placeWord = task.place === 10 ? 'ten' : task.place === 100 ? 'hundred' : 'thousand';
     return {
       question: `Round ${task.value} to the nearest ${placeWord}.`,
+      options: [] /* type the number */,
+    };
+  }
+  if (task.kind === 'multidigit_multiplication') {
+    return {
+      question: `What is ${task.multiplicand} × ${task.multiplier}?`,
       options: [] /* type the number */,
     };
   }
@@ -1724,6 +1755,14 @@ export function answerKeyValid(task: Task): boolean {
       claimedRounded: roundToPlace(task.value, task.place),
     }).correct;
   }
+  if (task.kind === 'multidigit_multiplication') {
+    return checkMultidigitMultiplicationTask({
+      kind: 'multidigit_multiplication',
+      multiplicand: task.multiplicand,
+      multiplier: task.multiplier,
+      claimedProduct: task.multiplicand * task.multiplier,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -1864,6 +1903,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'calendar_next_day') return /^[a-z]+$/.test(a); // a day name
   if (task.kind === 'estimate_within_band') return /^\d+$/.test(a); // a non-negative estimate
   if (task.kind === 'round_whole') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'multidigit_multiplication') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -2068,6 +2108,14 @@ export function judge(task: Task, raw: string): boolean {
       claimedRounded: Number(a),
     }).correct;
   }
+  if (task.kind === 'multidigit_multiplication') {
+    return checkMultidigitMultiplicationTask({
+      kind: 'multidigit_multiplication',
+      multiplicand: task.multiplicand,
+      multiplier: task.multiplier,
+      claimedProduct: Number(a),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2222,6 +2270,8 @@ export function correctAnswerFor(task: Task): string {
       return String(task.actual);
     case 'round_whole':
       return String(roundToPlace(task.value, task.place));
+    case 'multidigit_multiplication':
+      return String(task.multiplicand * task.multiplier);
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -2358,6 +2408,14 @@ export function wrongAnswerFor(task: Task): string {
       const rounded = roundToPlace(task.value, task.place);
       const truncated = Math.floor(task.value / task.place) * task.place;
       return String(truncated === rounded ? rounded + task.place : truncated);
+    }
+    case 'multidigit_multiplication': {
+      // The multiplies-only-the-ones-digit error. Fall back to one-off if the
+      // multiplicand is single-digit (so the ones-only product equals the true
+      // one), keeping the "wrong" answer always wrong.
+      const product = task.multiplicand * task.multiplier;
+      const onesOnly = (task.multiplicand % 10) * task.multiplier;
+      return String(onesOnly === product ? product + task.multiplier : onesOnly);
     }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
