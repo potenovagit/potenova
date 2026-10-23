@@ -35,6 +35,7 @@ import {
   buildEvenOddDraftGraph,
   buildMoney100DraftGraph,
   buildWordProblemsG2DraftGraph,
+  buildEstimationG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -86,6 +87,8 @@ import {
   MONEY_100_STRATEGIES,
   WORD_PROBLEMS_G2_MISCONCEPTIONS,
   WORD_PROBLEMS_G2_STRATEGIES,
+  ESTIMATION_G2_MISCONCEPTIONS,
+  ESTIMATION_G2_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -145,6 +148,7 @@ export type CourseId =
   | 'even-odd'
   | 'money-100'
   | 'word-problems-g2'
+  | 'estimation-g2'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -541,6 +545,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: WORD_PROBLEMS_G2_STRATEGIES,
     transferTask: { 'SK-NS-word-problem-addsub-100': 'wp100-xfer' },
   },
+  'estimation-g2': {
+    subject: 'math',
+    buildGraph: buildEstimationG2DraftGraph,
+    coachableSkillIds: ['SK-NS-estimate-200'],
+    defaultTask: { 'SK-NS-estimate-200': 'est200-1' },
+    practiceTasks: {
+      'SK-NS-estimate-200': ['est200-1', 'est200-2', 'est200-3', 'est200-4'],
+    },
+    remediationReps: ['counters', 'symbolic'],
+    misconceptions: ESTIMATION_G2_MISCONCEPTIONS,
+    strategies: ESTIMATION_G2_STRATEGIES,
+    transferTask: { 'SK-NS-estimate-200': 'est200-xfer' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -614,6 +631,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'even-odd',
     'money-100',
     'word-problems-g2',
+    'estimation-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
 };

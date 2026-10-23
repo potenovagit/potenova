@@ -110,6 +110,7 @@ export const DATA_INTERPRET = 'SK-DATA-interpret-graph';
 export const SHAPE_ATTR = 'SK-GEO-shape-attribute';
 export const CALENDAR_DAY = 'SK-TIME-calendar-day';
 export const ESTIMATE_50 = 'SK-NS-estimate-50';
+export const ESTIMATE_200 = 'SK-NS-estimate-200';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -248,8 +249,8 @@ interface CalendarTaskT {
 }
 interface EstimateTaskT {
   readonly subject: 'math';
-  readonly course: 'estimation';
-  readonly skillId: typeof ESTIMATE_50;
+  readonly course: 'estimation' | 'estimation-g2';
+  readonly skillId: typeof ESTIMATE_50 | typeof ESTIMATE_200;
   readonly kind: 'estimate_within_band';
   readonly actual: number;
   readonly low: number;
@@ -570,6 +571,15 @@ const estimate = (actual: number, low: number, high: number): EstimateTaskT => (
   low,
   high,
 });
+const estimate200 = (actual: number, low: number, high: number): EstimateTaskT => ({
+  subject: 'math',
+  course: 'estimation-g2',
+  skillId: ESTIMATE_200,
+  kind: 'estimate_within_band',
+  actual,
+  low,
+  high,
+});
 const dateOffset = (
   year: number,
   month: number,
@@ -870,6 +880,10 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'est-2': estimate(12, 9, 15), // ~12
   'est-3': estimate(40, 34, 46), // ~40
   'est-4': estimate(31, 27, 35), // ~31
+  'est200-1': estimate200(120, 100, 140), // ~120
+  'est200-2': estimate200(85, 70, 100), // ~85
+  'est200-3': estimate200(160, 140, 180), // ~160
+  'est200-4': estimate200(195, 175, 200), // ~195
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -978,6 +992,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   ]),
   'cal-xfer': calendarDay('sunday', -1), // saturday (yesterday, wrap back)
   'est-xfer': estimate(18, 14, 22), // ~18 (novel collection)
+  'est200-xfer': estimate200(140, 120, 160), // ~140 (novel collection)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -1022,6 +1037,7 @@ export const TRANSFER_TASKS = new Set([
   'shape-xfer',
   'cal-xfer',
   'est-xfer',
+  'est200-xfer',
   'date-xfer',
   'code-xfer',
   'wp-xfer',

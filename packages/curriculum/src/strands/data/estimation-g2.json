@@ -1,0 +1,31 @@
+{
+  "strandId": "estimation-g2",
+  "version": "est-g2-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-estimate-200",
+      "competency": "number:estimation",
+      "skill": "Estimate the number in a collection to 200, within a reviewed tolerance"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-wild-guess-200",
+      "skillId": "SK-NS-estimate-200",
+      "pattern": "At larger counts, gives a number far from the true count instead of anchoring the estimate to a reference group (a known ten or hundred).",
+      "probeIds": ["PR-NS-about-how-many-200"],
+      "remediationStrategyIds": ["ST-ns-anchor-to-hundred"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-anchor-to-hundred",
+      "intent": "Picture a group of ten, then a hundred, and judge how many of those groups the collection is about.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}

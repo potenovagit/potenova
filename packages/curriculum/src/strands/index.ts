@@ -24,6 +24,7 @@ import skipCountG2Data from './data/skip-count-g2.json';
 import evenOddData from './data/even-odd.json';
 import money100Data from './data/money-100.json';
 import wordProblemsG2Data from './data/word-problems-g2.json';
+import estimationG2Data from './data/estimation-g2.json';
 import englishData from './data/english.json';
 
 /**
@@ -63,6 +64,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   evenOddData as StrandDataset,
   money100Data as StrandDataset,
   wordProblemsG2Data as StrandDataset,
+  estimationG2Data as StrandDataset,
   englishData as StrandDataset,
 ];
 
