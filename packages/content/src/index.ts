@@ -11,6 +11,7 @@ export * from './coin-value-check';
 export * from './representation-select-check';
 export * from './positional-select-check';
 export * from './graph-read-select-check';
+export * from './shape-attribute-select-check';
 export * from './validation';
 export * from './model-eval';
 export * from './eval-suite';

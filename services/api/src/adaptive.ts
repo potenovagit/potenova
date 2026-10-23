@@ -22,6 +22,7 @@ import {
   buildNumberRepDraftGraph,
   buildSpatialDraftGraph,
   buildDataHandlingDraftGraph,
+  buildGeometryDraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -47,6 +48,8 @@ import {
   SPATIAL_STRATEGIES,
   DATA_MISCONCEPTIONS,
   DATA_STRATEGIES,
+  GEOMETRY_MISCONCEPTIONS,
+  GEOMETRY_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -93,6 +96,7 @@ export type CourseId =
   | 'number-rep'
   | 'spatial'
   | 'data-handling'
+  | 'geometry'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -313,6 +317,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: DATA_STRATEGIES,
     transferTask: { 'SK-DATA-interpret-graph': 'data-xfer' },
   },
+  geometry: {
+    subject: 'math',
+    buildGraph: buildGeometryDraftGraph,
+    coachableSkillIds: ['SK-GEO-shape-attribute'],
+    defaultTask: { 'SK-GEO-shape-attribute': 'shape-1' },
+    practiceTasks: {
+      'SK-GEO-shape-attribute': ['shape-1', 'shape-2', 'shape-3', 'shape-4'],
+    },
+    remediationReps: ['counters', 'symbolic'],
+    misconceptions: GEOMETRY_MISCONCEPTIONS,
+    strategies: GEOMETRY_STRATEGIES,
+    transferTask: { 'SK-GEO-shape-attribute': 'shape-xfer' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -373,6 +390,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'number-rep',
     'spatial',
     'data-handling',
+    'geometry',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
 };

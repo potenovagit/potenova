@@ -1,0 +1,31 @@
+{
+  "strandId": "geometry",
+  "version": "geo-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-GEO-shape-attribute",
+      "competency": "geometry:2d-shapes",
+      "skill": "Identify and sort two-dimensional shapes by number of sides"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-GEO-count-corners-not-sides",
+      "skillId": "SK-GEO-shape-attribute",
+      "pattern": "Chooses by appearance or by a familiar name rather than counting sides, or confuses sides with corners.",
+      "probeIds": ["PR-GEO-which-shape"],
+      "remediationStrategyIds": ["ST-geo-trace-and-count"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-geo-trace-and-count",
+      "intent": "Trace each shape's edges with a finger and count the straight sides, then pick the one with that many.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}

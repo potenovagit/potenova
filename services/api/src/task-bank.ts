@@ -29,6 +29,9 @@ import {
   extremeCategoryIndex,
   type GraphReadMode,
   type GraphCategory,
+  checkShapeAttributeSelectTask,
+  matchingShapeIndices,
+  type ShapeOption,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -81,6 +84,7 @@ export const COIN_VALUE = 'SK-FIN-coin-value';
 export const REPRESENT_50 = 'SK-NS-represent-50';
 export const POSITIONAL = 'SK-GEO-positional-language';
 export const DATA_INTERPRET = 'SK-DATA-interpret-graph';
+export const SHAPE_ATTR = 'SK-GEO-shape-attribute';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -192,6 +196,14 @@ interface GraphReadSelectTaskT {
   readonly mode: GraphReadMode;
   readonly categories: readonly GraphCategory[];
 }
+interface ShapeAttrSelectTaskT {
+  readonly subject: 'math';
+  readonly course: 'geometry';
+  readonly skillId: typeof SHAPE_ATTR;
+  readonly kind: 'shape_attribute_select';
+  readonly targetSides: number;
+  readonly options: readonly ShapeOption[];
+}
 interface PartitionTask {
   readonly subject: 'math';
   readonly course: 'fractions';
@@ -259,6 +271,7 @@ export type Task =
   | RepresentSelectTask
   | PositionalSelectTaskT
   | GraphReadSelectTaskT
+  | ShapeAttrSelectTaskT
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -387,6 +400,14 @@ const graphRead = (
   kind: 'graph_read_select',
   mode,
   categories,
+});
+const shapeSort = (targetSides: number, options: readonly ShapeOption[]): ShapeAttrSelectTaskT => ({
+  subject: 'math',
+  course: 'geometry',
+  skillId: SHAPE_ATTR,
+  kind: 'shape_attribute_select',
+  targetSides,
+  options,
 });
 const partition = (parts: number, shaded: number): PartitionTask => ({
   subject: 'math',
@@ -564,6 +585,28 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
     { label: 'rainy', count: 2 }, // fewest ✓
     { label: 'cloudy', count: 5 },
   ]),
+  // Shape-attribute selection ("which shape has N sides?"): the oracle counts
+  // sides and finds the one match (a circle is 0 sides).
+  'shape-1': shapeSort(3, [
+    { name: 'triangle', sides: 3 }, // ✓
+    { name: 'square', sides: 4 },
+    { name: 'pentagon', sides: 5 },
+  ]),
+  'shape-2': shapeSort(4, [
+    { name: 'triangle', sides: 3 },
+    { name: 'square', sides: 4 }, // ✓
+    { name: 'circle', sides: 0 },
+  ]),
+  'shape-3': shapeSort(5, [
+    { name: 'square', sides: 4 },
+    { name: 'pentagon', sides: 5 }, // ✓
+    { name: 'hexagon', sides: 6 },
+  ]),
+  'shape-4': shapeSort(6, [
+    { name: 'pentagon', sides: 5 },
+    { name: 'hexagon', sides: 6 }, // ✓
+    { name: 'triangle', sides: 3 },
+  ]),
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -593,6 +636,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
     { label: 'hockey', count: 9 }, // most ✓
     { label: 'swimming', count: 4 },
   ]),
+  'shape-xfer': shapeSort(4, [
+    { name: 'square', sides: 4 }, // ✓
+    { name: 'triangle', sides: 3 },
+    { name: 'pentagon', sides: 5 },
+  ]),
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
@@ -615,6 +663,7 @@ export const TRANSFER_TASKS = new Set([
   'rep-xfer',
   'pos-xfer',
   'data-xfer',
+  'shape-xfer',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
@@ -658,6 +707,9 @@ const correctPosIndex = (task: PositionalSelectTaskT): number =>
 /** The oracle-derived correct 0-based index for a graph-read selection; -1 if tied/ill-posed. */
 const correctDataIndex = (task: GraphReadSelectTaskT): number =>
   extremeCategoryIndex(task.mode, task.categories);
+/** The oracle-derived correct 0-based index for a shape-attribute selection; -1 if ill-posed. */
+const correctShapeIndex = (task: ShapeAttrSelectTaskT): number =>
+  matchingShapeIndices(task.targetSides, task.options)[0] ?? -1;
 const isRelation = (v: unknown): v is FractionRelation => v === 'lt' || v === 'eq' || v === 'gt';
 
 /** Parse a learner "a/b" fraction token, or null if malformed. */
@@ -779,6 +831,14 @@ export function present(task: Task): { question: string; options: readonly strin
     const word = task.mode === 'most' ? 'the most' : 'the fewest';
     return {
       question: `This graph shows ${graph}. Which has ${word}? ${numbered}. Type the number of your choice.`,
+      options: choices,
+    };
+  }
+  if (task.kind === 'shape_attribute_select') {
+    const choices = task.options.map((o) => o.name);
+    const numbered = choices.map((c, i) => `${i + 1}) ${c}`).join('  ');
+    return {
+      question: `Which shape has ${task.targetSides} sides? ${numbered}. Type the number of your choice.`,
       options: choices,
     };
   }
@@ -936,6 +996,14 @@ export function answerKeyValid(task: Task): boolean {
       claimedIndex: correctDataIndex(task),
     }).correct;
   }
+  if (task.kind === 'shape_attribute_select') {
+    return checkShapeAttributeSelectTask({
+      kind: 'shape_attribute_select',
+      targetSides: task.targetSides,
+      options: task.options,
+      claimedIndex: correctShapeIndex(task),
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -1019,6 +1087,11 @@ export function tokenValid(task: Task, raw: string): boolean {
     if (!/^\d+$/.test(a)) return false; // a 1-based category number
     const n = Number(a);
     return n >= 1 && n <= task.categories.length;
+  }
+  if (task.kind === 'shape_attribute_select') {
+    if (!/^\d+$/.test(a)) return false; // a 1-based option number
+    const n = Number(a);
+    return n >= 1 && n <= task.options.length;
   }
   if (
     task.kind === 'fraction_partition' ||
@@ -1141,6 +1214,14 @@ export function judge(task: Task, raw: string): boolean {
       claimedIndex: Number(a) - 1,
     }).correct;
   }
+  if (task.kind === 'shape_attribute_select') {
+    return checkShapeAttributeSelectTask({
+      kind: 'shape_attribute_select',
+      targetSides: task.targetSides,
+      options: task.options,
+      claimedIndex: Number(a) - 1,
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     const cf = parseFrac(a);
     return cf
@@ -1233,6 +1314,8 @@ export function correctAnswerFor(task: Task): string {
       return String(correctPosIndex(task) + 1);
     case 'graph_read_select':
       return String(correctDataIndex(task) + 1);
+    case 'shape_attribute_select':
+      return String(correctShapeIndex(task) + 1);
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -1309,6 +1392,11 @@ export function wrongAnswerFor(task: Task): string {
     case 'graph_read_select': {
       const correct = correctDataIndex(task);
       const wrong = task.categories.findIndex((_, i) => i !== correct);
+      return String((wrong === -1 ? correct : wrong) + 1);
+    }
+    case 'shape_attribute_select': {
+      const correct = correctShapeIndex(task);
+      const wrong = task.options.findIndex((_, i) => i !== correct);
       return String((wrong === -1 ? correct : wrong) + 1);
     }
     case 'fraction_partition':
