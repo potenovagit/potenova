@@ -8,6 +8,9 @@ import {
   checkWholeNumberTask,
   wholeRelation,
   type WholeRelation,
+  checkSkipCountTask,
+  skipCountNext,
+  skipCountSequence,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -53,6 +56,7 @@ export const SUB_10 = 'SK-NS-sub-within10';
 export const SUB_20 = 'SK-NS-sub-within20';
 export const CMP_WHOLE = 'SK-NS-compare-whole-50';
 export const ORD_WHOLE = 'SK-NS-order-whole-50';
+export const SKIP_COUNT = 'SK-NS-skip-count-50';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -107,6 +111,15 @@ interface WholeOrderTask {
   readonly skillId: typeof ORD_WHOLE;
   readonly kind: 'integer_ordering';
   readonly numbers: readonly number[];
+}
+interface SkipCountTaskT {
+  readonly subject: 'math';
+  readonly course: 'skip-count';
+  readonly skillId: typeof SKIP_COUNT;
+  readonly kind: 'skip_count_next';
+  readonly start: number;
+  readonly step: number;
+  readonly length: number;
 }
 interface PartitionTask {
   readonly subject: 'math';
@@ -168,6 +181,7 @@ export type Task =
   | SubtractionTask
   | WholeCompareTask
   | WholeOrderTask
+  | SkipCountTaskT
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -230,6 +244,15 @@ const ordW = (numbers: readonly number[]): WholeOrderTask => ({
   skillId: ORD_WHOLE,
   kind: 'integer_ordering',
   numbers,
+});
+const skip = (start: number, step: number, length: number): SkipCountTaskT => ({
+  subject: 'math',
+  course: 'skip-count',
+  skillId: SKIP_COUNT,
+  kind: 'skip_count_next',
+  start,
+  step,
+  length,
 });
 const partition = (parts: number, shaded: number): PartitionTask => ({
   subject: 'math',
@@ -325,6 +348,10 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'ordw-2': ordW([17, 50, 5, 32]), // 5 < 17 < 32 < 50 → 3,1,4,2
   'ordw-3': ordW([30, 13, 31]), // 13 < 30 < 31 → 2,1,3
   'ordw-4': ordW([44, 4, 40, 14]), // 4 < 14 < 40 < 44 → 2,4,3,1
+  'skip-1': skip(2, 2, 3), // 2,4,6 → 8 (by 2s)
+  'skip-2': skip(5, 5, 3), // 5,10,15 → 20 (by 5s)
+  'skip-3': skip(10, 10, 3), // 10,20,30 → 40 (by 10s)
+  'skip-4': skip(0, 2, 4), // 0,2,4,6 → 8 (by 2s from 0)
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -336,6 +363,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'sub-xfer-20': sub(SUB_20, 16, 9), // 7 (crossing ten)
   'cmpw-xfer': cmpW(27, 19), // gt
   'ordw-xfer': ordW([38, 3, 45, 15]), // 3 < 15 < 38 < 45 → 2,4,1,3
+  'skip-xfer': skip(15, 5, 3), // 15,20,25 → 30 (by 5s, novel start)
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
@@ -351,6 +379,7 @@ export const TRANSFER_TASKS = new Set([
   'sub-xfer-20',
   'cmpw-xfer',
   'ordw-xfer',
+  'skip-xfer',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
@@ -419,6 +448,16 @@ export function present(task: Task): { question: string; options: readonly strin
       question: `Put these numbers in order from smallest to largest: ${task.numbers.join(
         ', ',
       )}. Type their positions (1 = first shown) separated by commas, e.g. 2,1,3.`,
+      options: [],
+    };
+  }
+  if (task.kind === 'skip_count_next') {
+    return {
+      question: `What number comes next? ${skipCountSequence(
+        task.start,
+        task.step,
+        task.length,
+      ).join(', ')}, __`,
       options: [],
     };
   }
@@ -518,6 +557,15 @@ export function answerKeyValid(task: Task): boolean {
       claimedOrder: correctWholeOrder(task.numbers),
     }).correct;
   }
+  if (task.kind === 'skip_count_next') {
+    return checkSkipCountTask({
+      kind: 'skip_count_next',
+      start: task.start,
+      step: task.step,
+      length: task.length,
+      claimedNext: skipCountNext(task.start, task.step, task.length),
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -588,6 +636,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'integer_ordering') {
     return new RegExp(`^\\d+(,\\d+){${task.numbers.length - 1}}$`).test(a.replace(/\s+/g, ''));
   }
+  if (task.kind === 'skip_count_next') return /^\d+$/.test(a); // a non-negative integer
   if (
     task.kind === 'fraction_partition' ||
     task.kind === 'fraction_unit' ||
@@ -650,6 +699,15 @@ export function judge(task: Task, raw: string): boolean {
       kind: 'integer_ordering',
       numbers: task.numbers,
       claimedOrder: parseOrder(a),
+    }).correct;
+  }
+  if (task.kind === 'skip_count_next') {
+    return checkSkipCountTask({
+      kind: 'skip_count_next',
+      start: task.start,
+      step: task.step,
+      length: task.length,
+      claimedNext: Number(a),
     }).correct;
   }
   if (task.kind === 'fraction_partition') {
@@ -729,6 +787,8 @@ export function correctAnswerFor(task: Task): string {
       return correctWholeOrder(task.numbers)
         .map((i) => i + 1)
         .join(',');
+    case 'skip_count_next':
+      return String(skipCountNext(task.start, task.step, task.length));
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -778,6 +838,10 @@ export function wrongAnswerFor(task: Task): string {
         .map((i) => i + 1)
         .reverse()
         .join(',');
+    case 'skip_count_next':
+      // One past the true next term — a valid integer the oracle grades wrong
+      // for every allowed step (an "overshoot by one" slip).
+      return String(skipCountNext(task.start, task.step, task.length) + 1);
     case 'fraction_partition':
       return `${task.shaded === 0 ? 1 : 0}/${task.parts}`;
     case 'fraction_unit':

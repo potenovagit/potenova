@@ -1,0 +1,31 @@
+{
+  "strandId": "skip-count",
+  "version": "skip-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-skip-count-50",
+      "competency": "number:skip-counting",
+      "skill": "Count to 50 by 1s, 2s, 5s and 10s"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-add-one-not-step",
+      "skillId": "SK-NS-skip-count-50",
+      "pattern": "Adds 1 instead of the skip-count step, or keeps the step but miscounts across a tens boundary (e.g. 5, 10, 15, 16).",
+      "probeIds": ["PR-NS-skip-next"],
+      "remediationStrategyIds": ["ST-ns-same-jump"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-same-jump",
+      "intent": "Find the size of each jump between the numbers shown, then make the same jump again.",
+      "approvedBands": ["primary"],
+      "representations": ["number-line", "counters"]
+    }
+  ]
+}
