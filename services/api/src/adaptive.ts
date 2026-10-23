@@ -18,6 +18,7 @@ import {
   buildSkipCountDraftGraph,
   buildAlgebraEquivDraftGraph,
   buildPlaceValueDraftGraph,
+  buildFinancialDraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -35,6 +36,8 @@ import {
   ALGEBRA_EQUIV_STRATEGIES,
   PLACE_VALUE_MISCONCEPTIONS,
   PLACE_VALUE_STRATEGIES,
+  FINANCIAL_MISCONCEPTIONS,
+  FINANCIAL_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -77,6 +80,7 @@ export type CourseId =
   | 'skip-count'
   | 'algebra-equiv'
   | 'place-value'
+  | 'financial'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -245,6 +249,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: PLACE_VALUE_STRATEGIES,
     transferTask: { 'SK-NS-compose-50': 'compose-xfer' },
   },
+  financial: {
+    subject: 'math',
+    buildGraph: buildFinancialDraftGraph,
+    coachableSkillIds: ['SK-FIN-coin-value'],
+    defaultTask: { 'SK-FIN-coin-value': 'coins-1' },
+    practiceTasks: {
+      'SK-FIN-coin-value': ['coins-1', 'coins-2', 'coins-3', 'coins-4'],
+    },
+    remediationReps: ['counters', 'symbolic'],
+    misconceptions: FINANCIAL_MISCONCEPTIONS,
+    strategies: FINANCIAL_STRATEGIES,
+    transferTask: { 'SK-FIN-coin-value': 'coins-xfer' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -301,6 +318,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'skip-count',
     'algebra-equiv',
     'place-value',
+    'financial',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
 };

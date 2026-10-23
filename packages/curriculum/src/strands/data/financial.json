@@ -1,0 +1,31 @@
+{
+  "strandId": "financial",
+  "version": "fin-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-FIN-coin-value",
+      "competency": "financial:money-value",
+      "skill": "Total the value of a set of Canadian coins and bills to $50"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-FIN-count-pieces-not-value",
+      "skillId": "SK-FIN-coin-value",
+      "pattern": "Counts the number of coins instead of adding their values (e.g. a dime + a nickel counted as '2' rather than 15¢).",
+      "probeIds": ["PR-FIN-mixed-coins"],
+      "remediationStrategyIds": ["ST-fin-add-by-value"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-fin-add-by-value",
+      "intent": "Name the value of each coin, then add the values — a coin is worth its amount, not one.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}

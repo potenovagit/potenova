@@ -16,6 +16,8 @@ import {
   type Expr,
   checkComposeTask,
   composeValue,
+  checkCoinValueTask,
+  coinTotalCents,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -64,6 +66,7 @@ export const ORD_WHOLE = 'SK-NS-order-whole-50';
 export const SKIP_COUNT = 'SK-NS-skip-count-50';
 export const EQUIV_EXPR = 'SK-AL-equiv-expr';
 export const COMPOSE_50 = 'SK-NS-compose-50';
+export const COIN_VALUE = 'SK-FIN-coin-value';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -144,6 +147,13 @@ interface ComposeTask {
   readonly tens: number;
   readonly ones: number;
 }
+interface CoinValueTaskT {
+  readonly subject: 'math';
+  readonly course: 'financial';
+  readonly skillId: typeof COIN_VALUE;
+  readonly kind: 'coin_value';
+  readonly pieces: readonly number[];
+}
 interface PartitionTask {
   readonly subject: 'math';
   readonly course: 'fractions';
@@ -207,6 +217,7 @@ export type Task =
   | SkipCountTaskT
   | ExprEquivTask
   | ComposeTask
+  | CoinValueTaskT
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -295,6 +306,13 @@ const compose = (tens: number, ones: number): ComposeTask => ({
   kind: 'place_value_compose',
   tens,
   ones,
+});
+const coins = (pieces: readonly number[]): CoinValueTaskT => ({
+  subject: 'math',
+  course: 'financial',
+  skillId: COIN_VALUE,
+  kind: 'coin_value',
+  pieces,
 });
 const partition = (parts: number, shaded: number): PartitionTask => ({
   subject: 'math',
@@ -402,6 +420,10 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'compose-2': compose(4, 0), // 40
   'compose-3': compose(1, 7), // 17 (concatenation trap → 17 not 107)
   'compose-4': compose(2, 9), // 29
+  'coins-1': coins([10, 5]), // dime + nickel = 15¢ (count-pieces trap → 2)
+  'coins-2': coins([25, 25]), // two quarters = 50¢
+  'coins-3': coins([25, 10, 10, 5]), // 50¢
+  'coins-4': coins([100, 25, 10]), // loonie + quarter + dime = 135¢
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -416,6 +438,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'skip-xfer': skip(15, 5, 3), // 15,20,25 → 30 (by 5s, novel start)
   'equiv-xfer': equivExpr(e(7, '+', 2), e(10, '-', 1)), // 9 == 9 → yes
   'compose-xfer': compose(4, 6), // 46
+  'coins-xfer': coins([200, 100, 25]), // toonie + loonie + quarter = 325¢
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
@@ -434,10 +457,25 @@ export const TRANSFER_TASKS = new Set([
   'skip-xfer',
   'equiv-xfer',
   'compose-xfer',
+  'coins-xfer',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
 const fmtExpr = (x: Expr): string => `${x.a} ${x.op} ${x.b}`;
+/** A child-readable name for a Canadian money piece (by its value in cents). */
+const COIN_NAME: Readonly<Record<number, string>> = {
+  5: 'nickel (5¢)',
+  10: 'dime (10¢)',
+  25: 'quarter (25¢)',
+  100: '$1 loonie',
+  200: '$2 toonie',
+  500: '$5 bill',
+  1000: '$10 bill',
+  2000: '$20 bill',
+  5000: '$50 bill',
+};
+const fmtPieces = (pieces: readonly number[]): string =>
+  pieces.map((p) => COIN_NAME[p] ?? `${p}¢`).join(', ');
 const isRelation = (v: unknown): v is FractionRelation => v === 'lt' || v === 'eq' || v === 'gt';
 
 /** Parse a learner "a/b" fraction token, or null if malformed. */
@@ -527,6 +565,12 @@ export function present(task: Task): { question: string; options: readonly strin
     const onesLabel = `${task.ones} ${task.ones === 1 ? 'one' : 'ones'}`;
     return {
       question: `What number is ${tensLabel} and ${onesLabel}?`,
+      options: [],
+    };
+  }
+  if (task.kind === 'coin_value') {
+    return {
+      question: `How much is this altogether, in cents? ${fmtPieces(task.pieces)}. Type the total in cents.`,
       options: [],
     };
   }
@@ -651,6 +695,13 @@ export function answerKeyValid(task: Task): boolean {
       claimedValue: composeValue(task.tens, task.ones),
     }).correct;
   }
+  if (task.kind === 'coin_value') {
+    return checkCoinValueTask({
+      kind: 'coin_value',
+      pieces: task.pieces,
+      claimedTotalCents: coinTotalCents(task.pieces),
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -724,6 +775,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'skip_count_next') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'expr_equivalence') return a === 'yes' || a === 'no';
   if (task.kind === 'place_value_compose') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'coin_value') return /^\d+$/.test(a); // a total in cents
   if (
     task.kind === 'fraction_partition' ||
     task.kind === 'fraction_unit' ||
@@ -813,6 +865,13 @@ export function judge(task: Task, raw: string): boolean {
       claimedValue: Number(a),
     }).correct;
   }
+  if (task.kind === 'coin_value') {
+    return checkCoinValueTask({
+      kind: 'coin_value',
+      pieces: task.pieces,
+      claimedTotalCents: Number(a),
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     const cf = parseFrac(a);
     return cf
@@ -896,6 +955,8 @@ export function correctAnswerFor(task: Task): string {
       return evalExpr(task.left) === evalExpr(task.right) ? 'yes' : 'no';
     case 'place_value_compose':
       return String(composeValue(task.tens, task.ones));
+    case 'coin_value':
+      return String(coinTotalCents(task.pieces));
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -954,6 +1015,10 @@ export function wrongAnswerFor(task: Task): string {
     case 'place_value_compose':
       // One off the composed value — a valid integer the oracle grades wrong.
       return String(composeValue(task.tens, task.ones) + 1);
+    case 'coin_value':
+      // The "count the pieces instead of their value" error — the number of
+      // coins, which is wrong whenever any piece is worth more than 1¢ (always).
+      return String(task.pieces.length);
     case 'fraction_partition':
       return `${task.shaded === 0 ? 1 : 0}/${task.parts}`;
     case 'fraction_unit':
