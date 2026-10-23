@@ -10,6 +10,7 @@ import placeValueData from './data/place-value.json';
 import financialData from './data/financial.json';
 import numberRepData from './data/number-rep.json';
 import spatialData from './data/spatial.json';
+import dataHandlingData from './data/data-handling.json';
 import englishData from './data/english.json';
 
 /**
@@ -35,6 +36,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   financialData as StrandDataset,
   numberRepData as StrandDataset,
   spatialData as StrandDataset,
+  dataHandlingData as StrandDataset,
   englishData as StrandDataset,
 ];
 

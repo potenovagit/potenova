@@ -25,6 +25,10 @@ import {
   matchingPositionalIndices,
   type PositionRelation,
   type PositionalScene,
+  checkGraphReadSelectTask,
+  extremeCategoryIndex,
+  type GraphReadMode,
+  type GraphCategory,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -76,6 +80,7 @@ export const COMPOSE_50 = 'SK-NS-compose-50';
 export const COIN_VALUE = 'SK-FIN-coin-value';
 export const REPRESENT_50 = 'SK-NS-represent-50';
 export const POSITIONAL = 'SK-GEO-positional-language';
+export const DATA_INTERPRET = 'SK-DATA-interpret-graph';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -179,6 +184,14 @@ interface PositionalSelectTaskT {
   readonly relation: PositionRelation;
   readonly options: readonly PositionalScene[];
 }
+interface GraphReadSelectTaskT {
+  readonly subject: 'math';
+  readonly course: 'data-handling';
+  readonly skillId: typeof DATA_INTERPRET;
+  readonly kind: 'graph_read_select';
+  readonly mode: GraphReadMode;
+  readonly categories: readonly GraphCategory[];
+}
 interface PartitionTask {
   readonly subject: 'math';
   readonly course: 'fractions';
@@ -245,6 +258,7 @@ export type Task =
   | CoinValueTaskT
   | RepresentSelectTask
   | PositionalSelectTaskT
+  | GraphReadSelectTaskT
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -362,6 +376,17 @@ const posSelect = (
   kind: 'positional_select',
   relation,
   options,
+});
+const graphRead = (
+  mode: GraphReadMode,
+  categories: readonly GraphCategory[],
+): GraphReadSelectTaskT => ({
+  subject: 'math',
+  course: 'data-handling',
+  skillId: DATA_INTERPRET,
+  kind: 'graph_read_select',
+  mode,
+  categories,
 });
 const partition = (parts: number, shaded: number): PartitionTask => ({
   subject: 'math',
@@ -517,6 +542,28 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
     { subject: { r: 0, c: 0 }, reference: { r: 0, c: 2 } }, // left ✓
     { subject: { r: 0, c: 1 }, reference: { r: 2, c: 1 } }, // same col
   ]),
+  // Data-interpretation selection ("which category has the most/fewest?"): the
+  // oracle recomputes the unique extreme; a tie would be ill-posed and blocked.
+  'data-1': graphRead('most', [
+    { label: 'apples', count: 5 }, // most ✓
+    { label: 'bananas', count: 3 },
+    { label: 'cherries', count: 2 },
+  ]),
+  'data-2': graphRead('fewest', [
+    { label: 'red', count: 4 },
+    { label: 'blue', count: 1 }, // fewest ✓
+    { label: 'green', count: 6 },
+  ]),
+  'data-3': graphRead('most', [
+    { label: 'cats', count: 2 },
+    { label: 'dogs', count: 7 }, // most ✓
+    { label: 'fish', count: 5 },
+  ]),
+  'data-4': graphRead('fewest', [
+    { label: 'sunny', count: 3 },
+    { label: 'rainy', count: 2 }, // fewest ✓
+    { label: 'cloudy', count: 5 },
+  ]),
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -541,6 +588,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
     { subject: { r: 1, c: 2 }, reference: { r: 2, c: 0 } }, // above ✓
     { subject: { r: 2, c: 0 }, reference: { r: 0, c: 1 } }, // below
   ]),
+  'data-xfer': graphRead('most', [
+    { label: 'soccer', count: 6 },
+    { label: 'hockey', count: 9 }, // most ✓
+    { label: 'swimming', count: 4 },
+  ]),
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
@@ -562,6 +614,7 @@ export const TRANSFER_TASKS = new Set([
   'coins-xfer',
   'rep-xfer',
   'pos-xfer',
+  'data-xfer',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
@@ -602,6 +655,9 @@ const RELATION_WORD: Readonly<Record<PositionRelation, string>> = {
 /** The oracle-derived correct 0-based index for a positional selection; -1 if ill-posed. */
 const correctPosIndex = (task: PositionalSelectTaskT): number =>
   matchingPositionalIndices(task.relation, task.options)[0] ?? -1;
+/** The oracle-derived correct 0-based index for a graph-read selection; -1 if tied/ill-posed. */
+const correctDataIndex = (task: GraphReadSelectTaskT): number =>
+  extremeCategoryIndex(task.mode, task.categories);
 const isRelation = (v: unknown): v is FractionRelation => v === 'lt' || v === 'eq' || v === 'gt';
 
 /** Parse a learner "a/b" fraction token, or null if malformed. */
@@ -713,6 +769,16 @@ export function present(task: Task): { question: string; options: readonly strin
     const numbered = choices.map((c, i) => `${i + 1}) ${c}`).join('  ');
     return {
       question: `Which picture shows the star ${RELATION_WORD[task.relation]} the box? ${numbered}. Type the number of your choice.`,
+      options: choices,
+    };
+  }
+  if (task.kind === 'graph_read_select') {
+    const choices = task.categories.map((cat) => cat.label);
+    const graph = task.categories.map((cat) => `${cat.label}: ${cat.count}`).join('  ');
+    const numbered = choices.map((c, i) => `${i + 1}) ${c}`).join('  ');
+    const word = task.mode === 'most' ? 'the most' : 'the fewest';
+    return {
+      question: `This graph shows ${graph}. Which has ${word}? ${numbered}. Type the number of your choice.`,
       options: choices,
     };
   }
@@ -862,6 +928,14 @@ export function answerKeyValid(task: Task): boolean {
       claimedIndex: correctPosIndex(task),
     }).correct;
   }
+  if (task.kind === 'graph_read_select') {
+    return checkGraphReadSelectTask({
+      kind: 'graph_read_select',
+      mode: task.mode,
+      categories: task.categories,
+      claimedIndex: correctDataIndex(task),
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -940,6 +1014,11 @@ export function tokenValid(task: Task, raw: string): boolean {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
     return n >= 1 && n <= task.options.length;
+  }
+  if (task.kind === 'graph_read_select') {
+    if (!/^\d+$/.test(a)) return false; // a 1-based category number
+    const n = Number(a);
+    return n >= 1 && n <= task.categories.length;
   }
   if (
     task.kind === 'fraction_partition' ||
@@ -1054,6 +1133,14 @@ export function judge(task: Task, raw: string): boolean {
       claimedIndex: Number(a) - 1,
     }).correct;
   }
+  if (task.kind === 'graph_read_select') {
+    return checkGraphReadSelectTask({
+      kind: 'graph_read_select',
+      mode: task.mode,
+      categories: task.categories,
+      claimedIndex: Number(a) - 1,
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     const cf = parseFrac(a);
     return cf
@@ -1144,6 +1231,8 @@ export function correctAnswerFor(task: Task): string {
       return String(correctRepIndex(task) + 1);
     case 'positional_select':
       return String(correctPosIndex(task) + 1);
+    case 'graph_read_select':
+      return String(correctDataIndex(task) + 1);
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -1215,6 +1304,11 @@ export function wrongAnswerFor(task: Task): string {
     case 'positional_select': {
       const correct = correctPosIndex(task);
       const wrong = task.options.findIndex((_, i) => i !== correct);
+      return String((wrong === -1 ? correct : wrong) + 1);
+    }
+    case 'graph_read_select': {
+      const correct = correctDataIndex(task);
+      const wrong = task.categories.findIndex((_, i) => i !== correct);
       return String((wrong === -1 ? correct : wrong) + 1);
     }
     case 'fraction_partition':
