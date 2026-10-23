@@ -6,6 +6,8 @@ import {
   checkAdditionTask,
   checkMultiplicationTask,
   checkDivisionTask,
+  checkFractionalGroupsTask,
+  fractionalGroupCount,
   checkSubtractionTask,
   checkWholeNumberTask,
   wholeRelation,
@@ -100,6 +102,7 @@ export const ADD_10 = 'SK-NS-add-within10';
 export const ADD_20 = 'SK-NS-add-within20';
 export const MULT_FACTS = 'SK-NS-mult-facts';
 export const DIV_FACTS = 'SK-NS-div-facts';
+export const FRAC_GROUPS = 'SK-FR-groups';
 export const SUB_10 = 'SK-NS-sub-within10';
 export const SUB_20 = 'SK-NS-sub-within20';
 export const SUB_100 = 'SK-NS-sub-within100';
@@ -175,6 +178,14 @@ interface DivisionTask {
   readonly kind: 'integer_division';
   readonly dividend: number;
   readonly divisor: number;
+}
+interface FractionalGroupsTaskT {
+  readonly subject: 'math';
+  readonly course: 'fractional-groups';
+  readonly skillId: typeof FRAC_GROUPS;
+  readonly kind: 'fractional_groups';
+  readonly wholes: number;
+  readonly unitDenominator: number;
 }
 interface SubtractionTask {
   readonly subject: 'math';
@@ -406,6 +417,7 @@ export type Task =
   | AdditionTask
   | MultiplicationTask
   | DivisionTask
+  | FractionalGroupsTaskT
   | SubtractionTask
   | WholeCompareTask
   | WholeOrderTask
@@ -481,6 +493,14 @@ const div = (dividend: number, divisor: number): DivisionTask => ({
   kind: 'integer_division',
   dividend,
   divisor,
+});
+const fracGroups = (wholes: number, unitDenominator: number): FractionalGroupsTaskT => ({
+  subject: 'math',
+  course: 'fractional-groups',
+  skillId: FRAC_GROUPS,
+  kind: 'fractional_groups',
+  wholes,
+  unitDenominator,
 });
 const sub = (skillId: SubtractionTask['skillId'], a: number, b: number): SubtractionTask => ({
   subject: 'math',
@@ -816,6 +836,10 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'div-2': div(30, 5), // 6 (facts of 5)
   'div-3': div(40, 10), // 4 (facts of 10)
   'div-4': div(24, 3), // 8 (subtracts-instead-of-divides trap → 21)
+  'fgrp-1': fracGroups(3, 2), // halves in 3 wholes = 6
+  'fgrp-2': fracGroups(2, 4), // fourths in 2 wholes = 8
+  'fgrp-3': fracGroups(4, 3), // thirds in 4 wholes = 12
+  'fgrp-4': fracGroups(5, 2), // halves in 5 wholes = 10 (counts-wholes trap → 5)
   'sub-10-1': sub(SUB_10, 7, 3), // 4
   'sub-10-2': sub(SUB_10, 9, 5), // 4
   'sub-10-3': sub(SUB_10, 8, 2), // 6
@@ -1058,6 +1082,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'add-xfer-20': add(ADD_20, 8, 7), // 15
   'mult-xfer': mult(6, 7), // 42 (novel fact)
   'div-xfer': div(42, 6), // 7 (novel fact)
+  'fgrp-xfer': fracGroups(3, 4), // fourths in 3 wholes = 12 (novel)
   'sub-xfer-10': sub(SUB_10, 9, 4), // 5
   'sub-xfer-20': sub(SUB_20, 16, 9), // 7 (crossing ten)
   'sub100-xfer': sub2(73, 47), // 26 (regroup)
@@ -1122,6 +1147,7 @@ export const TRANSFER_TASKS = new Set([
   'add-xfer-20',
   'mult-xfer',
   'div-xfer',
+  'fgrp-xfer',
   'sub-xfer-10',
   'sub-xfer-20',
   'sub100-xfer',
@@ -1271,6 +1297,21 @@ export function present(task: Task): { question: string; options: readonly strin
   if (task.kind === 'integer_division') {
     return {
       question: `What is ${task.dividend} ÷ ${task.divisor}?`,
+      options: [] /* type the number */,
+    };
+  }
+  if (task.kind === 'fractional_groups') {
+    const unit =
+      task.unitDenominator === 2
+        ? 'halves'
+        : task.unitDenominator === 3
+          ? 'thirds'
+          : task.unitDenominator === 4
+            ? 'fourths'
+            : `one-${task.unitDenominator}ths`;
+    const wholeWord = task.wholes === 1 ? 'whole' : 'wholes';
+    return {
+      question: `How many ${unit} are in ${task.wholes} ${wholeWord}?`,
       options: [] /* type the number */,
     };
   }
@@ -1505,6 +1546,14 @@ export function answerKeyValid(task: Task): boolean {
       dividend: task.dividend,
       divisor: task.divisor,
       claimedQuotient: task.dividend / task.divisor,
+    }).correct;
+  }
+  if (task.kind === 'fractional_groups') {
+    return checkFractionalGroupsTask({
+      kind: 'fractional_groups',
+      wholes: task.wholes,
+      unitDenominator: task.unitDenominator,
+      claimedCount: fractionalGroupCount(task.wholes, task.unitDenominator),
     }).correct;
   }
   if (task.kind === 'integer_subtraction') {
@@ -1743,6 +1792,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'integer_addition') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'integer_multiplication') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'integer_division') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'fractional_groups') return /^\d+$/.test(a); // a non-negative integer count
   if (task.kind === 'integer_subtraction') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'integer_comparison') return isRelation(a);
   if (task.kind === 'integer_ordering') {
@@ -1834,6 +1884,14 @@ export function judge(task: Task, raw: string): boolean {
       dividend: task.dividend,
       divisor: task.divisor,
       claimedQuotient: Number(a),
+    }).correct;
+  }
+  if (task.kind === 'fractional_groups') {
+    return checkFractionalGroupsTask({
+      kind: 'fractional_groups',
+      wholes: task.wholes,
+      unitDenominator: task.unitDenominator,
+      claimedCount: Number(a),
     }).correct;
   }
   if (task.kind === 'integer_subtraction') {
@@ -2075,6 +2133,8 @@ export function correctAnswerFor(task: Task): string {
       return String(task.a * task.b);
     case 'integer_division':
       return String(task.dividend / task.divisor);
+    case 'fractional_groups':
+      return String(fractionalGroupCount(task.wholes, task.unitDenominator));
     case 'integer_subtraction':
       return String(task.a - task.b);
     case 'integer_comparison':
@@ -2170,6 +2230,11 @@ export function wrongAnswerFor(task: Task): string {
       const subtracted = task.dividend - task.divisor;
       return String(subtracted === quotient || subtracted < 0 ? quotient + 1 : subtracted);
     }
+    case 'fractional_groups':
+      // The counts-the-wholes error — gives the number of wholes, ignoring that
+      // each splits into unitDenominator pieces (wrong whenever the denominator
+      // is ≥ 2, which the oracle requires).
+      return String(task.wholes);
     case 'integer_subtraction':
       // A valid non-negative integer that is one off the true difference; when the
       // difference is 0 the only other non-negative token is 1 (never negative).
