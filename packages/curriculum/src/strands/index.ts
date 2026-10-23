@@ -11,6 +11,7 @@ import financialData from './data/financial.json';
 import numberRepData from './data/number-rep.json';
 import spatialData from './data/spatial.json';
 import dataHandlingData from './data/data-handling.json';
+import geometryData from './data/geometry.json';
 import englishData from './data/english.json';
 
 /**
@@ -37,6 +38,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   numberRepData as StrandDataset,
   spatialData as StrandDataset,
   dataHandlingData as StrandDataset,
+  geometryData as StrandDataset,
   englishData as StrandDataset,
 ];
 

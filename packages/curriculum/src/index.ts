@@ -13,6 +13,7 @@ export * from './financial-draft';
 export * from './number-rep-draft';
 export * from './spatial-draft';
 export * from './data-handling-draft';
+export * from './geometry-draft';
 export * from './lessons';
 export * from './ontario';
 export * from './overlay';
