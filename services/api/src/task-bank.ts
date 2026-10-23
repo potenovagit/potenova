@@ -47,6 +47,9 @@ import {
   wordProblemResult,
   type WordOp,
   checkBuildNumberTask,
+  checkParityTask,
+  parityOf,
+  type Parity,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -110,6 +113,7 @@ export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
 export const BUILD_NUMBER = 'SK-NS-build-number';
+export const EVEN_ODD = 'SK-NS-even-odd';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -286,6 +290,13 @@ interface BuildNumberTaskT {
   readonly kind: 'build_number';
   readonly target: number;
 }
+interface ParityTaskT {
+  readonly subject: 'math';
+  readonly course: 'even-odd';
+  readonly skillId: typeof EVEN_ODD;
+  readonly kind: 'number_parity';
+  readonly n: number;
+}
 interface PartitionTask {
   readonly subject: 'math';
   readonly course: 'fractions';
@@ -360,6 +371,7 @@ export type Task =
   | CodeReachSelectTaskT
   | WordProblemTaskT
   | BuildNumberTaskT
+  | ParityTaskT
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -596,6 +608,13 @@ const buildNumber = (target: number): BuildNumberTaskT => ({
   skillId: BUILD_NUMBER,
   kind: 'build_number',
   target,
+});
+const parity = (n: number): ParityTaskT => ({
+  subject: 'math',
+  course: 'even-odd',
+  skillId: EVEN_ODD,
+  kind: 'number_parity',
+  n,
 });
 const partition = (parts: number, shaded: number): PartitionTask => ({
   subject: 'math',
@@ -878,6 +897,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'build-2': buildNumber(30),
   'build-3': buildNumber(47),
   'build-4': buildNumber(16),
+  // Grade 2 — even or odd (parity decided by the ones digit).
+  'parity-1': parity(7), // odd
+  'parity-2': parity(10), // even
+  'parity-3': parity(23), // odd (first-digit trap: 2 is even)
+  'parity-4': parity(36), // even
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -930,6 +954,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   ]),
   'wp-xfer': wordProblem(9, '+', 5, '9 children are on the bus. At the next stop 5 more get on.'), // 14
   'build-xfer': buildNumber(38),
+  'parity-xfer': parity(49), // odd
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
@@ -963,6 +988,7 @@ export const TRANSFER_TASKS = new Set([
   'code-xfer',
   'wp-xfer',
   'build-xfer',
+  'parity-xfer',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
@@ -1184,6 +1210,9 @@ export function present(task: Task): { question: string; options: readonly strin
       question: `Build the number ${task.target} using tens and ones. Type how many tens and how many ones, like 2,4.`,
       options: [],
     };
+  }
+  if (task.kind === 'number_parity') {
+    return { question: `Is ${task.n} even or odd? (even / odd)`, options: ['even', 'odd'] };
   }
   if (task.kind === 'calendar_next_day') {
     const when =
@@ -1418,6 +1447,9 @@ export function answerKeyValid(task: Task): boolean {
       ones: task.target % 10,
     }).correct;
   }
+  if (task.kind === 'number_parity') {
+    return checkParityTask({ kind: 'number_parity', n: task.n, claimed: parityOf(task.n) }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -1516,6 +1548,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   }
   if (task.kind === 'word_problem') return /^\d+$/.test(a); // a non-negative answer
   if (task.kind === 'build_number') return /^\d+,\d+$/.test(a.replace(/\s+/g, '')); // tens,ones
+  if (task.kind === 'number_parity') return a === 'even' || a === 'odd';
   if (
     task.kind === 'fraction_partition' ||
     task.kind === 'fraction_unit' ||
@@ -1702,6 +1735,9 @@ export function judge(task: Task, raw: string): boolean {
       ones: Number(o),
     }).correct;
   }
+  if (task.kind === 'number_parity') {
+    return checkParityTask({ kind: 'number_parity', n: task.n, claimed: a as Parity }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     const cf = parseFrac(a);
     return cf
@@ -1810,6 +1846,8 @@ export function correctAnswerFor(task: Task): string {
     case 'build_number':
       // The standard build (tens and ones of the target) — one valid answer.
       return `${Math.floor(task.target / 10)},${task.target % 10}`;
+    case 'number_parity':
+      return parityOf(task.n);
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -1916,6 +1954,8 @@ export function wrongAnswerFor(task: Task): string {
     case 'build_number':
       // A build that is one ten too many — a valid token the oracle grades wrong.
       return `${Math.floor(task.target / 10) + 1},${task.target % 10}`;
+    case 'number_parity':
+      return parityOf(task.n) === 'even' ? 'odd' : 'even';
     case 'fraction_partition':
       return `${task.shaded === 0 ? 1 : 0}/${task.parts}`;
     case 'fraction_unit':
