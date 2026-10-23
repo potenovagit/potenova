@@ -32,6 +32,8 @@ import {
   checkShapeAttributeSelectTask,
   matchingShapeIndices,
   type ShapeOption,
+  checkCalendarTask,
+  dayAfter,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -85,6 +87,7 @@ export const REPRESENT_50 = 'SK-NS-represent-50';
 export const POSITIONAL = 'SK-GEO-positional-language';
 export const DATA_INTERPRET = 'SK-DATA-interpret-graph';
 export const SHAPE_ATTR = 'SK-GEO-shape-attribute';
+export const CALENDAR_DAY = 'SK-TIME-calendar-day';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -204,6 +207,14 @@ interface ShapeAttrSelectTaskT {
   readonly targetSides: number;
   readonly options: readonly ShapeOption[];
 }
+interface CalendarTaskT {
+  readonly subject: 'math';
+  readonly course: 'calendar';
+  readonly skillId: typeof CALENDAR_DAY;
+  readonly kind: 'calendar_next_day';
+  readonly day: string;
+  readonly offset: number;
+}
 interface PartitionTask {
   readonly subject: 'math';
   readonly course: 'fractions';
@@ -272,6 +283,7 @@ export type Task =
   | PositionalSelectTaskT
   | GraphReadSelectTaskT
   | ShapeAttrSelectTaskT
+  | CalendarTaskT
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -408,6 +420,14 @@ const shapeSort = (targetSides: number, options: readonly ShapeOption[]): ShapeA
   kind: 'shape_attribute_select',
   targetSides,
   options,
+});
+const calendarDay = (day: string, offset: number): CalendarTaskT => ({
+  subject: 'math',
+  course: 'calendar',
+  skillId: CALENDAR_DAY,
+  kind: 'calendar_next_day',
+  day,
+  offset,
 });
 const partition = (parts: number, shaded: number): PartitionTask => ({
   subject: 'math',
@@ -607,6 +627,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
     { name: 'hexagon', sides: 6 }, // ✓
     { name: 'triangle', sides: 3 },
   ]),
+  // Calendar: name the day a given number of days from another (the week wraps).
+  'cal-1': calendarDay('wednesday', 1), // thursday
+  'cal-2': calendarDay('monday', 1), // tuesday
+  'cal-3': calendarDay('friday', 1), // saturday
+  'cal-4': calendarDay('saturday', 1), // sunday (wrap)
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -641,6 +666,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
     { name: 'triangle', sides: 3 },
     { name: 'pentagon', sides: 5 },
   ]),
+  'cal-xfer': calendarDay('sunday', -1), // saturday (yesterday, wrap back)
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
@@ -664,6 +690,7 @@ export const TRANSFER_TASKS = new Set([
   'pos-xfer',
   'data-xfer',
   'shape-xfer',
+  'cal-xfer',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
@@ -710,6 +737,8 @@ const correctDataIndex = (task: GraphReadSelectTaskT): number =>
 /** The oracle-derived correct 0-based index for a shape-attribute selection; -1 if ill-posed. */
 const correctShapeIndex = (task: ShapeAttrSelectTaskT): number =>
   matchingShapeIndices(task.targetSides, task.options)[0] ?? -1;
+/** Capitalize a weekday name for display (wednesday → Wednesday). */
+const capitalize = (s: string): string => (s ? s[0]!.toUpperCase() + s.slice(1) : s);
 const isRelation = (v: unknown): v is FractionRelation => v === 'lt' || v === 'eq' || v === 'gt';
 
 /** Parse a learner "a/b" fraction token, or null if malformed. */
@@ -840,6 +869,18 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `Which shape has ${task.targetSides} sides? ${numbered}. Type the number of your choice.`,
       options: choices,
+    };
+  }
+  if (task.kind === 'calendar_next_day') {
+    const when =
+      task.offset === 1
+        ? 'the next day'
+        : task.offset === -1
+          ? 'the day before'
+          : `${Math.abs(task.offset)} days ${task.offset < 0 ? 'before' : 'after'}`;
+    return {
+      question: `If today is ${capitalize(task.day)}, what day is ${when}? Type the day.`,
+      options: [],
     };
   }
   if (task.kind === 'fraction_partition') {
@@ -1004,6 +1045,14 @@ export function answerKeyValid(task: Task): boolean {
       claimedIndex: correctShapeIndex(task),
     }).correct;
   }
+  if (task.kind === 'calendar_next_day') {
+    return checkCalendarTask({
+      kind: 'calendar_next_day',
+      day: task.day,
+      offset: task.offset,
+      claimedDay: dayAfter(task.day, task.offset) ?? '',
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -1093,6 +1142,7 @@ export function tokenValid(task: Task, raw: string): boolean {
     const n = Number(a);
     return n >= 1 && n <= task.options.length;
   }
+  if (task.kind === 'calendar_next_day') return /^[a-z]+$/.test(a); // a day name
   if (
     task.kind === 'fraction_partition' ||
     task.kind === 'fraction_unit' ||
@@ -1222,6 +1272,14 @@ export function judge(task: Task, raw: string): boolean {
       claimedIndex: Number(a) - 1,
     }).correct;
   }
+  if (task.kind === 'calendar_next_day') {
+    return checkCalendarTask({
+      kind: 'calendar_next_day',
+      day: task.day,
+      offset: task.offset,
+      claimedDay: a,
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     const cf = parseFrac(a);
     return cf
@@ -1316,6 +1374,8 @@ export function correctAnswerFor(task: Task): string {
       return String(correctDataIndex(task) + 1);
     case 'shape_attribute_select':
       return String(correctShapeIndex(task) + 1);
+    case 'calendar_next_day':
+      return dayAfter(task.day, task.offset) ?? '';
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -1399,6 +1459,9 @@ export function wrongAnswerFor(task: Task): string {
       const wrong = task.options.findIndex((_, i) => i !== correct);
       return String((wrong === -1 ? correct : wrong) + 1);
     }
+    case 'calendar_next_day':
+      // The adjacent day — a valid weekday the oracle grades wrong.
+      return dayAfter(task.day, task.offset + 1) ?? 'monday';
     case 'fraction_partition':
       return `${task.shaded === 0 ? 1 : 0}/${task.parts}`;
     case 'fraction_unit':
