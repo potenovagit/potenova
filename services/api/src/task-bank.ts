@@ -4,6 +4,7 @@ import {
   checkMathTask,
   checkEnglishTask,
   checkAdditionTask,
+  checkSubtractionTask,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -45,6 +46,8 @@ export const PAST = 'SK-EN-past-regular';
 export const COMP = 'SK-EN-comparative';
 export const ADD_10 = 'SK-NS-add-within10';
 export const ADD_20 = 'SK-NS-add-within20';
+export const SUB_10 = 'SK-NS-sub-within10';
+export const SUB_20 = 'SK-NS-sub-within20';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -74,6 +77,14 @@ interface AdditionTask {
   readonly course: 'addition';
   readonly skillId: typeof ADD_10 | typeof ADD_20;
   readonly kind: 'integer_addition';
+  readonly a: number;
+  readonly b: number;
+}
+interface SubtractionTask {
+  readonly subject: 'math';
+  readonly course: 'subtraction';
+  readonly skillId: typeof SUB_10 | typeof SUB_20;
+  readonly kind: 'integer_subtraction';
   readonly a: number;
   readonly b: number;
 }
@@ -134,6 +145,7 @@ export type Task =
   | EquivTask
   | PluralTask
   | AdditionTask
+  | SubtractionTask
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -171,6 +183,14 @@ const add = (skillId: AdditionTask['skillId'], a: number, b: number): AdditionTa
   course: 'addition',
   skillId,
   kind: 'integer_addition',
+  a,
+  b,
+});
+const sub = (skillId: SubtractionTask['skillId'], a: number, b: number): SubtractionTask => ({
+  subject: 'math',
+  course: 'subtraction',
+  skillId,
+  kind: 'integer_subtraction',
   a,
   b,
 });
@@ -252,6 +272,14 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'add-20-2': add(ADD_20, 7, 6), // 13
   'add-20-3': add(ADD_20, 9, 4), // 13
   'add-20-4': add(ADD_20, 6, 8), // 14
+  'sub-10-1': sub(SUB_10, 7, 3), // 4
+  'sub-10-2': sub(SUB_10, 9, 5), // 4
+  'sub-10-3': sub(SUB_10, 8, 2), // 6
+  'sub-10-4': sub(SUB_10, 6, 4), // 2
+  'sub-20-1': sub(SUB_20, 13, 5), // 8 (crossing ten)
+  'sub-20-2': sub(SUB_20, 15, 7), // 8 (crossing ten)
+  'sub-20-3': sub(SUB_20, 14, 6), // 8 (crossing ten)
+  'sub-20-4': sub(SUB_20, 12, 8), // 4 (crossing ten)
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -259,6 +287,8 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'eng-xfer-sib': plural(PLURAL_SIB, 'wish'), // wishes
   'add-xfer-10': add(ADD_10, 4, 5), // 9
   'add-xfer-20': add(ADD_20, 8, 7), // 15
+  'sub-xfer-10': sub(SUB_10, 9, 4), // 5
+  'sub-xfer-20': sub(SUB_20, 16, 9), // 7 (crossing ten)
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
@@ -270,6 +300,8 @@ export const TRANSFER_TASKS = new Set([
   'eng-xfer-sib',
   'add-xfer-10',
   'add-xfer-20',
+  'sub-xfer-10',
+  'sub-xfer-20',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
@@ -320,6 +352,9 @@ export function present(task: Task): { question: string; options: readonly strin
   }
   if (task.kind === 'integer_addition') {
     return { question: `What is ${task.a} + ${task.b}?`, options: [] /* type the number */ };
+  }
+  if (task.kind === 'integer_subtraction') {
+    return { question: `What is ${task.a} - ${task.b}?`, options: [] /* type the number */ };
   }
   if (task.kind === 'fraction_partition') {
     return {
@@ -394,6 +429,14 @@ export function answerKeyValid(task: Task): boolean {
       claimedSum: task.a + task.b,
     }).correct;
   }
+  if (task.kind === 'integer_subtraction') {
+    return checkSubtractionTask({
+      kind: 'integer_subtraction',
+      a: task.a,
+      b: task.b,
+      claimedDifference: task.a - task.b,
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -459,6 +502,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'fraction_comparison') return isRelation(a);
   if (task.kind === 'fraction_equivalence') return a === 'yes' || a === 'no';
   if (task.kind === 'integer_addition') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'integer_subtraction') return /^\d+$/.test(a); // a non-negative integer
   if (
     task.kind === 'fraction_partition' ||
     task.kind === 'fraction_unit' ||
@@ -498,6 +542,14 @@ export function judge(task: Task, raw: string): boolean {
       a: task.a,
       b: task.b,
       claimedSum: Number(a),
+    }).correct;
+  }
+  if (task.kind === 'integer_subtraction') {
+    return checkSubtractionTask({
+      kind: 'integer_subtraction',
+      a: task.a,
+      b: task.b,
+      claimedDifference: Number(a),
     }).correct;
   }
   if (task.kind === 'fraction_partition') {
@@ -569,6 +621,8 @@ export function correctAnswerFor(task: Task): string {
       return areEquivalent(task.left, task.right) ? 'yes' : 'no';
     case 'integer_addition':
       return String(task.a + task.b);
+    case 'integer_subtraction':
+      return String(task.a - task.b);
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -604,6 +658,10 @@ export function wrongAnswerFor(task: Task): string {
       return areEquivalent(task.left, task.right) ? 'no' : 'yes';
     case 'integer_addition':
       return String(task.a + task.b + 1);
+    case 'integer_subtraction':
+      // A valid non-negative integer that is one off the true difference; when the
+      // difference is 0 the only other non-negative token is 1 (never negative).
+      return String(task.a - task.b === 0 ? 1 : task.a - task.b + 1);
     case 'fraction_partition':
       return `${task.shaded === 0 ? 1 : 0}/${task.parts}`;
     case 'fraction_unit':

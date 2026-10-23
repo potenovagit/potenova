@@ -4,6 +4,7 @@ export * from './fractions-draft';
 export * from './english-draft';
 export * from './coaching-hints';
 export * from './addition-draft';
+export * from './subtraction-draft';
 export * from './lessons';
 export * from './ontario';
 export * from './overlay';

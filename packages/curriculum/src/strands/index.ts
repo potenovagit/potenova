@@ -2,6 +2,7 @@ import { loadStrand, buildStrandGraph, type StrandDataset, type LoadedStrand } f
 import { CurriculumGraph } from '../graph';
 import fractionsData from './data/fractions.json';
 import additionData from './data/addition.json';
+import subtractionData from './data/subtraction.json';
 import englishData from './data/english.json';
 
 /**
@@ -19,6 +20,7 @@ export * from './schema';
 export const STRAND_DATASETS: readonly StrandDataset[] = [
   fractionsData as StrandDataset,
   additionData as StrandDataset,
+  subtractionData as StrandDataset,
   englishData as StrandDataset,
 ];
 
