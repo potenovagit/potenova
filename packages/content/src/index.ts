@@ -4,6 +4,7 @@ export * from './english-check';
 export * from './addition-check';
 export * from './subtraction-check';
 export * from './whole-number-check';
+export * from './skip-count-check';
 export * from './validation';
 export * from './model-eval';
 export * from './eval-suite';

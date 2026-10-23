@@ -15,6 +15,7 @@ import {
   buildAdditionDraftGraph,
   buildSubtractionDraftGraph,
   buildWholeNumberDraftGraph,
+  buildSkipCountDraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -26,6 +27,8 @@ import {
   SUBTRACTION_STRATEGIES,
   WHOLE_NUMBER_MISCONCEPTIONS,
   WHOLE_NUMBER_STRATEGIES,
+  SKIP_COUNT_MISCONCEPTIONS,
+  SKIP_COUNT_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -65,6 +68,7 @@ export type CourseId =
   | 'addition'
   | 'subtraction'
   | 'whole-number'
+  | 'skip-count'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -194,6 +198,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
       'SK-NS-order-whole-50': 'ordw-xfer',
     },
   },
+  'skip-count': {
+    subject: 'math',
+    buildGraph: buildSkipCountDraftGraph,
+    coachableSkillIds: ['SK-NS-skip-count-50'],
+    defaultTask: { 'SK-NS-skip-count-50': 'skip-1' },
+    practiceTasks: {
+      'SK-NS-skip-count-50': ['skip-1', 'skip-2', 'skip-3', 'skip-4'],
+    },
+    remediationReps: ['counters', 'number-line', 'symbolic'],
+    misconceptions: SKIP_COUNT_MISCONCEPTIONS,
+    strategies: SKIP_COUNT_STRATEGIES,
+    transferTask: { 'SK-NS-skip-count-50': 'skip-xfer' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -242,7 +259,7 @@ const COURSES: Record<CourseId, CoursePlan> = {
 export const DEFAULT_COURSE: Record<Subject, CourseId> = { math: 'fractions', english: 'plurals' };
 /** Courses a subject offers, for the parent strand-focus control. */
 export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
-  math: ['fractions', 'addition', 'subtraction', 'whole-number'],
+  math: ['fractions', 'addition', 'subtraction', 'whole-number', 'skip-count'],
   english: ['plurals', 'past-tense', 'comparative'],
 };
 
