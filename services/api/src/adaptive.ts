@@ -16,6 +16,7 @@ import {
   buildSubtractionDraftGraph,
   buildWholeNumberDraftGraph,
   buildSkipCountDraftGraph,
+  buildAlgebraEquivDraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -29,6 +30,8 @@ import {
   WHOLE_NUMBER_STRATEGIES,
   SKIP_COUNT_MISCONCEPTIONS,
   SKIP_COUNT_STRATEGIES,
+  ALGEBRA_EQUIV_MISCONCEPTIONS,
+  ALGEBRA_EQUIV_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -69,6 +72,7 @@ export type CourseId =
   | 'subtraction'
   | 'whole-number'
   | 'skip-count'
+  | 'algebra-equiv'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -211,6 +215,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: SKIP_COUNT_STRATEGIES,
     transferTask: { 'SK-NS-skip-count-50': 'skip-xfer' },
   },
+  'algebra-equiv': {
+    subject: 'math',
+    buildGraph: buildAlgebraEquivDraftGraph,
+    coachableSkillIds: ['SK-AL-equiv-expr'],
+    defaultTask: { 'SK-AL-equiv-expr': 'equiv-1' },
+    practiceTasks: {
+      'SK-AL-equiv-expr': ['equiv-1', 'equiv-2', 'equiv-3', 'equiv-4'],
+    },
+    remediationReps: ['counters', 'symbolic'],
+    misconceptions: ALGEBRA_EQUIV_MISCONCEPTIONS,
+    strategies: ALGEBRA_EQUIV_STRATEGIES,
+    transferTask: { 'SK-AL-equiv-expr': 'equiv-xfer' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -259,7 +276,7 @@ const COURSES: Record<CourseId, CoursePlan> = {
 export const DEFAULT_COURSE: Record<Subject, CourseId> = { math: 'fractions', english: 'plurals' };
 /** Courses a subject offers, for the parent strand-focus control. */
 export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
-  math: ['fractions', 'addition', 'subtraction', 'whole-number', 'skip-count'],
+  math: ['fractions', 'addition', 'subtraction', 'whole-number', 'skip-count', 'algebra-equiv'],
   english: ['plurals', 'past-tense', 'comparative'],
 };
 

@@ -11,6 +11,9 @@ import {
   checkSkipCountTask,
   skipCountNext,
   skipCountSequence,
+  checkExprEquivalenceTask,
+  evalExpr,
+  type Expr,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -57,6 +60,7 @@ export const SUB_20 = 'SK-NS-sub-within20';
 export const CMP_WHOLE = 'SK-NS-compare-whole-50';
 export const ORD_WHOLE = 'SK-NS-order-whole-50';
 export const SKIP_COUNT = 'SK-NS-skip-count-50';
+export const EQUIV_EXPR = 'SK-AL-equiv-expr';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -121,6 +125,14 @@ interface SkipCountTaskT {
   readonly step: number;
   readonly length: number;
 }
+interface ExprEquivTask {
+  readonly subject: 'math';
+  readonly course: 'algebra-equiv';
+  readonly skillId: typeof EQUIV_EXPR;
+  readonly kind: 'expr_equivalence';
+  readonly left: Expr;
+  readonly right: Expr;
+}
 interface PartitionTask {
   readonly subject: 'math';
   readonly course: 'fractions';
@@ -182,6 +194,7 @@ export type Task =
   | WholeCompareTask
   | WholeOrderTask
   | SkipCountTaskT
+  | ExprEquivTask
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -253,6 +266,15 @@ const skip = (start: number, step: number, length: number): SkipCountTaskT => ({
   start,
   step,
   length,
+});
+const e = (a: number, op: Expr['op'], b: number): Expr => ({ a, op, b });
+const equivExpr = (left: Expr, right: Expr): ExprEquivTask => ({
+  subject: 'math',
+  course: 'algebra-equiv',
+  skillId: EQUIV_EXPR,
+  kind: 'expr_equivalence',
+  left,
+  right,
 });
 const partition = (parts: number, shaded: number): PartitionTask => ({
   subject: 'math',
@@ -352,6 +374,10 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'skip-2': skip(5, 5, 3), // 5,10,15 → 20 (by 5s)
   'skip-3': skip(10, 10, 3), // 10,20,30 → 40 (by 10s)
   'skip-4': skip(0, 2, 4), // 0,2,4,6 → 8 (by 2s from 0)
+  'equiv-1': equivExpr(e(3, '+', 4), e(9, '-', 2)), // 7 == 7 → yes
+  'equiv-2': equivExpr(e(5, '+', 2), e(4, '+', 2)), // 7 vs 6 → no
+  'equiv-3': equivExpr(e(6, '-', 1), e(2, '+', 3)), // 5 == 5 → yes
+  'equiv-4': equivExpr(e(8, '-', 3), e(3, '+', 3)), // 5 vs 6 → no
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -364,6 +390,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'cmpw-xfer': cmpW(27, 19), // gt
   'ordw-xfer': ordW([38, 3, 45, 15]), // 3 < 15 < 38 < 45 → 2,4,1,3
   'skip-xfer': skip(15, 5, 3), // 15,20,25 → 30 (by 5s, novel start)
+  'equiv-xfer': equivExpr(e(7, '+', 2), e(10, '-', 1)), // 9 == 9 → yes
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
@@ -380,9 +407,11 @@ export const TRANSFER_TASKS = new Set([
   'cmpw-xfer',
   'ordw-xfer',
   'skip-xfer',
+  'equiv-xfer',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
+const fmtExpr = (x: Expr): string => `${x.a} ${x.op} ${x.b}`;
 const isRelation = (v: unknown): v is FractionRelation => v === 'lt' || v === 'eq' || v === 'gt';
 
 /** Parse a learner "a/b" fraction token, or null if malformed. */
@@ -459,6 +488,12 @@ export function present(task: Task): { question: string; options: readonly strin
         task.length,
       ).join(', ')}, __`,
       options: [],
+    };
+  }
+  if (task.kind === 'expr_equivalence') {
+    return {
+      question: `Are ${fmtExpr(task.left)} and ${fmtExpr(task.right)} equal in value? (yes / no)`,
+      options: ['yes', 'no'],
     };
   }
   if (task.kind === 'fraction_partition') {
@@ -566,6 +601,14 @@ export function answerKeyValid(task: Task): boolean {
       claimedNext: skipCountNext(task.start, task.step, task.length),
     }).correct;
   }
+  if (task.kind === 'expr_equivalence') {
+    return checkExprEquivalenceTask({
+      kind: 'expr_equivalence',
+      left: task.left,
+      right: task.right,
+      claimedEquivalent: evalExpr(task.left) === evalExpr(task.right),
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -637,6 +680,7 @@ export function tokenValid(task: Task, raw: string): boolean {
     return new RegExp(`^\\d+(,\\d+){${task.numbers.length - 1}}$`).test(a.replace(/\s+/g, ''));
   }
   if (task.kind === 'skip_count_next') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'expr_equivalence') return a === 'yes' || a === 'no';
   if (
     task.kind === 'fraction_partition' ||
     task.kind === 'fraction_unit' ||
@@ -708,6 +752,14 @@ export function judge(task: Task, raw: string): boolean {
       step: task.step,
       length: task.length,
       claimedNext: Number(a),
+    }).correct;
+  }
+  if (task.kind === 'expr_equivalence') {
+    return checkExprEquivalenceTask({
+      kind: 'expr_equivalence',
+      left: task.left,
+      right: task.right,
+      claimedEquivalent: a === 'yes',
     }).correct;
   }
   if (task.kind === 'fraction_partition') {
@@ -789,6 +841,8 @@ export function correctAnswerFor(task: Task): string {
         .join(',');
     case 'skip_count_next':
       return String(skipCountNext(task.start, task.step, task.length));
+    case 'expr_equivalence':
+      return evalExpr(task.left) === evalExpr(task.right) ? 'yes' : 'no';
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -842,6 +896,8 @@ export function wrongAnswerFor(task: Task): string {
       // One past the true next term — a valid integer the oracle grades wrong
       // for every allowed step (an "overshoot by one" slip).
       return String(skipCountNext(task.start, task.step, task.length) + 1);
+    case 'expr_equivalence':
+      return evalExpr(task.left) === evalExpr(task.right) ? 'no' : 'yes';
     case 'fraction_partition':
       return `${task.shaded === 0 ? 1 : 0}/${task.parts}`;
     case 'fraction_unit':
