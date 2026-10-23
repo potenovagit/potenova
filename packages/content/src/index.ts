@@ -7,6 +7,7 @@ export * from './whole-number-check';
 export * from './skip-count-check';
 export * from './expr-equiv-check';
 export * from './compose-check';
+export * from './coin-value-check';
 export * from './validation';
 export * from './model-eval';
 export * from './eval-suite';
