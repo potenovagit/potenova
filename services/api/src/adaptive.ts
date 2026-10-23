@@ -15,6 +15,7 @@ import {
   buildAdditionDraftGraph,
   buildMultiplicationDraftGraph,
   buildDivisionDraftGraph,
+  buildAlgebraEquivG3DraftGraph,
   buildSubtractionDraftGraph,
   buildWholeNumberDraftGraph,
   buildSkipCountDraftGraph,
@@ -50,6 +51,8 @@ import {
   MULTIPLICATION_STRATEGIES,
   DIVISION_MISCONCEPTIONS,
   DIVISION_STRATEGIES,
+  ALGEBRA_EQUIV_G3_MISCONCEPTIONS,
+  ALGEBRA_EQUIV_G3_STRATEGIES,
   SUBTRACTION_MISCONCEPTIONS,
   SUBTRACTION_STRATEGIES,
   WHOLE_NUMBER_MISCONCEPTIONS,
@@ -137,6 +140,7 @@ export type CourseId =
   | 'addition'
   | 'multiplication'
   | 'division'
+  | 'algebra-equiv-g3'
   | 'subtraction'
   | 'whole-number'
   | 'skip-count'
@@ -284,6 +288,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     misconceptions: DIVISION_MISCONCEPTIONS,
     strategies: DIVISION_STRATEGIES,
     transferTask: { 'SK-NS-div-facts': 'div-xfer' },
+  },
+  'algebra-equiv-g3': {
+    subject: 'math',
+    buildGraph: buildAlgebraEquivG3DraftGraph,
+    coachableSkillIds: ['SK-AL-equiv-expr-muldiv'],
+    defaultTask: { 'SK-AL-equiv-expr-muldiv': 'equiv-md-1' },
+    practiceTasks: {
+      'SK-AL-equiv-expr-muldiv': ['equiv-md-1', 'equiv-md-2', 'equiv-md-3', 'equiv-md-4'],
+    },
+    remediationReps: ['symbolic', 'counters'],
+    misconceptions: ALGEBRA_EQUIV_G3_MISCONCEPTIONS,
+    strategies: ALGEBRA_EQUIV_G3_STRATEGIES,
+    transferTask: { 'SK-AL-equiv-expr-muldiv': 'equiv-md-xfer' },
   },
   subtraction: {
     subject: 'math',
@@ -662,6 +679,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'addition',
     'multiplication',
     'division',
+    'algebra-equiv-g3',
     'subtraction',
     'whole-number',
     'skip-count',

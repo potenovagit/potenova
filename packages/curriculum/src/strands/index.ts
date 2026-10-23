@@ -4,6 +4,7 @@ import fractionsData from './data/fractions.json';
 import additionData from './data/addition.json';
 import multiplicationData from './data/multiplication.json';
 import divisionData from './data/division.json';
+import algebraEquivG3Data from './data/algebra-equiv-g3.json';
 import subtractionData from './data/subtraction.json';
 import wholeNumberData from './data/whole-number.json';
 import skipCountData from './data/skip-count.json';
@@ -71,6 +72,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   placeValueG2Data as StrandDataset,
   multiplicationData as StrandDataset,
   divisionData as StrandDataset,
+  algebraEquivG3Data as StrandDataset,
   englishData as StrandDataset,
 ];
 
