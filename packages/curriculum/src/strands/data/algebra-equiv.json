@@ -1,0 +1,31 @@
+{
+  "strandId": "algebra-equiv",
+  "version": "alg-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-AL-equiv-expr",
+      "competency": "algebra:equivalence",
+      "skill": "Decide whether two addition/subtraction expressions are equal in value"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-AL-equals-means-answer",
+      "skillId": "SK-AL-equiv-expr",
+      "pattern": "Reads = as 'write the answer' rather than 'same value', so only checks the left side or the first operands instead of comparing both totals.",
+      "probeIds": ["PR-AL-both-sides"],
+      "remediationStrategyIds": ["ST-al-work-both-sides"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-al-work-both-sides",
+      "intent": "Work out the total on each side first, then check whether the two totals are the same.",
+      "approvedBands": ["primary"],
+      "representations": ["symbolic", "counters"]
+    }
+  ]
+}
