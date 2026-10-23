@@ -39,6 +39,10 @@ import {
   addDays,
   matchingDateIndices,
   type CalendarDate,
+  checkCodeReachSelectTask,
+  reachingProgramIndices,
+  type Move,
+  type Cell,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -95,6 +99,7 @@ export const SHAPE_ATTR = 'SK-GEO-shape-attribute';
 export const CALENDAR_DAY = 'SK-TIME-calendar-day';
 export const ESTIMATE_50 = 'SK-NS-estimate-50';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
+export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -242,6 +247,17 @@ interface DateOffsetSelectTaskT {
   readonly offset: number;
   readonly options: readonly CalendarDate[];
 }
+interface CodeReachSelectTaskT {
+  readonly subject: 'math';
+  readonly course: 'coding';
+  readonly skillId: typeof CODE_SEQUENCE;
+  readonly kind: 'code_reach_select';
+  readonly rows: number;
+  readonly cols: number;
+  readonly start: Cell;
+  readonly goal: Cell;
+  readonly options: readonly (readonly Move[])[];
+}
 interface PartitionTask {
   readonly subject: 'math';
   readonly course: 'fractions';
@@ -313,6 +329,7 @@ export type Task =
   | CalendarTaskT
   | EstimateTaskT
   | DateOffsetSelectTaskT
+  | CodeReachSelectTaskT
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -482,6 +499,23 @@ const dateOffset = (
   month,
   day,
   offset,
+  options,
+});
+const codeReach = (
+  rows: number,
+  cols: number,
+  start: Cell,
+  goal: Cell,
+  options: readonly (readonly Move[])[],
+): CodeReachSelectTaskT => ({
+  subject: 'math',
+  course: 'coding',
+  skillId: CODE_SEQUENCE,
+  kind: 'code_reach_select',
+  rows,
+  cols,
+  start,
+  goal,
   options,
 });
 const partition = (parts: number, shaded: number): PartitionTask => ({
@@ -714,6 +748,27 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
     { month: 5, day: 1 },
     { month: 4, day: 30 },
   ]),
+  // Coding: pick the program that drives the robot from start to goal on a 3×3 grid.
+  'code-1': codeReach(3, 3, { r: 0, c: 0 }, { r: 0, c: 2 }, [
+    ['right', 'right'], // ✓
+    ['right'],
+    ['down', 'right'],
+  ]),
+  'code-2': codeReach(3, 3, { r: 0, c: 0 }, { r: 2, c: 0 }, [
+    ['down', 'down'], // ✓
+    ['down'],
+    ['right', 'down'],
+  ]),
+  'code-3': codeReach(3, 3, { r: 2, c: 0 }, { r: 0, c: 2 }, [
+    ['up', 'up', 'right', 'right'], // ✓
+    ['up', 'right'],
+    ['right', 'right', 'up'],
+  ]),
+  'code-4': codeReach(3, 3, { r: 1, c: 1 }, { r: 0, c: 1 }, [
+    ['up'], // ✓
+    ['down'],
+    ['left', 'up'],
+  ]),
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -755,6 +810,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
     { month: 8, day: 4 },
     { month: 7, day: 31 },
   ]),
+  'code-xfer': codeReach(3, 3, { r: 0, c: 0 }, { r: 1, c: 2 }, [
+    ['right', 'right', 'down'], // ✓
+    ['down', 'right'],
+    ['up'],
+  ]),
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
@@ -781,6 +841,7 @@ export const TRANSFER_TASKS = new Set([
   'cal-xfer',
   'est-xfer',
   'date-xfer',
+  'code-xfer',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
@@ -834,6 +895,10 @@ const fmtDate = (d: CalendarDate): string => `${MONTHS[d.month - 1] ?? '?'} ${d.
 /** The oracle-derived correct 0-based index for a date-offset selection; -1 if ill-posed. */
 const correctDateOffsetIndex = (task: DateOffsetSelectTaskT): number =>
   matchingDateIndices(addDays(task.year, task.month, task.day, task.offset), task.options)[0] ?? -1;
+/** The oracle-derived correct 0-based index for a code-reach selection; -1 if ill-posed. */
+const correctCodeIndex = (task: CodeReachSelectTaskT): number =>
+  reachingProgramIndices(task)[0] ?? -1;
+const fmtProgram = (moves: readonly Move[]): string => moves.join(', ');
 const isRelation = (v: unknown): v is FractionRelation => v === 'lt' || v === 'eq' || v === 'gt';
 
 /** Parse a learner "a/b" fraction token, or null if malformed. */
@@ -978,6 +1043,14 @@ export function present(task: Task): { question: string; options: readonly strin
     const start = fmtDate({ month: task.month, day: task.day });
     return {
       question: `In ${task.year}, what date is ${task.offset} day${task.offset === 1 ? '' : 's'} after ${start}? ${numbered}. Type the number of your choice.`,
+      options: choices,
+    };
+  }
+  if (task.kind === 'code_reach_select') {
+    const choices = task.options.map((p) => fmtProgram(p));
+    const numbered = choices.map((c, i) => `${i + 1}) [${c}]`).join('  ');
+    return {
+      question: `On a ${task.rows}×${task.cols} grid the robot starts at row ${task.start.r}, col ${task.start.c} and must reach row ${task.goal.r}, col ${task.goal.c}. Which program gets it there? ${numbered}. Type the number of your choice.`,
       options: choices,
     };
   }
@@ -1185,6 +1258,17 @@ export function answerKeyValid(task: Task): boolean {
       claimedIndex: correctDateOffsetIndex(task),
     }).correct;
   }
+  if (task.kind === 'code_reach_select') {
+    return checkCodeReachSelectTask({
+      kind: 'code_reach_select',
+      rows: task.rows,
+      cols: task.cols,
+      start: task.start,
+      goal: task.goal,
+      options: task.options,
+      claimedIndex: correctCodeIndex(task),
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -1276,7 +1360,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   }
   if (task.kind === 'calendar_next_day') return /^[a-z]+$/.test(a); // a day name
   if (task.kind === 'estimate_within_band') return /^\d+$/.test(a); // a non-negative estimate
-  if (task.kind === 'date_offset_select') {
+  if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
     return n >= 1 && n <= task.options.length;
@@ -1438,6 +1522,17 @@ export function judge(task: Task, raw: string): boolean {
       claimedIndex: Number(a) - 1,
     }).correct;
   }
+  if (task.kind === 'code_reach_select') {
+    return checkCodeReachSelectTask({
+      kind: 'code_reach_select',
+      rows: task.rows,
+      cols: task.cols,
+      start: task.start,
+      goal: task.goal,
+      options: task.options,
+      claimedIndex: Number(a) - 1,
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     const cf = parseFrac(a);
     return cf
@@ -1539,6 +1634,8 @@ export function correctAnswerFor(task: Task): string {
       return String(task.actual);
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
+    case 'code_reach_select':
+      return String(correctCodeIndex(task) + 1);
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -1630,6 +1727,11 @@ export function wrongAnswerFor(task: Task): string {
       return String(task.high + 1);
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
+      const wrong = task.options.findIndex((_, i) => i !== correct);
+      return String((wrong === -1 ? correct : wrong) + 1);
+    }
+    case 'code_reach_select': {
+      const correct = correctCodeIndex(task);
       const wrong = task.options.findIndex((_, i) => i !== correct);
       return String((wrong === -1 ? correct : wrong) + 1);
     }
