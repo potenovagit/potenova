@@ -14,6 +14,7 @@ export * from './graph-read-select-check';
 export * from './shape-attribute-select-check';
 export * from './calendar-check';
 export * from './estimate-check';
+export * from './date-check';
 export * from './validation';
 export * from './model-eval';
 export * from './eval-suite';

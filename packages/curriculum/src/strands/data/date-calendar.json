@@ -1,0 +1,31 @@
+{
+  "strandId": "date-calendar",
+  "version": "date-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-TIME-date-offset",
+      "competency": "time:date-arithmetic",
+      "skill": "Read a calendar across months: find the date a few days from a given date"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-TIME-month-overflow",
+      "skillId": "SK-TIME-date-offset",
+      "pattern": "Keeps counting past the end of the month (e.g. 'March 32') instead of rolling over to the first of the next month.",
+      "probeIds": ["PR-TIME-days-from"],
+      "remediationStrategyIds": ["ST-time-month-end-rollover"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-time-month-end-rollover",
+      "intent": "Count up to the last day of the month, then start again at the 1st of the next month for the days left over.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}
