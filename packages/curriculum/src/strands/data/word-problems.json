@@ -1,0 +1,31 @@
+{
+  "strandId": "word-problems",
+  "version": "wp-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-word-problem-addsub",
+      "competency": "number:word-problem",
+      "skill": "Solve addition and subtraction word problems in a familiar context"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-wrong-operation",
+      "skillId": "SK-NS-word-problem-addsub",
+      "pattern": "Chooses the wrong operation for the story — adds when the situation takes away, or subtracts when it joins, often cued by a surface word rather than the action.",
+      "probeIds": ["PR-NS-story-operation"],
+      "remediationStrategyIds": ["ST-ns-act-out-the-story"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-act-out-the-story",
+      "intent": "Act the story out with counters: start with the first amount, then join or take away the second, and count what is left.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}
