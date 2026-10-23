@@ -96,6 +96,7 @@ export const ORD_WHOLE = 'SK-NS-order-whole-50';
 export const CMP_WHOLE_200 = 'SK-NS-compare-whole-200';
 export const ORD_WHOLE_200 = 'SK-NS-order-whole-200';
 export const SKIP_COUNT = 'SK-NS-skip-count-50';
+export const SKIP_COUNT_200 = 'SK-NS-skip-count-200';
 export const EQUIV_EXPR = 'SK-AL-equiv-expr';
 export const COMPOSE_50 = 'SK-NS-compose-50';
 export const COIN_VALUE = 'SK-FIN-coin-value';
@@ -166,8 +167,8 @@ interface WholeOrderTask {
 }
 interface SkipCountTaskT {
   readonly subject: 'math';
-  readonly course: 'skip-count';
-  readonly skillId: typeof SKIP_COUNT;
+  readonly course: 'skip-count' | 'skip-count-g2';
+  readonly skillId: typeof SKIP_COUNT | typeof SKIP_COUNT_200;
   readonly kind: 'skip_count_next';
   readonly start: number;
   readonly step: number;
@@ -454,6 +455,15 @@ const skip = (start: number, step: number, length: number): SkipCountTaskT => ({
   step,
   length,
 });
+const skip2 = (start: number, step: number, length: number): SkipCountTaskT => ({
+  subject: 'math',
+  course: 'skip-count-g2',
+  skillId: SKIP_COUNT_200,
+  kind: 'skip_count_next',
+  start,
+  step,
+  length,
+});
 const e = (a: number, op: Expr['op'], b: number): Expr => ({ a, op, b });
 const equivExpr = (left: Expr, right: Expr): ExprEquivTask => ({
   subject: 'math',
@@ -699,6 +709,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'skip-2': skip(5, 5, 3), // 5,10,15 → 20 (by 5s)
   'skip-3': skip(10, 10, 3), // 10,20,30 → 40 (by 10s)
   'skip-4': skip(0, 2, 4), // 0,2,4,6 → 8 (by 2s from 0)
+  // Grade 2 — skip-count to 200 by 20s/25s/50s (same oracle, widened step set).
+  'skip2-1': skip2(20, 20, 3), // 20,40,60 → 80 (by 20s)
+  'skip2-2': skip2(25, 25, 3), // 25,50,75 → 100 (by 25s)
+  'skip2-3': skip2(50, 50, 3), // 50,100,150 → 200 (by 50s)
+  'skip2-4': skip2(0, 25, 4), // 0,25,50,75 → 100 (by 25s from 0)
   'equiv-1': equivExpr(e(3, '+', 4), e(9, '-', 2)), // 7 == 7 → yes
   'equiv-2': equivExpr(e(5, '+', 2), e(4, '+', 2)), // 7 vs 6 → no
   'equiv-3': equivExpr(e(6, '-', 1), e(2, '+', 3)), // 5 == 5 → yes
@@ -878,6 +893,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'cmpw2-xfer': cmpW2(137, 173), // lt
   'ordw2-xfer': ordW2([160, 16, 106]), // 16 < 106 < 160 → 2,3,1
   'skip-xfer': skip(15, 5, 3), // 15,20,25 → 30 (by 5s, novel start)
+  'skip2-xfer': skip2(50, 25, 3), // 50,75,100 → 125 (by 25s, novel start)
   'equiv-xfer': equivExpr(e(7, '+', 2), e(10, '-', 1)), // 9 == 9 → yes
   'compose-xfer': compose(4, 6), // 46
   'coins-xfer': coins([200, 100, 25]), // toonie + loonie + quarter = 325¢
@@ -933,6 +949,7 @@ export const TRANSFER_TASKS = new Set([
   'cmpw2-xfer',
   'ordw2-xfer',
   'skip-xfer',
+  'skip2-xfer',
   'equiv-xfer',
   'compose-xfer',
   'coins-xfer',

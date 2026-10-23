@@ -42,7 +42,28 @@ describe('deterministic skip-counting oracle (G1 B1.5; CONT-001/003, NFR-07)', (
     expect(r.reason).toBe('ANSWER_KEY_WRONG');
   });
 
-  it('fails closed on a step outside the Grade 1 set {1,2,5,10}', () => {
+  it('accepts the Grade 2 steps (20s/25s/50s) in the widened set', () => {
+    expect(
+      checkSkipCountTask({
+        kind: 'skip_count_next',
+        start: 25,
+        step: 25,
+        length: 3,
+        claimedNext: 100,
+      }).correct,
+    ).toBe(true);
+    expect(
+      checkSkipCountTask({
+        kind: 'skip_count_next',
+        start: 50,
+        step: 50,
+        length: 3,
+        claimedNext: 200,
+      }).correct,
+    ).toBe(true);
+  });
+
+  it('fails closed on a step outside the supported set {1,2,5,10,20,25,50}', () => {
     const bad: SkipCountTask = {
       kind: 'skip_count_next',
       start: 0,
