@@ -3,6 +3,7 @@ import { CurriculumGraph } from '../graph';
 import fractionsData from './data/fractions.json';
 import additionData from './data/addition.json';
 import subtractionData from './data/subtraction.json';
+import wholeNumberData from './data/whole-number.json';
 import englishData from './data/english.json';
 
 /**
@@ -21,6 +22,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   fractionsData as StrandDataset,
   additionData as StrandDataset,
   subtractionData as StrandDataset,
+  wholeNumberData as StrandDataset,
   englishData as StrandDataset,
 ];
 

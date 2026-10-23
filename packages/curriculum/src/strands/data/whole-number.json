@@ -1,0 +1,44 @@
+{
+  "strandId": "whole-number",
+  "version": "wn-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-compare-whole-50",
+      "competency": "number:whole-number",
+      "skill": "Compare two whole numbers to 50"
+    },
+    {
+      "skillId": "SK-NS-order-whole-50",
+      "competency": "number:whole-number",
+      "skill": "Order whole numbers to 50 from least to greatest"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependencyId": "D-ns-wn-1",
+      "fromSkillId": "SK-NS-compare-whole-50",
+      "toSkillId": "SK-NS-order-whole-50",
+      "type": "hardPrerequisite",
+      "weight": 1.0
+    }
+  ],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-longer-is-bigger",
+      "skillId": "SK-NS-compare-whole-50",
+      "pattern": "Compares by first digit or digit count alone, so a number that looks longer or starts higher is judged bigger (e.g. 9 > 12, or 19 > 21 because 9 > 1).",
+      "probeIds": ["PR-NS-place-value-compare"],
+      "remediationStrategyIds": ["ST-ns-tens-then-ones"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-tens-then-ones",
+      "intent": "Compare the tens first; only if the tens are equal, compare the ones.",
+      "approvedBands": ["primary"],
+      "representations": ["number-line", "symbolic"]
+    }
+  ]
+}

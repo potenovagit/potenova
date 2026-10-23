@@ -5,6 +5,9 @@ import {
   checkEnglishTask,
   checkAdditionTask,
   checkSubtractionTask,
+  checkWholeNumberTask,
+  wholeRelation,
+  type WholeRelation,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -48,6 +51,8 @@ export const ADD_10 = 'SK-NS-add-within10';
 export const ADD_20 = 'SK-NS-add-within20';
 export const SUB_10 = 'SK-NS-sub-within10';
 export const SUB_20 = 'SK-NS-sub-within20';
+export const CMP_WHOLE = 'SK-NS-compare-whole-50';
+export const ORD_WHOLE = 'SK-NS-order-whole-50';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -87,6 +92,21 @@ interface SubtractionTask {
   readonly kind: 'integer_subtraction';
   readonly a: number;
   readonly b: number;
+}
+interface WholeCompareTask {
+  readonly subject: 'math';
+  readonly course: 'whole-number';
+  readonly skillId: typeof CMP_WHOLE;
+  readonly kind: 'integer_comparison';
+  readonly a: number;
+  readonly b: number;
+}
+interface WholeOrderTask {
+  readonly subject: 'math';
+  readonly course: 'whole-number';
+  readonly skillId: typeof ORD_WHOLE;
+  readonly kind: 'integer_ordering';
+  readonly numbers: readonly number[];
 }
 interface PartitionTask {
   readonly subject: 'math';
@@ -146,6 +166,8 @@ export type Task =
   | PluralTask
   | AdditionTask
   | SubtractionTask
+  | WholeCompareTask
+  | WholeOrderTask
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -193,6 +215,21 @@ const sub = (skillId: SubtractionTask['skillId'], a: number, b: number): Subtrac
   kind: 'integer_subtraction',
   a,
   b,
+});
+const cmpW = (a: number, b: number): WholeCompareTask => ({
+  subject: 'math',
+  course: 'whole-number',
+  skillId: CMP_WHOLE,
+  kind: 'integer_comparison',
+  a,
+  b,
+});
+const ordW = (numbers: readonly number[]): WholeOrderTask => ({
+  subject: 'math',
+  course: 'whole-number',
+  skillId: ORD_WHOLE,
+  kind: 'integer_ordering',
+  numbers,
 });
 const partition = (parts: number, shaded: number): PartitionTask => ({
   subject: 'math',
@@ -280,6 +317,14 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'sub-20-2': sub(SUB_20, 15, 7), // 8 (crossing ten)
   'sub-20-3': sub(SUB_20, 14, 6), // 8 (crossing ten)
   'sub-20-4': sub(SUB_20, 12, 8), // 4 (crossing ten)
+  'cmpw-1': cmpW(12, 21), // lt (ones-digit trap: 2 > 1)
+  'cmpw-2': cmpW(34, 29), // gt (tens decide)
+  'cmpw-3': cmpW(40, 40), // eq
+  'cmpw-4': cmpW(9, 15), // lt (single vs double digit)
+  'ordw-1': ordW([23, 8, 41]), // 8 < 23 < 41 → positions 2,1,3
+  'ordw-2': ordW([17, 50, 5, 32]), // 5 < 17 < 32 < 50 → 3,1,4,2
+  'ordw-3': ordW([30, 13, 31]), // 13 < 30 < 31 → 2,1,3
+  'ordw-4': ordW([44, 4, 40, 14]), // 4 < 14 < 40 < 44 → 2,4,3,1
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -289,6 +334,8 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'add-xfer-20': add(ADD_20, 8, 7), // 15
   'sub-xfer-10': sub(SUB_10, 9, 4), // 5
   'sub-xfer-20': sub(SUB_20, 16, 9), // 7 (crossing ten)
+  'cmpw-xfer': cmpW(27, 19), // gt
+  'ordw-xfer': ordW([38, 3, 45, 15]), // 3 < 15 < 38 < 45 → 2,4,1,3
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
@@ -302,6 +349,8 @@ export const TRANSFER_TASKS = new Set([
   'add-xfer-20',
   'sub-xfer-10',
   'sub-xfer-20',
+  'cmpw-xfer',
+  'ordw-xfer',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
@@ -325,6 +374,9 @@ const correctOrder = (fractions: readonly Fraction[]): number[] =>
   fractions.map((_, i) => i).sort((x, y) => relSign(fractions[x]!, fractions[y]!));
 /** Parse a 1-based "2,1,3" order answer into 0-based indices. */
 const parseOrder = (a: string): number[] => a.split(',').map((s) => Number(s.trim()) - 1);
+/** Ascending index order of a whole-number list (the correct ordering key). */
+const correctWholeOrder = (numbers: readonly number[]): number[] =>
+  numbers.map((_, i) => i).sort((x, y) => numbers[x]! - numbers[y]!);
 
 /** Representations are per-subject working modes; the projection counts their diversity. */
 export const REPRESENTATIONS: Record<Subject, readonly string[]> = {
@@ -355,6 +407,20 @@ export function present(task: Task): { question: string; options: readonly strin
   }
   if (task.kind === 'integer_subtraction') {
     return { question: `What is ${task.a} - ${task.b}?`, options: [] /* type the number */ };
+  }
+  if (task.kind === 'integer_comparison') {
+    return {
+      question: `Compare ${task.a} and ${task.b} — is the first less than (lt), equal to (eq), or greater than (gt) the second?`,
+      options: ['lt', 'eq', 'gt'],
+    };
+  }
+  if (task.kind === 'integer_ordering') {
+    return {
+      question: `Put these numbers in order from smallest to largest: ${task.numbers.join(
+        ', ',
+      )}. Type their positions (1 = first shown) separated by commas, e.g. 2,1,3.`,
+      options: [],
+    };
   }
   if (task.kind === 'fraction_partition') {
     return {
@@ -437,6 +503,21 @@ export function answerKeyValid(task: Task): boolean {
       claimedDifference: task.a - task.b,
     }).correct;
   }
+  if (task.kind === 'integer_comparison') {
+    return checkWholeNumberTask({
+      kind: 'integer_comparison',
+      a: task.a,
+      b: task.b,
+      claimedRelation: wholeRelation(task.a, task.b),
+    }).correct;
+  }
+  if (task.kind === 'integer_ordering') {
+    return checkWholeNumberTask({
+      kind: 'integer_ordering',
+      numbers: task.numbers,
+      claimedOrder: correctWholeOrder(task.numbers),
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -503,6 +584,10 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'fraction_equivalence') return a === 'yes' || a === 'no';
   if (task.kind === 'integer_addition') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'integer_subtraction') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'integer_comparison') return isRelation(a);
+  if (task.kind === 'integer_ordering') {
+    return new RegExp(`^\\d+(,\\d+){${task.numbers.length - 1}}$`).test(a.replace(/\s+/g, ''));
+  }
   if (
     task.kind === 'fraction_partition' ||
     task.kind === 'fraction_unit' ||
@@ -550,6 +635,21 @@ export function judge(task: Task, raw: string): boolean {
       a: task.a,
       b: task.b,
       claimedDifference: Number(a),
+    }).correct;
+  }
+  if (task.kind === 'integer_comparison') {
+    return checkWholeNumberTask({
+      kind: 'integer_comparison',
+      a: task.a,
+      b: task.b,
+      claimedRelation: a as WholeRelation,
+    }).correct;
+  }
+  if (task.kind === 'integer_ordering') {
+    return checkWholeNumberTask({
+      kind: 'integer_ordering',
+      numbers: task.numbers,
+      claimedOrder: parseOrder(a),
     }).correct;
   }
   if (task.kind === 'fraction_partition') {
@@ -623,6 +723,12 @@ export function correctAnswerFor(task: Task): string {
       return String(task.a + task.b);
     case 'integer_subtraction':
       return String(task.a - task.b);
+    case 'integer_comparison':
+      return wholeRelation(task.a, task.b);
+    case 'integer_ordering':
+      return correctWholeOrder(task.numbers)
+        .map((i) => i + 1)
+        .join(',');
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -662,6 +768,16 @@ export function wrongAnswerFor(task: Task): string {
       // A valid non-negative integer that is one off the true difference; when the
       // difference is 0 the only other non-negative token is 1 (never negative).
       return String(task.a - task.b === 0 ? 1 : task.a - task.b + 1);
+    case 'integer_comparison':
+      // Any relation other than the true one (eq → lt is wrong too).
+      return wholeRelation(task.a, task.b) === 'lt' ? 'gt' : 'lt';
+    case 'integer_ordering':
+      // Reverse of the correct ascending order — wrong whenever the values are
+      // not all equal (the static bank items are always distinct).
+      return correctWholeOrder(task.numbers)
+        .map((i) => i + 1)
+        .reverse()
+        .join(',');
     case 'fraction_partition':
       return `${task.shaded === 0 ? 1 : 0}/${task.parts}`;
     case 'fraction_unit':

@@ -5,6 +5,7 @@ export * from './english-draft';
 export * from './coaching-hints';
 export * from './addition-draft';
 export * from './subtraction-draft';
+export * from './whole-number-draft';
 export * from './lessons';
 export * from './ontario';
 export * from './overlay';
