@@ -1,0 +1,44 @@
+{
+  "strandId": "add-subtract-g4",
+  "version": "addsub-g4-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-add-within10000",
+      "competency": "number:addition",
+      "skill": "Add whole numbers with sums up to 10 000"
+    },
+    {
+      "skillId": "SK-NS-sub-within10000",
+      "competency": "number:subtraction",
+      "skill": "Subtract whole numbers within 10 000, with regrouping"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependencyId": "D-ns-addsub-g4",
+      "fromSkillId": "SK-NS-add-within10000",
+      "toSkillId": "SK-NS-sub-within10000",
+      "type": "strong",
+      "weight": 0.6
+    }
+  ],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-regroup-across-zeros",
+      "skillId": "SK-NS-sub-within10000",
+      "pattern": "Mishandles borrowing across zeros in multi-digit subtraction (e.g. 8002 − 3457), borrowing from a zero column without carrying the borrow onward.",
+      "probeIds": ["PR-NS-borrow-across-zero"],
+      "remediationStrategyIds": ["ST-ns-expanded-regroup"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-expanded-regroup",
+      "intent": "Line the numbers up by place value and regroup one column at a time, writing the new values above each column so a borrow across a zero is carried all the way.",
+      "approvedBands": ["junior"],
+      "representations": ["symbolic", "area-model"]
+    }
+  ]
+}

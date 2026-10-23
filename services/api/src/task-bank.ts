@@ -111,6 +111,8 @@ export const FRAC_GROUPS = 'SK-FR-groups';
 export const SUB_10 = 'SK-NS-sub-within10';
 export const SUB_20 = 'SK-NS-sub-within20';
 export const SUB_100 = 'SK-NS-sub-within100';
+export const ADD_10000 = 'SK-NS-add-within10000';
+export const SUB_10000 = 'SK-NS-sub-within10000';
 export const CMP_WHOLE = 'SK-NS-compare-whole-50';
 export const ORD_WHOLE = 'SK-NS-order-whole-50';
 export const CMP_WHOLE_200 = 'SK-NS-compare-whole-200';
@@ -165,8 +167,8 @@ interface PluralTask {
 }
 interface AdditionTask {
   readonly subject: 'math';
-  readonly course: 'addition';
-  readonly skillId: typeof ADD_10 | typeof ADD_20;
+  readonly course: 'addition' | 'add-subtract-g4';
+  readonly skillId: typeof ADD_10 | typeof ADD_20 | typeof ADD_10000;
   readonly kind: 'integer_addition';
   readonly a: number;
   readonly b: number;
@@ -197,8 +199,8 @@ interface FractionalGroupsTaskT {
 }
 interface SubtractionTask {
   readonly subject: 'math';
-  readonly course: 'subtraction' | 'subtraction-g2';
-  readonly skillId: typeof SUB_10 | typeof SUB_20 | typeof SUB_100;
+  readonly course: 'subtraction' | 'subtraction-g2' | 'add-subtract-g4';
+  readonly skillId: typeof SUB_10 | typeof SUB_20 | typeof SUB_100 | typeof SUB_10000;
   readonly kind: 'integer_subtraction';
   readonly a: number;
   readonly b: number;
@@ -541,6 +543,22 @@ const sub = (skillId: SubtractionTask['skillId'], a: number, b: number): Subtrac
   subject: 'math',
   course: 'subtraction',
   skillId,
+  kind: 'integer_subtraction',
+  a,
+  b,
+});
+const add4 = (a: number, b: number): AdditionTask => ({
+  subject: 'math',
+  course: 'add-subtract-g4',
+  skillId: ADD_10000,
+  kind: 'integer_addition',
+  a,
+  b,
+});
+const sub4 = (a: number, b: number): SubtractionTask => ({
+  subject: 'math',
+  course: 'add-subtract-g4',
+  skillId: SUB_10000,
   kind: 'integer_subtraction',
   a,
   b,
@@ -917,6 +935,15 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'sub100-2': sub2(62, 28), // 34 (regroup)
   'sub100-3': sub2(80, 35), // 45 (regroup across a ten)
   'sub100-4': sub2(57, 6), // 51
+  // Grade 4 — add and subtract to 10 000 (same oracles, higher bound).
+  'add4-1': add4(3400, 2500), // 5900
+  'add4-2': add4(4675, 3218), // 7893 (multi-place carrying)
+  'add4-3': add4(6090, 905), // 6995
+  'add4-4': add4(1234, 8766), // 10000 (to the ceiling)
+  'sub4-1': sub4(5900, 2500), // 3400
+  'sub4-2': sub4(8002, 3457), // 4545 (regroup across zeros)
+  'sub4-3': sub4(7000, 1234), // 5766
+  'sub4-4': sub4(9999, 4567), // 5432
   'cmpw-1': cmpW(12, 21), // lt (ones-digit trap: 2 > 1)
   'cmpw-2': cmpW(34, 29), // gt (tens decide)
   'cmpw-3': cmpW(40, 40), // eq
@@ -1162,6 +1189,8 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'sub-xfer-10': sub(SUB_10, 9, 4), // 5
   'sub-xfer-20': sub(SUB_20, 16, 9), // 7 (crossing ten)
   'sub100-xfer': sub2(73, 47), // 26 (regroup)
+  'add4-xfer': add4(2718, 4056), // 6774 (novel)
+  'sub4-xfer': sub4(6230, 1485), // 4745 (novel, regroup)
   'cmpw-xfer': cmpW(27, 19), // gt
   'ordw-xfer': ordW([38, 3, 45, 15]), // 3 < 15 < 38 < 45 → 2,4,1,3
   'cmpw2-xfer': cmpW2(137, 173), // lt
@@ -1230,6 +1259,8 @@ export const TRANSFER_TASKS = new Set([
   'sub-xfer-10',
   'sub-xfer-20',
   'sub100-xfer',
+  'add4-xfer',
+  'sub4-xfer',
   'cmpw-xfer',
   'ordw-xfer',
   'cmpw2-xfer',
