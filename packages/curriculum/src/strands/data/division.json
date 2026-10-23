@@ -1,0 +1,31 @@
+{
+  "strandId": "division",
+  "version": "div-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-div-facts",
+      "competency": "number:division",
+      "skill": "Recall division facts related to the 2, 5 and 10 times tables (to 100 ÷ 10)"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-subtracts-instead-of-divides",
+      "skillId": "SK-NS-div-facts",
+      "pattern": "Subtracts the divisor from the dividend instead of dividing (e.g. 24 ÷ 3 answered as 21 rather than 8), treating ÷ like -.",
+      "probeIds": ["PR-NS-fair-share"],
+      "remediationStrategyIds": ["ST-ns-share-into-groups"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-share-into-groups",
+      "intent": "Fair-share the dividend into the given number of equal groups (or ask how many groups of the divisor fit) — division undoes the matching multiplication fact.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}
