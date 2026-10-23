@@ -35,6 +35,10 @@ import {
   checkCalendarTask,
   dayAfter,
   checkEstimateTask,
+  checkDateOffsetSelectTask,
+  addDays,
+  matchingDateIndices,
+  type CalendarDate,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -90,6 +94,7 @@ export const DATA_INTERPRET = 'SK-DATA-interpret-graph';
 export const SHAPE_ATTR = 'SK-GEO-shape-attribute';
 export const CALENDAR_DAY = 'SK-TIME-calendar-day';
 export const ESTIMATE_50 = 'SK-NS-estimate-50';
+export const DATE_OFFSET = 'SK-TIME-date-offset';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -226,6 +231,17 @@ interface EstimateTaskT {
   readonly low: number;
   readonly high: number;
 }
+interface DateOffsetSelectTaskT {
+  readonly subject: 'math';
+  readonly course: 'date-calendar';
+  readonly skillId: typeof DATE_OFFSET;
+  readonly kind: 'date_offset_select';
+  readonly year: number;
+  readonly month: number;
+  readonly day: number;
+  readonly offset: number;
+  readonly options: readonly CalendarDate[];
+}
 interface PartitionTask {
   readonly subject: 'math';
   readonly course: 'fractions';
@@ -296,6 +312,7 @@ export type Task =
   | ShapeAttrSelectTaskT
   | CalendarTaskT
   | EstimateTaskT
+  | DateOffsetSelectTaskT
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -449,6 +466,23 @@ const estimate = (actual: number, low: number, high: number): EstimateTaskT => (
   actual,
   low,
   high,
+});
+const dateOffset = (
+  year: number,
+  month: number,
+  day: number,
+  offset: number,
+  options: readonly CalendarDate[],
+): DateOffsetSelectTaskT => ({
+  subject: 'math',
+  course: 'date-calendar',
+  skillId: DATE_OFFSET,
+  kind: 'date_offset_select',
+  year,
+  month,
+  day,
+  offset,
+  options,
 });
 const partition = (parts: number, shaded: number): PartitionTask => ({
   subject: 'math',
@@ -659,6 +693,27 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'est-2': estimate(12, 9, 15), // ~12
   'est-3': estimate(40, 34, 46), // ~40
   'est-4': estimate(31, 27, 35), // ~31
+  // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
+  'date-1': dateOffset(2026, 3, 5, 3, [
+    { month: 3, day: 8 }, // Mar 8 ✓
+    { month: 3, day: 9 },
+    { month: 3, day: 7 },
+  ]),
+  'date-2': dateOffset(2026, 3, 30, 2, [
+    { month: 4, day: 1 }, // Apr 1 ✓ (rollover)
+    { month: 3, day: 31 },
+    { month: 4, day: 2 },
+  ]),
+  'date-3': dateOffset(2026, 2, 27, 3, [
+    { month: 3, day: 2 }, // Mar 2 ✓ (Feb has 28)
+    { month: 3, day: 1 },
+    { month: 3, day: 3 },
+  ]),
+  'date-4': dateOffset(2026, 4, 29, 3, [
+    { month: 5, day: 2 }, // May 2 ✓ (Apr has 30)
+    { month: 5, day: 1 },
+    { month: 4, day: 30 },
+  ]),
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -695,6 +750,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   ]),
   'cal-xfer': calendarDay('sunday', -1), // saturday (yesterday, wrap back)
   'est-xfer': estimate(18, 14, 22), // ~18 (novel collection)
+  'date-xfer': dateOffset(2026, 7, 30, 4, [
+    { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
+    { month: 8, day: 4 },
+    { month: 7, day: 31 },
+  ]),
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
@@ -720,6 +780,7 @@ export const TRANSFER_TASKS = new Set([
   'shape-xfer',
   'cal-xfer',
   'est-xfer',
+  'date-xfer',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
@@ -768,6 +829,11 @@ const correctShapeIndex = (task: ShapeAttrSelectTaskT): number =>
   matchingShapeIndices(task.targetSides, task.options)[0] ?? -1;
 /** Capitalize a weekday name for display (wednesday → Wednesday). */
 const capitalize = (s: string): string => (s ? s[0]!.toUpperCase() + s.slice(1) : s);
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const fmtDate = (d: CalendarDate): string => `${MONTHS[d.month - 1] ?? '?'} ${d.day}`;
+/** The oracle-derived correct 0-based index for a date-offset selection; -1 if ill-posed. */
+const correctDateOffsetIndex = (task: DateOffsetSelectTaskT): number =>
+  matchingDateIndices(addDays(task.year, task.month, task.day, task.offset), task.options)[0] ?? -1;
 const isRelation = (v: unknown): v is FractionRelation => v === 'lt' || v === 'eq' || v === 'gt';
 
 /** Parse a learner "a/b" fraction token, or null if malformed. */
@@ -904,6 +970,15 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `About how many are in this group? Give your best estimate, then you can check by counting.`,
       options: [],
+    };
+  }
+  if (task.kind === 'date_offset_select') {
+    const choices = task.options.map((o) => fmtDate(o));
+    const numbered = choices.map((c, i) => `${i + 1}) ${c}`).join('  ');
+    const start = fmtDate({ month: task.month, day: task.day });
+    return {
+      question: `In ${task.year}, what date is ${task.offset} day${task.offset === 1 ? '' : 's'} after ${start}? ${numbered}. Type the number of your choice.`,
+      options: choices,
     };
   }
   if (task.kind === 'calendar_next_day') {
@@ -1099,6 +1174,17 @@ export function answerKeyValid(task: Task): boolean {
       claimed: task.actual,
     }).correct;
   }
+  if (task.kind === 'date_offset_select') {
+    return checkDateOffsetSelectTask({
+      kind: 'date_offset_select',
+      year: task.year,
+      month: task.month,
+      day: task.day,
+      offset: task.offset,
+      options: task.options,
+      claimedIndex: correctDateOffsetIndex(task),
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -1190,6 +1276,11 @@ export function tokenValid(task: Task, raw: string): boolean {
   }
   if (task.kind === 'calendar_next_day') return /^[a-z]+$/.test(a); // a day name
   if (task.kind === 'estimate_within_band') return /^\d+$/.test(a); // a non-negative estimate
+  if (task.kind === 'date_offset_select') {
+    if (!/^\d+$/.test(a)) return false; // a 1-based option number
+    const n = Number(a);
+    return n >= 1 && n <= task.options.length;
+  }
   if (
     task.kind === 'fraction_partition' ||
     task.kind === 'fraction_unit' ||
@@ -1336,6 +1427,17 @@ export function judge(task: Task, raw: string): boolean {
       claimed: Number(a),
     }).correct;
   }
+  if (task.kind === 'date_offset_select') {
+    return checkDateOffsetSelectTask({
+      kind: 'date_offset_select',
+      year: task.year,
+      month: task.month,
+      day: task.day,
+      offset: task.offset,
+      options: task.options,
+      claimedIndex: Number(a) - 1,
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     const cf = parseFrac(a);
     return cf
@@ -1435,6 +1537,8 @@ export function correctAnswerFor(task: Task): string {
     case 'estimate_within_band':
       // A canonical in-band answer (the true count sits inside the reviewed band).
       return String(task.actual);
+    case 'date_offset_select':
+      return String(correctDateOffsetIndex(task) + 1);
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -1524,6 +1628,11 @@ export function wrongAnswerFor(task: Task): string {
     case 'estimate_within_band':
       // Just outside the reviewed band — a valid integer graded wrong.
       return String(task.high + 1);
+    case 'date_offset_select': {
+      const correct = correctDateOffsetIndex(task);
+      const wrong = task.options.findIndex((_, i) => i !== correct);
+      return String((wrong === -1 ? correct : wrong) + 1);
+    }
     case 'fraction_partition':
       return `${task.shaded === 0 ? 1 : 0}/${task.parts}`;
     case 'fraction_unit':

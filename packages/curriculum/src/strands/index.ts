@@ -14,6 +14,7 @@ import dataHandlingData from './data/data-handling.json';
 import geometryData from './data/geometry.json';
 import calendarData from './data/calendar.json';
 import estimationData from './data/estimation.json';
+import dateCalendarData from './data/date-calendar.json';
 import englishData from './data/english.json';
 
 /**
@@ -43,6 +44,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   geometryData as StrandDataset,
   calendarData as StrandDataset,
   estimationData as StrandDataset,
+  dateCalendarData as StrandDataset,
   englishData as StrandDataset,
 ];
 

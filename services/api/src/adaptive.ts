@@ -25,6 +25,7 @@ import {
   buildGeometryDraftGraph,
   buildCalendarDraftGraph,
   buildEstimationDraftGraph,
+  buildDateCalendarDraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -56,6 +57,8 @@ import {
   CALENDAR_STRATEGIES,
   ESTIMATION_MISCONCEPTIONS,
   ESTIMATION_STRATEGIES,
+  DATE_CALENDAR_MISCONCEPTIONS,
+  DATE_CALENDAR_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -105,6 +108,7 @@ export type CourseId =
   | 'geometry'
   | 'calendar'
   | 'estimation'
+  | 'date-calendar'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -364,6 +368,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: ESTIMATION_STRATEGIES,
     transferTask: { 'SK-NS-estimate-50': 'est-xfer' },
   },
+  'date-calendar': {
+    subject: 'math',
+    buildGraph: buildDateCalendarDraftGraph,
+    coachableSkillIds: ['SK-TIME-date-offset'],
+    defaultTask: { 'SK-TIME-date-offset': 'date-1' },
+    practiceTasks: {
+      'SK-TIME-date-offset': ['date-1', 'date-2', 'date-3', 'date-4'],
+    },
+    remediationReps: ['counters', 'symbolic'],
+    misconceptions: DATE_CALENDAR_MISCONCEPTIONS,
+    strategies: DATE_CALENDAR_STRATEGIES,
+    transferTask: { 'SK-TIME-date-offset': 'date-xfer' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -427,6 +444,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'geometry',
     'calendar',
     'estimation',
+    'date-calendar',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
 };
