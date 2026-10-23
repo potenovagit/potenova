@@ -90,6 +90,7 @@ export const ADD_10 = 'SK-NS-add-within10';
 export const ADD_20 = 'SK-NS-add-within20';
 export const SUB_10 = 'SK-NS-sub-within10';
 export const SUB_20 = 'SK-NS-sub-within20';
+export const SUB_100 = 'SK-NS-sub-within100';
 export const CMP_WHOLE = 'SK-NS-compare-whole-50';
 export const ORD_WHOLE = 'SK-NS-order-whole-50';
 export const CMP_WHOLE_200 = 'SK-NS-compare-whole-200';
@@ -142,8 +143,8 @@ interface AdditionTask {
 }
 interface SubtractionTask {
   readonly subject: 'math';
-  readonly course: 'subtraction';
-  readonly skillId: typeof SUB_10 | typeof SUB_20;
+  readonly course: 'subtraction' | 'subtraction-g2';
+  readonly skillId: typeof SUB_10 | typeof SUB_20 | typeof SUB_100;
   readonly kind: 'integer_subtraction';
   readonly a: number;
   readonly b: number;
@@ -406,6 +407,14 @@ const sub = (skillId: SubtractionTask['skillId'], a: number, b: number): Subtrac
   a,
   b,
 });
+const sub2 = (a: number, b: number): SubtractionTask => ({
+  subject: 'math',
+  course: 'subtraction-g2',
+  skillId: SUB_100,
+  kind: 'integer_subtraction',
+  a,
+  b,
+});
 const cmpW = (a: number, b: number): WholeCompareTask => ({
   subject: 'math',
   course: 'whole-number',
@@ -664,6 +673,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'sub-20-2': sub(SUB_20, 15, 7), // 8 (crossing ten)
   'sub-20-3': sub(SUB_20, 14, 6), // 8 (crossing ten)
   'sub-20-4': sub(SUB_20, 12, 8), // 4 (crossing ten)
+  // Grade 2 — subtraction to 100 (same oracle, higher bound; some with regrouping).
+  'sub100-1': sub2(45, 23), // 22 (no regroup)
+  'sub100-2': sub2(62, 28), // 34 (regroup)
+  'sub100-3': sub2(80, 35), // 45 (regroup across a ten)
+  'sub100-4': sub2(57, 6), // 51
   'cmpw-1': cmpW(12, 21), // lt (ones-digit trap: 2 > 1)
   'cmpw-2': cmpW(34, 29), // gt (tens decide)
   'cmpw-3': cmpW(40, 40), // eq
@@ -858,6 +872,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'add-xfer-20': add(ADD_20, 8, 7), // 15
   'sub-xfer-10': sub(SUB_10, 9, 4), // 5
   'sub-xfer-20': sub(SUB_20, 16, 9), // 7 (crossing ten)
+  'sub100-xfer': sub2(73, 47), // 26 (regroup)
   'cmpw-xfer': cmpW(27, 19), // gt
   'ordw-xfer': ordW([38, 3, 45, 15]), // 3 < 15 < 38 < 45 → 2,4,1,3
   'cmpw2-xfer': cmpW2(137, 173), // lt
@@ -912,6 +927,7 @@ export const TRANSFER_TASKS = new Set([
   'add-xfer-20',
   'sub-xfer-10',
   'sub-xfer-20',
+  'sub100-xfer',
   'cmpw-xfer',
   'ordw-xfer',
   'cmpw2-xfer',
