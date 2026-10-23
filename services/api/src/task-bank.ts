@@ -103,6 +103,7 @@ export const SKIP_COUNT_200 = 'SK-NS-skip-count-200';
 export const EQUIV_EXPR = 'SK-AL-equiv-expr';
 export const COMPOSE_50 = 'SK-NS-compose-50';
 export const COIN_VALUE = 'SK-FIN-coin-value';
+export const MONEY_100 = 'SK-FIN-money-100';
 export const REPRESENT_50 = 'SK-NS-represent-50';
 export const POSITIONAL = 'SK-GEO-positional-language';
 export const DATA_INTERPRET = 'SK-DATA-interpret-graph';
@@ -196,11 +197,14 @@ interface ComposeTask {
 }
 interface CoinValueTaskT {
   readonly subject: 'math';
-  readonly course: 'financial';
-  readonly skillId: typeof COIN_VALUE;
+  readonly course: 'financial' | 'money-100';
+  readonly skillId: typeof COIN_VALUE | typeof MONEY_100;
   readonly kind: 'coin_value';
   readonly pieces: readonly number[];
 }
+
+/** The total bound for a coin_value item, in cents — $100 for the G2 skill. */
+const coinValueCap = (task: CoinValueTaskT): number => (task.skillId === MONEY_100 ? 10000 : 5000);
 interface RepresentSelectTask {
   readonly subject: 'math';
   readonly course: 'number-rep';
@@ -500,6 +504,13 @@ const coins = (pieces: readonly number[]): CoinValueTaskT => ({
   kind: 'coin_value',
   pieces,
 });
+const money100 = (pieces: readonly number[]): CoinValueTaskT => ({
+  subject: 'math',
+  course: 'money-100',
+  skillId: MONEY_100,
+  kind: 'coin_value',
+  pieces,
+});
 const repSelect = (
   target: number,
   options: readonly RepresentationOption[],
@@ -745,6 +756,10 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'coins-2': coins([25, 25]), // two quarters = 50¢
   'coins-3': coins([25, 10, 10, 5]), // 50¢
   'coins-4': coins([100, 25, 10]), // loonie + quarter + dime = 135¢
+  'money100-1': money100([5000, 2000]), // $50 + $20 = 7000¢
+  'money100-2': money100([5000, 2000, 2000, 1000]), // $100 exactly = 10000¢
+  'money100-3': money100([5000, 1000, 200, 100, 25]), // $61.25 = 6125¢
+  'money100-4': money100([2000, 2000, 1000, 500, 200]), // $57 = 5700¢
   // Selection items ("which shows N?"): exactly one option composes to the target;
   // distractors swap tens/ones or drop a place. The oracle recomputes the key.
   'rep-1': repSelect(23, [
@@ -921,6 +936,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'equiv-xfer': equivExpr(e(7, '+', 2), e(10, '-', 1)), // 9 == 9 → yes
   'compose-xfer': compose(4, 6), // 46
   'coins-xfer': coins([200, 100, 25]), // toonie + loonie + quarter = 325¢
+  'money100-xfer': money100([5000, 2000, 500, 500]), // $80 = 8000¢
   'rep-xfer': repSelect(46, [
     { tens: 4, ones: 6 }, // 46 ✓
     { tens: 6, ones: 4 }, // 64 (swap)
@@ -978,6 +994,7 @@ export const TRANSFER_TASKS = new Set([
   'equiv-xfer',
   'compose-xfer',
   'coins-xfer',
+  'money100-xfer',
   'rep-xfer',
   'pos-xfer',
   'data-xfer',
@@ -1352,6 +1369,7 @@ export function answerKeyValid(task: Task): boolean {
       kind: 'coin_value',
       pieces: task.pieces,
       claimedTotalCents: coinTotalCents(task.pieces),
+      maxTotalCents: coinValueCap(task),
     }).correct;
   }
   if (task.kind === 'number_representation_select') {
@@ -1643,6 +1661,7 @@ export function judge(task: Task, raw: string): boolean {
       kind: 'coin_value',
       pieces: task.pieces,
       claimedTotalCents: Number(a),
+      maxTotalCents: coinValueCap(task),
     }).correct;
   }
   if (task.kind === 'number_representation_select') {

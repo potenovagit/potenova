@@ -24,6 +24,7 @@ export * from './whole-number-g2-draft';
 export * from './subtraction-g2-draft';
 export * from './skip-count-g2-draft';
 export * from './even-odd-draft';
+export * from './money-100-draft';
 export * from './lessons';
 export * from './ontario';
 export * from './overlay';

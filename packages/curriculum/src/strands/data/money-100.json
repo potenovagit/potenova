@@ -1,0 +1,31 @@
+{
+  "strandId": "money-100",
+  "version": "money100-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-FIN-money-100",
+      "competency": "financial:money-value",
+      "skill": "Total the value of a set of Canadian coins and bills to $100"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-FIN-count-pieces-not-value-100",
+      "skillId": "SK-FIN-money-100",
+      "pattern": "Counts the number of pieces instead of adding their values, now across larger mixed sets to $100.",
+      "probeIds": ["PR-FIN-mixed-money-100"],
+      "remediationStrategyIds": ["ST-fin-add-by-value-100"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-fin-add-by-value-100",
+      "intent": "Group the larger bills first, keep a running total, then add the coins — a bill is worth its amount, not one piece.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}
