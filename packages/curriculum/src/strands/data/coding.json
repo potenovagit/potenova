@@ -1,0 +1,31 @@
+{
+  "strandId": "coding",
+  "version": "code-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-AL-code-sequence",
+      "competency": "algebra:coding",
+      "skill": "Read and choose a sequence of movement instructions that reaches a goal"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-AL-ignore-order",
+      "skillId": "SK-AL-code-sequence",
+      "pattern": "Ignores the order or count of the steps — picks a program with the right moves but in the wrong sequence, or too few/too many, or one that walks off the grid.",
+      "probeIds": ["PR-AL-which-program"],
+      "remediationStrategyIds": ["ST-al-trace-each-step"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-al-trace-each-step",
+      "intent": "Put a finger on the start and carry out each instruction in order, one square at a time, to see where the robot lands.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}

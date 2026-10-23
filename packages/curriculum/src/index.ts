@@ -17,6 +17,7 @@ export * from './geometry-draft';
 export * from './calendar-draft';
 export * from './estimation-draft';
 export * from './date-calendar-draft';
+export * from './coding-draft';
 export * from './lessons';
 export * from './ontario';
 export * from './overlay';
