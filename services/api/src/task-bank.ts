@@ -44,6 +44,9 @@ import {
   checkCalendarTask,
   dayAfter,
   checkEstimateTask,
+  checkRoundWholeTask,
+  roundToPlace,
+  type RoundPlace,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -125,6 +128,7 @@ export const SHAPE_ATTR = 'SK-GEO-shape-attribute';
 export const CALENDAR_DAY = 'SK-TIME-calendar-day';
 export const ESTIMATE_50 = 'SK-NS-estimate-50';
 export const ESTIMATE_200 = 'SK-NS-estimate-200';
+export const ROUND_WHOLE = 'SK-NS-round-whole';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -311,6 +315,14 @@ interface EstimateTaskT {
   readonly low: number;
   readonly high: number;
 }
+interface RoundWholeTaskT {
+  readonly subject: 'math';
+  readonly course: 'rounding';
+  readonly skillId: typeof ROUND_WHOLE;
+  readonly kind: 'round_whole';
+  readonly value: number;
+  readonly place: RoundPlace;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -433,6 +445,7 @@ export type Task =
   | ShapeAttrSelectTaskT
   | CalendarTaskT
   | EstimateTaskT
+  | RoundWholeTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -681,6 +694,14 @@ const estimate200 = (actual: number, low: number, high: number): EstimateTaskT =
   actual,
   low,
   high,
+});
+const roundWhole = (value: number, place: RoundPlace): RoundWholeTaskT => ({
+  subject: 'math',
+  course: 'rounding',
+  skillId: ROUND_WHOLE,
+  kind: 'round_whole',
+  value,
+  place,
 });
 const dateOffset = (
   year: number,
@@ -1006,6 +1027,10 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'est200-2': estimate200(85, 70, 100), // ~85
   'est200-3': estimate200(160, 140, 180), // ~160
   'est200-4': estimate200(195, 175, 200), // ~195
+  'round-1': roundWhole(47, 10), // 50 (nearest ten)
+  'round-2': roundWhole(432, 100), // 400 (nearest hundred)
+  'round-3': roundWhole(2750, 1000), // 3000 (half rounds up)
+  'round-4': roundWhole(1489, 100), // 1500 (truncate-trap → 1400)
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1120,6 +1145,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'cal-xfer': calendarDay('sunday', -1), // saturday (yesterday, wrap back)
   'est-xfer': estimate(18, 14, 22), // ~18 (novel collection)
   'est200-xfer': estimate200(140, 120, 160), // ~140 (novel collection)
+  'round-xfer': roundWhole(6512, 1000), // 7000 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -1170,6 +1196,7 @@ export const TRANSFER_TASKS = new Set([
   'cal-xfer',
   'est-xfer',
   'est200-xfer',
+  'round-xfer',
   'date-xfer',
   'code-xfer',
   'wp-xfer',
@@ -1415,6 +1442,13 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `About how many are in this group? Give your best estimate, then you can check by counting.`,
       options: [],
+    };
+  }
+  if (task.kind === 'round_whole') {
+    const placeWord = task.place === 10 ? 'ten' : task.place === 100 ? 'hundred' : 'thousand';
+    return {
+      question: `Round ${task.value} to the nearest ${placeWord}.`,
+      options: [] /* type the number */,
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -1682,6 +1716,14 @@ export function answerKeyValid(task: Task): boolean {
       claimed: task.actual,
     }).correct;
   }
+  if (task.kind === 'round_whole') {
+    return checkRoundWholeTask({
+      kind: 'round_whole',
+      value: task.value,
+      place: task.place,
+      claimedRounded: roundToPlace(task.value, task.place),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -1821,6 +1863,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   }
   if (task.kind === 'calendar_next_day') return /^[a-z]+$/.test(a); // a day name
   if (task.kind === 'estimate_within_band') return /^\d+$/.test(a); // a non-negative estimate
+  if (task.kind === 'round_whole') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -2017,6 +2060,14 @@ export function judge(task: Task, raw: string): boolean {
       claimed: Number(a),
     }).correct;
   }
+  if (task.kind === 'round_whole') {
+    return checkRoundWholeTask({
+      kind: 'round_whole',
+      value: task.value,
+      place: task.place,
+      claimedRounded: Number(a),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2169,6 +2220,8 @@ export function correctAnswerFor(task: Task): string {
     case 'estimate_within_band':
       // A canonical in-band answer (the true count sits inside the reviewed band).
       return String(task.actual);
+    case 'round_whole':
+      return String(roundToPlace(task.value, task.place));
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -2299,6 +2352,13 @@ export function wrongAnswerFor(task: Task): string {
     case 'estimate_within_band':
       // Just outside the reviewed band — a valid integer graded wrong.
       return String(task.high + 1);
+    case 'round_whole': {
+      // The truncate-instead-of-round error (drop the lower digits). Fall back to
+      // one place up if the value already sits on a multiple, so it is always wrong.
+      const rounded = roundToPlace(task.value, task.place);
+      const truncated = Math.floor(task.value / task.place) * task.place;
+      return String(truncated === rounded ? rounded + task.place : truncated);
+    }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
       const wrong = task.options.findIndex((_, i) => i !== correct);

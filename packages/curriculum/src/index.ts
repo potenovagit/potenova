@@ -32,6 +32,7 @@ export * from './multiplication-draft';
 export * from './division-draft';
 export * from './algebra-equiv-g3-draft';
 export * from './fractional-groups-draft';
+export * from './rounding-draft';
 export * from './lessons';
 export * from './ontario';
 export * from './overlay';

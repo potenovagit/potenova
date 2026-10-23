@@ -40,6 +40,7 @@ import {
   buildMoney100DraftGraph,
   buildWordProblemsG2DraftGraph,
   buildEstimationG2DraftGraph,
+  buildRoundingDraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -102,6 +103,8 @@ import {
   WORD_PROBLEMS_G2_STRATEGIES,
   ESTIMATION_G2_MISCONCEPTIONS,
   ESTIMATION_G2_STRATEGIES,
+  ROUNDING_MISCONCEPTIONS,
+  ROUNDING_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -168,6 +171,7 @@ export type CourseId =
   | 'money-100'
   | 'word-problems-g2'
   | 'estimation-g2'
+  | 'rounding'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -630,6 +634,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: ESTIMATION_G2_STRATEGIES,
     transferTask: { 'SK-NS-estimate-200': 'est200-xfer' },
   },
+  rounding: {
+    subject: 'math',
+    buildGraph: buildRoundingDraftGraph,
+    coachableSkillIds: ['SK-NS-round-whole'],
+    defaultTask: { 'SK-NS-round-whole': 'round-1' },
+    practiceTasks: {
+      'SK-NS-round-whole': ['round-1', 'round-2', 'round-3', 'round-4'],
+    },
+    remediationReps: ['number-line', 'symbolic'],
+    misconceptions: ROUNDING_MISCONCEPTIONS,
+    strategies: ROUNDING_STRATEGIES,
+    transferTask: { 'SK-NS-round-whole': 'round-xfer' },
+  },
   'place-value-g2': {
     subject: 'math',
     buildGraph: buildPlaceValueG2DraftGraph,
@@ -721,6 +738,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'money-100',
     'word-problems-g2',
     'estimation-g2',
+    'rounding',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],

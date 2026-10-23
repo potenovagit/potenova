@@ -1,0 +1,31 @@
+{
+  "strandId": "rounding",
+  "version": "round-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-round-whole",
+      "competency": "number:rounding",
+      "skill": "Round a whole number to the nearest ten, hundred, or thousand"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-truncate-not-round",
+      "skillId": "SK-NS-round-whole",
+      "pattern": "Truncates to the place instead of rounding — drops the lower digits rather than checking whether to round up (e.g. 1489 to the nearest hundred answered 1400 instead of 1500).",
+      "probeIds": ["PR-NS-nearest-place"],
+      "remediationStrategyIds": ["ST-ns-look-at-next-digit"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-look-at-next-digit",
+      "intent": "Look only at the digit just below the rounding place: 5 or more rounds up, less than 5 rounds down; then set every lower digit to zero.",
+      "approvedBands": ["junior"],
+      "representations": ["number-line", "symbolic"]
+    }
+  ]
+}
