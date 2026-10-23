@@ -30,6 +30,7 @@ import {
   buildWordProblemsDraftGraph,
   buildConstructionDraftGraph,
   buildWholeNumberG2DraftGraph,
+  buildSubtractionG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -71,6 +72,8 @@ import {
   CONSTRUCTION_STRATEGIES,
   WHOLE_NUMBER_G2_MISCONCEPTIONS,
   WHOLE_NUMBER_G2_STRATEGIES,
+  SUBTRACTION_G2_MISCONCEPTIONS,
+  SUBTRACTION_G2_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -125,6 +128,7 @@ export type CourseId =
   | 'word-problems'
   | 'construction'
   | 'whole-number-g2'
+  | 'subtraction-g2'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -456,6 +460,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
       'SK-NS-order-whole-200': 'ordw2-xfer',
     },
   },
+  'subtraction-g2': {
+    subject: 'math',
+    buildGraph: buildSubtractionG2DraftGraph,
+    coachableSkillIds: ['SK-NS-sub-within100'],
+    defaultTask: { 'SK-NS-sub-within100': 'sub100-1' },
+    practiceTasks: {
+      'SK-NS-sub-within100': ['sub100-1', 'sub100-2', 'sub100-3', 'sub100-4'],
+    },
+    remediationReps: ['counters', 'number-line', 'symbolic'],
+    misconceptions: SUBTRACTION_G2_MISCONCEPTIONS,
+    strategies: SUBTRACTION_G2_STRATEGIES,
+    transferTask: { 'SK-NS-sub-within100': 'sub100-xfer' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -524,6 +541,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'word-problems',
     'construction',
     'whole-number-g2',
+    'subtraction-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
 };

@@ -1,0 +1,31 @@
+{
+  "strandId": "subtraction-g2",
+  "version": "sub2-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-sub-within100",
+      "competency": "number:subtraction",
+      "skill": "Subtract whole numbers within 100 (with regrouping)"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-sub-no-regroup-100",
+      "skillId": "SK-NS-sub-within100",
+      "pattern": "Subtracts the smaller ones digit from the larger within each column instead of regrouping (e.g. 62 - 28 → 'take 2 from 8' → 46).",
+      "probeIds": ["PR-NS-regroup-100"],
+      "remediationStrategyIds": ["ST-ns-regroup-a-ten"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-regroup-a-ten",
+      "intent": "When the top ones digit is smaller, trade one ten for ten ones, then subtract each column.",
+      "approvedBands": ["primary"],
+      "representations": ["number-line", "counters"]
+    }
+  ]
+}
