@@ -32,6 +32,7 @@ import {
   buildWholeNumberG2DraftGraph,
   buildSubtractionG2DraftGraph,
   buildSkipCountG2DraftGraph,
+  buildEvenOddDraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -77,6 +78,8 @@ import {
   SUBTRACTION_G2_STRATEGIES,
   SKIP_COUNT_G2_MISCONCEPTIONS,
   SKIP_COUNT_G2_STRATEGIES,
+  EVEN_ODD_MISCONCEPTIONS,
+  EVEN_ODD_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -133,6 +136,7 @@ export type CourseId =
   | 'whole-number-g2'
   | 'subtraction-g2'
   | 'skip-count-g2'
+  | 'even-odd'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -490,6 +494,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: SKIP_COUNT_G2_STRATEGIES,
     transferTask: { 'SK-NS-skip-count-200': 'skip2-xfer' },
   },
+  'even-odd': {
+    subject: 'math',
+    buildGraph: buildEvenOddDraftGraph,
+    coachableSkillIds: ['SK-NS-even-odd'],
+    defaultTask: { 'SK-NS-even-odd': 'parity-1' },
+    practiceTasks: {
+      'SK-NS-even-odd': ['parity-1', 'parity-2', 'parity-3', 'parity-4'],
+    },
+    remediationReps: ['counters', 'symbolic'],
+    misconceptions: EVEN_ODD_MISCONCEPTIONS,
+    strategies: EVEN_ODD_STRATEGIES,
+    transferTask: { 'SK-NS-even-odd': 'parity-xfer' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -560,6 +577,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'whole-number-g2',
     'subtraction-g2',
     'skip-count-g2',
+    'even-odd',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
 };

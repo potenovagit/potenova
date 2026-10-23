@@ -1,0 +1,31 @@
+{
+  "strandId": "even-odd",
+  "version": "parity-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-even-odd",
+      "competency": "number:parity",
+      "skill": "Decide whether a whole number is even or odd"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-parity-by-first-digit",
+      "skillId": "SK-NS-even-odd",
+      "pattern": "Judges even/odd by the first digit or the number's size instead of the ones digit (e.g. calls 23 even because 2 is even).",
+      "probeIds": ["PR-NS-even-odd"],
+      "remediationStrategyIds": ["ST-ns-pair-them-up"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-pair-them-up",
+      "intent": "Try to pair the ones up: if every one has a partner it is even, if one is left over it is odd — only the ones digit matters.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}
