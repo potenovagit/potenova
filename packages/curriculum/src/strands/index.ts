@@ -22,6 +22,7 @@ import wholeNumberG2Data from './data/whole-number-g2.json';
 import subtractionG2Data from './data/subtraction-g2.json';
 import skipCountG2Data from './data/skip-count-g2.json';
 import evenOddData from './data/even-odd.json';
+import money100Data from './data/money-100.json';
 import englishData from './data/english.json';
 
 /**
@@ -59,6 +60,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   subtractionG2Data as StrandDataset,
   skipCountG2Data as StrandDataset,
   evenOddData as StrandDataset,
+  money100Data as StrandDataset,
   englishData as StrandDataset,
 ];
 
