@@ -1,0 +1,31 @@
+{
+  "strandId": "number-rep",
+  "version": "nrep-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-represent-50",
+      "competency": "number:representation",
+      "skill": "Read and represent whole numbers to 50 (choose the representation that shows a number)"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-swap-tens-ones",
+      "skillId": "SK-NS-represent-50",
+      "pattern": "Reads the digits in the wrong place, choosing the representation with tens and ones swapped (23 shown as 3 tens and 2 ones).",
+      "probeIds": ["PR-NS-which-shows"],
+      "remediationStrategyIds": ["ST-ns-match-each-place"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-match-each-place",
+      "intent": "Match the tens digit to the number of tens groups and the ones digit to the single ones, then check the pick shows that many of each.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}

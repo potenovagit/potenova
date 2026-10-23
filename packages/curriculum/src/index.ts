@@ -10,6 +10,7 @@ export * from './skip-count-draft';
 export * from './algebra-equiv-draft';
 export * from './place-value-draft';
 export * from './financial-draft';
+export * from './number-rep-draft';
 export * from './lessons';
 export * from './ontario';
 export * from './overlay';
