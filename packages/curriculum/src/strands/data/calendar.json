@@ -1,0 +1,31 @@
+{
+  "strandId": "calendar",
+  "version": "cal-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-TIME-calendar-day",
+      "competency": "time:calendar",
+      "skill": "Use a calendar: name the day before or after a given day of the week"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-TIME-no-wrap",
+      "skillId": "SK-TIME-calendar-day",
+      "pattern": "Does not wrap the week around — after Saturday answers 'nothing' or an invalid day instead of Sunday, or moves the wrong direction for 'yesterday'.",
+      "probeIds": ["PR-TIME-next-day"],
+      "remediationStrategyIds": ["ST-time-week-is-a-loop"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-time-week-is-a-loop",
+      "intent": "Say the days in order and remember the week loops: after Saturday comes Sunday again; for 'yesterday' step one day back.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}
