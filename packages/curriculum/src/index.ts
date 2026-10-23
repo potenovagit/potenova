@@ -19,6 +19,7 @@ export * from './estimation-draft';
 export * from './date-calendar-draft';
 export * from './coding-draft';
 export * from './word-problems-draft';
+export * from './construction-draft';
 export * from './lessons';
 export * from './ontario';
 export * from './overlay';

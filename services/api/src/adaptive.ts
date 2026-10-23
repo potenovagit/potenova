@@ -28,6 +28,7 @@ import {
   buildDateCalendarDraftGraph,
   buildCodingDraftGraph,
   buildWordProblemsDraftGraph,
+  buildConstructionDraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -65,6 +66,8 @@ import {
   CODING_STRATEGIES,
   WORD_PROBLEM_MISCONCEPTIONS,
   WORD_PROBLEM_STRATEGIES,
+  CONSTRUCTION_MISCONCEPTIONS,
+  CONSTRUCTION_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -117,6 +120,7 @@ export type CourseId =
   | 'date-calendar'
   | 'coding'
   | 'word-problems'
+  | 'construction'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -415,6 +419,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: WORD_PROBLEM_STRATEGIES,
     transferTask: { 'SK-NS-word-problem-addsub': 'wp-xfer' },
   },
+  construction: {
+    subject: 'math',
+    buildGraph: buildConstructionDraftGraph,
+    coachableSkillIds: ['SK-NS-build-number'],
+    defaultTask: { 'SK-NS-build-number': 'build-1' },
+    practiceTasks: {
+      'SK-NS-build-number': ['build-1', 'build-2', 'build-3', 'build-4'],
+    },
+    remediationReps: ['counters', 'symbolic'],
+    misconceptions: CONSTRUCTION_MISCONCEPTIONS,
+    strategies: CONSTRUCTION_STRATEGIES,
+    transferTask: { 'SK-NS-build-number': 'build-xfer' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -481,6 +498,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'date-calendar',
     'coding',
     'word-problems',
+    'construction',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
 };

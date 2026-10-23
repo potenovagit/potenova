@@ -46,6 +46,7 @@ import {
   checkWordProblemTask,
   wordProblemResult,
   type WordOp,
+  checkBuildNumberTask,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -104,6 +105,7 @@ export const ESTIMATE_50 = 'SK-NS-estimate-50';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
+export const BUILD_NUMBER = 'SK-NS-build-number';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -273,6 +275,13 @@ interface WordProblemTaskT {
   /** The authored story the quantities fill (presentation only). */
   readonly scenario: string;
 }
+interface BuildNumberTaskT {
+  readonly subject: 'math';
+  readonly course: 'construction';
+  readonly skillId: typeof BUILD_NUMBER;
+  readonly kind: 'build_number';
+  readonly target: number;
+}
 interface PartitionTask {
   readonly subject: 'math';
   readonly course: 'fractions';
@@ -346,6 +355,7 @@ export type Task =
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
+  | BuildNumberTaskT
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -543,6 +553,13 @@ const wordProblem = (a: number, op: WordOp, b: number, scenario: string): WordPr
   b,
   op,
   scenario,
+});
+const buildNumber = (target: number): BuildNumberTaskT => ({
+  subject: 'math',
+  course: 'construction',
+  skillId: BUILD_NUMBER,
+  kind: 'build_number',
+  target,
 });
 const partition = (parts: number, shaded: number): PartitionTask => ({
   subject: 'math',
@@ -801,6 +818,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'wp-2': wordProblem(7, '-', 2, '7 birds are on a wire. 2 of them fly away.'), // 5
   'wp-3': wordProblem(6, '+', 8, 'A bin has 6 red blocks and 8 blue blocks.'), // 14
   'wp-4': wordProblem(12, '-', 4, 'A box holds 12 crayons. You take out 4.'), // 8
+  // Construction: build a target number from tens and ones (any valid decomposition).
+  'build-1': buildNumber(24),
+  'build-2': buildNumber(30),
+  'build-3': buildNumber(47),
+  'build-4': buildNumber(16),
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -848,6 +870,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
     ['up'],
   ]),
   'wp-xfer': wordProblem(9, '+', 5, '9 children are on the bus. At the next stop 5 more get on.'), // 14
+  'build-xfer': buildNumber(38),
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
@@ -876,6 +899,7 @@ export const TRANSFER_TASKS = new Set([
   'date-xfer',
   'code-xfer',
   'wp-xfer',
+  'build-xfer',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
@@ -1091,6 +1115,12 @@ export function present(task: Task): { question: string; options: readonly strin
   if (task.kind === 'word_problem') {
     const ask = task.op === '+' ? 'How many are there now?' : 'How many are left?';
     return { question: `${task.scenario} ${ask} Type the number.`, options: [] };
+  }
+  if (task.kind === 'build_number') {
+    return {
+      question: `Build the number ${task.target} using tens and ones. Type how many tens and how many ones, like 2,4.`,
+      options: [],
+    };
   }
   if (task.kind === 'calendar_next_day') {
     const when =
@@ -1316,6 +1346,15 @@ export function answerKeyValid(task: Task): boolean {
       claimed: wordProblemResult(task.a, task.op, task.b) ?? -1,
     }).correct;
   }
+  if (task.kind === 'build_number') {
+    // A canonical build (standard tens/ones) validates the well-posed target.
+    return checkBuildNumberTask({
+      kind: 'build_number',
+      target: task.target,
+      tens: Math.floor(task.target / 10),
+      ones: task.target % 10,
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -1413,6 +1452,7 @@ export function tokenValid(task: Task, raw: string): boolean {
     return n >= 1 && n <= task.options.length;
   }
   if (task.kind === 'word_problem') return /^\d+$/.test(a); // a non-negative answer
+  if (task.kind === 'build_number') return /^\d+,\d+$/.test(a.replace(/\s+/g, '')); // tens,ones
   if (
     task.kind === 'fraction_partition' ||
     task.kind === 'fraction_unit' ||
@@ -1590,6 +1630,15 @@ export function judge(task: Task, raw: string): boolean {
       claimed: Number(a),
     }).correct;
   }
+  if (task.kind === 'build_number') {
+    const [t, o] = a.replace(/\s+/g, '').split(',');
+    return checkBuildNumberTask({
+      kind: 'build_number',
+      target: task.target,
+      tens: Number(t),
+      ones: Number(o),
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     const cf = parseFrac(a);
     return cf
@@ -1695,6 +1744,9 @@ export function correctAnswerFor(task: Task): string {
       return String(correctCodeIndex(task) + 1);
     case 'word_problem':
       return String(wordProblemResult(task.a, task.op, task.b) ?? 0);
+    case 'build_number':
+      // The standard build (tens and ones of the target) — one valid answer.
+      return `${Math.floor(task.target / 10)},${task.target % 10}`;
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -1798,6 +1850,9 @@ export function wrongAnswerFor(task: Task): string {
       // The wrong-operation slip: compute with the opposite operation (clamped
       // to a valid non-negative token), a classic word-problem error.
       return String(Math.abs(task.op === '+' ? task.a - task.b : task.a + task.b));
+    case 'build_number':
+      // A build that is one ten too many — a valid token the oracle grades wrong.
+      return `${Math.floor(task.target / 10) + 1},${task.target % 10}`;
     case 'fraction_partition':
       return `${task.shaded === 0 ? 1 : 0}/${task.parts}`;
     case 'fraction_unit':

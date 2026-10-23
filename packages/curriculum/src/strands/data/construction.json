@@ -1,0 +1,31 @@
+{
+  "strandId": "construction",
+  "version": "build-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-build-number",
+      "competency": "number:composition-build",
+      "skill": "Build a whole number to 50 from tens and ones (any valid decomposition)"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-build-off-by-place",
+      "skillId": "SK-NS-build-number",
+      "pattern": "Builds a value that is off by a place — e.g. uses the digits as counts (2 tens 4 ones for 24 is fine, but 4 tens 2 ones for 24) or miscounts the tens.",
+      "probeIds": ["PR-NS-build-it"],
+      "remediationStrategyIds": ["ST-ns-count-the-build"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-count-the-build",
+      "intent": "Count the tens in tens and add the ones, then check the total matches the number you were asked to build.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}
