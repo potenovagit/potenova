@@ -1,0 +1,31 @@
+{
+  "strandId": "fractional-groups",
+  "version": "fgrp-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-FR-groups",
+      "competency": "number:fractions",
+      "skill": "Count how many unit-fraction pieces (halves, thirds, fourths) are in a number of wholes"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-FR-counts-wholes-not-parts",
+      "skillId": "SK-FR-groups",
+      "pattern": "Gives the number of wholes rather than the number of unit-fraction pieces (e.g. 'how many halves in 3 wholes?' answered 3 instead of 6), not scaling by how many pieces each whole splits into.",
+      "probeIds": ["PR-FR-how-many-pieces"],
+      "remediationStrategyIds": ["ST-fr-split-each-whole"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-fr-split-each-whole",
+      "intent": "Split one whole into the unit-fraction pieces first (a whole makes 2 halves, 3 thirds, 4 fourths), then skip-count that many pieces for each whole.",
+      "approvedBands": ["primary"],
+      "representations": ["area-model", "counters", "symbolic"]
+    }
+  ]
+}

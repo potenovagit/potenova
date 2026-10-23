@@ -16,6 +16,7 @@ import {
   buildMultiplicationDraftGraph,
   buildDivisionDraftGraph,
   buildAlgebraEquivG3DraftGraph,
+  buildFractionalGroupsDraftGraph,
   buildSubtractionDraftGraph,
   buildWholeNumberDraftGraph,
   buildSkipCountDraftGraph,
@@ -53,6 +54,8 @@ import {
   DIVISION_STRATEGIES,
   ALGEBRA_EQUIV_G3_MISCONCEPTIONS,
   ALGEBRA_EQUIV_G3_STRATEGIES,
+  FRACTIONAL_GROUPS_MISCONCEPTIONS,
+  FRACTIONAL_GROUPS_STRATEGIES,
   SUBTRACTION_MISCONCEPTIONS,
   SUBTRACTION_STRATEGIES,
   WHOLE_NUMBER_MISCONCEPTIONS,
@@ -141,6 +144,7 @@ export type CourseId =
   | 'multiplication'
   | 'division'
   | 'algebra-equiv-g3'
+  | 'fractional-groups'
   | 'subtraction'
   | 'whole-number'
   | 'skip-count'
@@ -301,6 +305,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     misconceptions: ALGEBRA_EQUIV_G3_MISCONCEPTIONS,
     strategies: ALGEBRA_EQUIV_G3_STRATEGIES,
     transferTask: { 'SK-AL-equiv-expr-muldiv': 'equiv-md-xfer' },
+  },
+  'fractional-groups': {
+    subject: 'math',
+    buildGraph: buildFractionalGroupsDraftGraph,
+    coachableSkillIds: ['SK-FR-groups'],
+    defaultTask: { 'SK-FR-groups': 'fgrp-1' },
+    practiceTasks: {
+      'SK-FR-groups': ['fgrp-1', 'fgrp-2', 'fgrp-3', 'fgrp-4'],
+    },
+    remediationReps: ['area-model', 'counters', 'symbolic'],
+    misconceptions: FRACTIONAL_GROUPS_MISCONCEPTIONS,
+    strategies: FRACTIONAL_GROUPS_STRATEGIES,
+    transferTask: { 'SK-FR-groups': 'fgrp-xfer' },
   },
   subtraction: {
     subject: 'math',
@@ -680,6 +697,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'multiplication',
     'division',
     'algebra-equiv-g3',
+    'fractional-groups',
     'subtraction',
     'whole-number',
     'skip-count',

@@ -9,6 +9,7 @@ export * from './whole-number-check';
 export * from './skip-count-check';
 export * from './expr-equiv-check';
 export * from './expr-equiv-muldiv-check';
+export * from './fractional-groups-check';
 export * from './compose-check';
 export * from './compose-hcto-check';
 export * from './coin-value-check';
