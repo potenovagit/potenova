@@ -1,0 +1,31 @@
+{
+  "strandId": "estimation",
+  "version": "est-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-estimate-50",
+      "competency": "number:estimation",
+      "skill": "Estimate the number in a collection to 50, within a reviewed tolerance"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-wild-guess",
+      "skillId": "SK-NS-estimate-50",
+      "pattern": "Gives a number far from the true count (a wild guess) instead of anchoring the estimate to a reference group (a known five or ten).",
+      "probeIds": ["PR-NS-about-how-many"],
+      "remediationStrategyIds": ["ST-ns-anchor-to-ten"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-anchor-to-ten",
+      "intent": "Picture a group of ten, then judge how many of those groups the collection is about.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}
