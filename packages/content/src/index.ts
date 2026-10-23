@@ -24,6 +24,7 @@ export * from './coding-check';
 export * from './word-problem-check';
 export * from './construction-check';
 export * from './parity-check';
+export * from './round-check';
 export * from './validation';
 export * from './model-eval';
 export * from './eval-suite';

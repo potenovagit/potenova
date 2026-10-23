@@ -30,6 +30,7 @@ import money100Data from './data/money-100.json';
 import wordProblemsG2Data from './data/word-problems-g2.json';
 import estimationG2Data from './data/estimation-g2.json';
 import placeValueG2Data from './data/place-value-g2.json';
+import roundingData from './data/rounding.json';
 import englishData from './data/english.json';
 
 /**
@@ -75,6 +76,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   divisionData as StrandDataset,
   algebraEquivG3Data as StrandDataset,
   fractionalGroupsData as StrandDataset,
+  roundingData as StrandDataset,
   englishData as StrandDataset,
 ];
 
