@@ -14,6 +14,7 @@ import {
   buildEnglishDraftGraph,
   buildAdditionDraftGraph,
   buildSubtractionDraftGraph,
+  buildWholeNumberDraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -23,6 +24,8 @@ import {
   ADDITION_STRATEGIES,
   SUBTRACTION_MISCONCEPTIONS,
   SUBTRACTION_STRATEGIES,
+  WHOLE_NUMBER_MISCONCEPTIONS,
+  WHOLE_NUMBER_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -61,6 +64,7 @@ export type CourseId =
   | 'fractions'
   | 'addition'
   | 'subtraction'
+  | 'whole-number'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -173,6 +177,23 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: SUBTRACTION_STRATEGIES,
     transferTask: { 'SK-NS-sub-within10': 'sub-xfer-10', 'SK-NS-sub-within20': 'sub-xfer-20' },
   },
+  'whole-number': {
+    subject: 'math',
+    buildGraph: buildWholeNumberDraftGraph,
+    coachableSkillIds: ['SK-NS-compare-whole-50', 'SK-NS-order-whole-50'],
+    defaultTask: { 'SK-NS-compare-whole-50': 'cmpw-1', 'SK-NS-order-whole-50': 'ordw-1' },
+    practiceTasks: {
+      'SK-NS-compare-whole-50': ['cmpw-1', 'cmpw-2', 'cmpw-3', 'cmpw-4'],
+      'SK-NS-order-whole-50': ['ordw-1', 'ordw-2', 'ordw-3', 'ordw-4'],
+    },
+    remediationReps: ['counters', 'number-line', 'symbolic'],
+    misconceptions: WHOLE_NUMBER_MISCONCEPTIONS,
+    strategies: WHOLE_NUMBER_STRATEGIES,
+    transferTask: {
+      'SK-NS-compare-whole-50': 'cmpw-xfer',
+      'SK-NS-order-whole-50': 'ordw-xfer',
+    },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -221,7 +242,7 @@ const COURSES: Record<CourseId, CoursePlan> = {
 export const DEFAULT_COURSE: Record<Subject, CourseId> = { math: 'fractions', english: 'plurals' };
 /** Courses a subject offers, for the parent strand-focus control. */
 export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
-  math: ['fractions', 'addition', 'subtraction'],
+  math: ['fractions', 'addition', 'subtraction', 'whole-number'],
   english: ['plurals', 'past-tense', 'comparative'],
 };
 
