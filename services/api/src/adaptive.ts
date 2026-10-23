@@ -43,6 +43,7 @@ import {
   buildRoundingDraftGraph,
   buildMultiplicationG4DraftGraph,
   buildDivisionG4DraftGraph,
+  buildAddSubtractG4DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -111,6 +112,8 @@ import {
   MULTIPLICATION_G4_STRATEGIES,
   DIVISION_G4_MISCONCEPTIONS,
   DIVISION_G4_STRATEGIES,
+  ADD_SUBTRACT_G4_MISCONCEPTIONS,
+  ADD_SUBTRACT_G4_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -180,6 +183,7 @@ export type CourseId =
   | 'rounding'
   | 'multiplication-g4'
   | 'division-g4'
+  | 'add-subtract-g4'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -681,6 +685,26 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: DIVISION_G4_STRATEGIES,
     transferTask: { 'SK-NS-div-remainder': 'drem-xfer' },
   },
+  'add-subtract-g4': {
+    subject: 'math',
+    buildGraph: buildAddSubtractG4DraftGraph,
+    coachableSkillIds: ['SK-NS-add-within10000', 'SK-NS-sub-within10000'],
+    defaultTask: {
+      'SK-NS-add-within10000': 'add4-1',
+      'SK-NS-sub-within10000': 'sub4-1',
+    },
+    practiceTasks: {
+      'SK-NS-add-within10000': ['add4-1', 'add4-2', 'add4-3', 'add4-4'],
+      'SK-NS-sub-within10000': ['sub4-1', 'sub4-2', 'sub4-3', 'sub4-4'],
+    },
+    remediationReps: ['symbolic', 'area-model'],
+    misconceptions: ADD_SUBTRACT_G4_MISCONCEPTIONS,
+    strategies: ADD_SUBTRACT_G4_STRATEGIES,
+    transferTask: {
+      'SK-NS-add-within10000': 'add4-xfer',
+      'SK-NS-sub-within10000': 'sub4-xfer',
+    },
+  },
   'place-value-g2': {
     subject: 'math',
     buildGraph: buildPlaceValueG2DraftGraph,
@@ -775,6 +799,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'rounding',
     'multiplication-g4',
     'division-g4',
+    'add-subtract-g4',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
