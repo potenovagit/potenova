@@ -92,6 +92,8 @@ export const SUB_10 = 'SK-NS-sub-within10';
 export const SUB_20 = 'SK-NS-sub-within20';
 export const CMP_WHOLE = 'SK-NS-compare-whole-50';
 export const ORD_WHOLE = 'SK-NS-order-whole-50';
+export const CMP_WHOLE_200 = 'SK-NS-compare-whole-200';
+export const ORD_WHOLE_200 = 'SK-NS-order-whole-200';
 export const SKIP_COUNT = 'SK-NS-skip-count-50';
 export const EQUIV_EXPR = 'SK-AL-equiv-expr';
 export const COMPOSE_50 = 'SK-NS-compose-50';
@@ -148,16 +150,16 @@ interface SubtractionTask {
 }
 interface WholeCompareTask {
   readonly subject: 'math';
-  readonly course: 'whole-number';
-  readonly skillId: typeof CMP_WHOLE;
+  readonly course: 'whole-number' | 'whole-number-g2';
+  readonly skillId: typeof CMP_WHOLE | typeof CMP_WHOLE_200;
   readonly kind: 'integer_comparison';
   readonly a: number;
   readonly b: number;
 }
 interface WholeOrderTask {
   readonly subject: 'math';
-  readonly course: 'whole-number';
-  readonly skillId: typeof ORD_WHOLE;
+  readonly course: 'whole-number' | 'whole-number-g2';
+  readonly skillId: typeof ORD_WHOLE | typeof ORD_WHOLE_200;
   readonly kind: 'integer_ordering';
   readonly numbers: readonly number[];
 }
@@ -419,6 +421,21 @@ const ordW = (numbers: readonly number[]): WholeOrderTask => ({
   kind: 'integer_ordering',
   numbers,
 });
+const cmpW2 = (a: number, b: number): WholeCompareTask => ({
+  subject: 'math',
+  course: 'whole-number-g2',
+  skillId: CMP_WHOLE_200,
+  kind: 'integer_comparison',
+  a,
+  b,
+});
+const ordW2 = (numbers: readonly number[]): WholeOrderTask => ({
+  subject: 'math',
+  course: 'whole-number-g2',
+  skillId: ORD_WHOLE_200,
+  kind: 'integer_ordering',
+  numbers,
+});
 const skip = (start: number, step: number, length: number): SkipCountTaskT => ({
   subject: 'math',
   course: 'skip-count',
@@ -655,6 +672,15 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'ordw-2': ordW([17, 50, 5, 32]), // 5 < 17 < 32 < 50 → 3,1,4,2
   'ordw-3': ordW([30, 13, 31]), // 13 < 30 < 31 → 2,1,3
   'ordw-4': ordW([44, 4, 40, 14]), // 4 < 14 < 40 < 44 → 2,4,3,1
+  // Grade 2 — compare/order whole numbers to 200 (same oracle, higher bound).
+  'cmpw2-1': cmpW2(98, 120), // lt (2-digit vs 3-digit trap)
+  'cmpw2-2': cmpW2(150, 150), // eq
+  'cmpw2-3': cmpW2(134, 129), // gt (tens within the same hundred)
+  'cmpw2-4': cmpW2(119, 191), // lt (tens-place trap)
+  'ordw2-1': ordW2([150, 95, 200]), // 95 < 150 < 200 → 2,1,3
+  'ordw2-2': ordW2([112, 121, 99, 130]), // 99 < 112 < 121 < 130 → 3,1,2,4
+  'ordw2-3': ordW2([80, 180, 118]), // 80 < 118 < 180 → 1,3,2
+  'ordw2-4': ordW2([145, 45, 154, 15]), // 15 < 45 < 145 < 154 → 4,2,1,3
   'skip-1': skip(2, 2, 3), // 2,4,6 → 8 (by 2s)
   'skip-2': skip(5, 5, 3), // 5,10,15 → 20 (by 5s)
   'skip-3': skip(10, 10, 3), // 10,20,30 → 40 (by 10s)
@@ -834,6 +860,8 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'sub-xfer-20': sub(SUB_20, 16, 9), // 7 (crossing ten)
   'cmpw-xfer': cmpW(27, 19), // gt
   'ordw-xfer': ordW([38, 3, 45, 15]), // 3 < 15 < 38 < 45 → 2,4,1,3
+  'cmpw2-xfer': cmpW2(137, 173), // lt
+  'ordw2-xfer': ordW2([160, 16, 106]), // 16 < 106 < 160 → 2,3,1
   'skip-xfer': skip(15, 5, 3), // 15,20,25 → 30 (by 5s, novel start)
   'equiv-xfer': equivExpr(e(7, '+', 2), e(10, '-', 1)), // 9 == 9 → yes
   'compose-xfer': compose(4, 6), // 46
@@ -886,6 +914,8 @@ export const TRANSFER_TASKS = new Set([
   'sub-xfer-20',
   'cmpw-xfer',
   'ordw-xfer',
+  'cmpw2-xfer',
+  'ordw2-xfer',
   'skip-xfer',
   'equiv-xfer',
   'compose-xfer',
