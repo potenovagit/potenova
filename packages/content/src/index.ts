@@ -26,6 +26,7 @@ export * from './construction-check';
 export * from './parity-check';
 export * from './round-check';
 export * from './multidigit-multiplication-check';
+export * from './division-remainder-check';
 export * from './validation';
 export * from './model-eval';
 export * from './eval-suite';
