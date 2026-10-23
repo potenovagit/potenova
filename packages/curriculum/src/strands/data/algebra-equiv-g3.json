@@ -1,0 +1,31 @@
+{
+  "strandId": "algebra-equiv-g3",
+  "version": "alg-g3-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-AL-equiv-expr-muldiv",
+      "competency": "algebra:equivalence",
+      "skill": "Decide whether two expressions using any of +, −, × or ÷ are equal in value"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-AL-equals-means-answer-muldiv",
+      "skillId": "SK-AL-equiv-expr-muldiv",
+      "pattern": "Reads = as 'write the answer' rather than 'same value', so does not evaluate both sides — especially when one side multiplies or divides and the other adds or subtracts.",
+      "probeIds": ["PR-AL-both-sides-muldiv"],
+      "remediationStrategyIds": ["ST-al-evaluate-each-operation"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-al-evaluate-each-operation",
+      "intent": "Work out the value on each side using its own operation — multiply, divide, add or subtract — then compare the two totals for sameness.",
+      "approvedBands": ["primary"],
+      "representations": ["symbolic", "counters"]
+    }
+  ]
+}

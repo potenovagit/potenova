@@ -16,6 +16,9 @@ import {
   checkExprEquivalenceTask,
   evalExpr,
   type Expr,
+  checkExprEquivalenceMulDivTask,
+  evalExprMulDiv,
+  type ExprMulDiv,
   checkComposeTask,
   composeValue,
   checkComposeHctoTask,
@@ -107,6 +110,7 @@ export const ORD_WHOLE_200 = 'SK-NS-order-whole-200';
 export const SKIP_COUNT = 'SK-NS-skip-count-50';
 export const SKIP_COUNT_200 = 'SK-NS-skip-count-200';
 export const EQUIV_EXPR = 'SK-AL-equiv-expr';
+export const EQUIV_EXPR_MULDIV = 'SK-AL-equiv-expr-muldiv';
 export const COMPOSE_50 = 'SK-NS-compose-50';
 export const COMPOSE_200 = 'SK-NS-compose-200';
 export const COIN_VALUE = 'SK-FIN-coin-value';
@@ -211,6 +215,14 @@ interface ExprEquivTask {
   readonly kind: 'expr_equivalence';
   readonly left: Expr;
   readonly right: Expr;
+}
+interface ExprEquivMulDivTask {
+  readonly subject: 'math';
+  readonly course: 'algebra-equiv-g3';
+  readonly skillId: typeof EQUIV_EXPR_MULDIV;
+  readonly kind: 'expr_equivalence_muldiv';
+  readonly left: ExprMulDiv;
+  readonly right: ExprMulDiv;
 }
 interface ComposeTask {
   readonly subject: 'math';
@@ -399,6 +411,7 @@ export type Task =
   | WholeOrderTask
   | SkipCountTaskT
   | ExprEquivTask
+  | ExprEquivMulDivTask
   | ComposeTask
   | ComposeHctoTaskT
   | CoinValueTaskT
@@ -534,11 +547,20 @@ const skip2 = (start: number, step: number, length: number): SkipCountTaskT => (
   length,
 });
 const e = (a: number, op: Expr['op'], b: number): Expr => ({ a, op, b });
+const eMd = (a: number, op: ExprMulDiv['op'], b: number): ExprMulDiv => ({ a, op, b });
 const equivExpr = (left: Expr, right: Expr): ExprEquivTask => ({
   subject: 'math',
   course: 'algebra-equiv',
   skillId: EQUIV_EXPR,
   kind: 'expr_equivalence',
+  left,
+  right,
+});
+const equivExprMulDiv = (left: ExprMulDiv, right: ExprMulDiv): ExprEquivMulDivTask => ({
+  subject: 'math',
+  course: 'algebra-equiv-g3',
+  skillId: EQUIV_EXPR_MULDIV,
+  kind: 'expr_equivalence_muldiv',
   left,
   right,
 });
@@ -837,6 +859,10 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'equiv-2': equivExpr(e(5, '+', 2), e(4, '+', 2)), // 7 vs 6 → no
   'equiv-3': equivExpr(e(6, '-', 1), e(2, '+', 3)), // 5 == 5 → yes
   'equiv-4': equivExpr(e(8, '-', 3), e(3, '+', 3)), // 5 vs 6 → no
+  'equiv-md-1': equivExprMulDiv(eMd(4, '*', 3), eMd(24, '/', 2)), // 12 == 12 → yes
+  'equiv-md-2': equivExprMulDiv(eMd(5, '*', 2), eMd(40, '/', 5)), // 10 vs 8 → no
+  'equiv-md-3': equivExprMulDiv(eMd(2, '*', 9), eMd(6, '*', 3)), // 18 == 18 → yes
+  'equiv-md-4': equivExprMulDiv(eMd(30, '/', 5), eMd(2, '*', 4)), // 6 vs 8 → no
   'compose-1': compose(3, 5), // 35
   'compose-2': compose(4, 0), // 40
   'compose-3': compose(1, 7), // 17 (concatenation trap → 17 not 107)
@@ -1042,6 +1068,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'skip-xfer': skip(15, 5, 3), // 15,20,25 → 30 (by 5s, novel start)
   'skip2-xfer': skip2(50, 25, 3), // 50,75,100 → 125 (by 25s, novel start)
   'equiv-xfer': equivExpr(e(7, '+', 2), e(10, '-', 1)), // 9 == 9 → yes
+  'equiv-md-xfer': equivExprMulDiv(eMd(6, '*', 4), eMd(48, '/', 2)), // 24 == 24 → yes
   'compose-xfer': compose(4, 6), // 46
   'compose200-xfer': composeHcto(1, 7, 2), // 172 (novel composition)
   'coins-xfer': coins([200, 100, 25]), // toonie + loonie + quarter = 325¢
@@ -1105,6 +1132,7 @@ export const TRANSFER_TASKS = new Set([
   'skip-xfer',
   'skip2-xfer',
   'equiv-xfer',
+  'equiv-md-xfer',
   'compose-xfer',
   'compose200-xfer',
   'coins-xfer',
@@ -1126,6 +1154,13 @@ export const TRANSFER_TASKS = new Set([
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
 const fmtExpr = (x: Expr): string => `${x.a} ${x.op} ${x.b}`;
+const MULDIV_SYMBOL: Readonly<Record<ExprMulDiv['op'], string>> = {
+  '+': '+',
+  '-': '-',
+  '*': '×',
+  '/': '÷',
+};
+const fmtExprMulDiv = (x: ExprMulDiv): string => `${x.a} ${MULDIV_SYMBOL[x.op]} ${x.b}`;
 /** A child-readable name for a Canadian money piece (by its value in cents). */
 const COIN_NAME: Readonly<Record<number, string>> = {
   5: 'nickel (5¢)',
@@ -1269,6 +1304,12 @@ export function present(task: Task): { question: string; options: readonly strin
   if (task.kind === 'expr_equivalence') {
     return {
       question: `Are ${fmtExpr(task.left)} and ${fmtExpr(task.right)} equal in value? (yes / no)`,
+      options: ['yes', 'no'],
+    };
+  }
+  if (task.kind === 'expr_equivalence_muldiv') {
+    return {
+      question: `Are ${fmtExprMulDiv(task.left)} and ${fmtExprMulDiv(task.right)} equal in value? (yes / no)`,
       options: ['yes', 'no'],
     };
   }
@@ -1506,6 +1547,14 @@ export function answerKeyValid(task: Task): boolean {
       claimedEquivalent: evalExpr(task.left) === evalExpr(task.right),
     }).correct;
   }
+  if (task.kind === 'expr_equivalence_muldiv') {
+    return checkExprEquivalenceMulDivTask({
+      kind: 'expr_equivalence_muldiv',
+      left: task.left,
+      right: task.right,
+      claimedEquivalent: evalExprMulDiv(task.left) === evalExprMulDiv(task.right),
+    }).correct;
+  }
   if (task.kind === 'place_value_compose') {
     return checkComposeTask({
       kind: 'place_value_compose',
@@ -1701,6 +1750,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   }
   if (task.kind === 'skip_count_next') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'expr_equivalence') return a === 'yes' || a === 'no';
+  if (task.kind === 'expr_equivalence_muldiv') return a === 'yes' || a === 'no';
   if (task.kind === 'place_value_compose') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'compose_hcto') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'coin_value') return /^\d+$/.test(a); // a total in cents
@@ -1821,6 +1871,14 @@ export function judge(task: Task, raw: string): boolean {
   if (task.kind === 'expr_equivalence') {
     return checkExprEquivalenceTask({
       kind: 'expr_equivalence',
+      left: task.left,
+      right: task.right,
+      claimedEquivalent: a === 'yes',
+    }).correct;
+  }
+  if (task.kind === 'expr_equivalence_muldiv') {
+    return checkExprEquivalenceMulDivTask({
+      kind: 'expr_equivalence_muldiv',
       left: task.left,
       right: task.right,
       claimedEquivalent: a === 'yes',
@@ -2029,6 +2087,8 @@ export function correctAnswerFor(task: Task): string {
       return String(skipCountNext(task.start, task.step, task.length));
     case 'expr_equivalence':
       return evalExpr(task.left) === evalExpr(task.right) ? 'yes' : 'no';
+    case 'expr_equivalence_muldiv':
+      return evalExprMulDiv(task.left) === evalExprMulDiv(task.right) ? 'yes' : 'no';
     case 'place_value_compose':
       return String(composeValue(task.tens, task.ones));
     case 'compose_hcto':
@@ -2130,6 +2190,8 @@ export function wrongAnswerFor(task: Task): string {
       return String(skipCountNext(task.start, task.step, task.length) + 1);
     case 'expr_equivalence':
       return evalExpr(task.left) === evalExpr(task.right) ? 'no' : 'yes';
+    case 'expr_equivalence_muldiv':
+      return evalExprMulDiv(task.left) === evalExprMulDiv(task.right) ? 'no' : 'yes';
     case 'place_value_compose':
       // One off the composed value — a valid integer the oracle grades wrong.
       return String(composeValue(task.tens, task.ones) + 1);
