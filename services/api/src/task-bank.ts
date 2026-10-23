@@ -16,6 +16,8 @@ import {
   type Expr,
   checkComposeTask,
   composeValue,
+  checkComposeHctoTask,
+  composeHctoValue,
   checkCoinValueTask,
   coinTotalCents,
   checkRepresentationSelectTask,
@@ -102,6 +104,7 @@ export const SKIP_COUNT = 'SK-NS-skip-count-50';
 export const SKIP_COUNT_200 = 'SK-NS-skip-count-200';
 export const EQUIV_EXPR = 'SK-AL-equiv-expr';
 export const COMPOSE_50 = 'SK-NS-compose-50';
+export const COMPOSE_200 = 'SK-NS-compose-200';
 export const COIN_VALUE = 'SK-FIN-coin-value';
 export const MONEY_100 = 'SK-FIN-money-100';
 export const REPRESENT_50 = 'SK-NS-represent-50';
@@ -194,6 +197,15 @@ interface ComposeTask {
   readonly course: 'place-value';
   readonly skillId: typeof COMPOSE_50;
   readonly kind: 'place_value_compose';
+  readonly tens: number;
+  readonly ones: number;
+}
+interface ComposeHctoTaskT {
+  readonly subject: 'math';
+  readonly course: 'place-value-g2';
+  readonly skillId: typeof COMPOSE_200;
+  readonly kind: 'compose_hcto';
+  readonly hundreds: number;
   readonly tens: number;
   readonly ones: number;
 }
@@ -366,6 +378,7 @@ export type Task =
   | SkipCountTaskT
   | ExprEquivTask
   | ComposeTask
+  | ComposeHctoTaskT
   | CoinValueTaskT
   | RepresentSelectTask
   | PositionalSelectTaskT
@@ -496,6 +509,15 @@ const compose = (tens: number, ones: number): ComposeTask => ({
   course: 'place-value',
   skillId: COMPOSE_50,
   kind: 'place_value_compose',
+  tens,
+  ones,
+});
+const composeHcto = (hundreds: number, tens: number, ones: number): ComposeHctoTaskT => ({
+  subject: 'math',
+  course: 'place-value-g2',
+  skillId: COMPOSE_200,
+  kind: 'compose_hcto',
+  hundreds,
   tens,
   ones,
 });
@@ -773,6 +795,10 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'compose-2': compose(4, 0), // 40
   'compose-3': compose(1, 7), // 17 (concatenation trap → 17 not 107)
   'compose-4': compose(2, 9), // 29
+  'compose200-1': composeHcto(1, 2, 3), // 123 (add-the-counts trap → 6)
+  'compose200-2': composeHcto(1, 0, 5), // 105 (zero-ten place trap → 15)
+  'compose200-3': composeHcto(2, 0, 0), // 200
+  'compose200-4': composeHcto(1, 4, 6), // 146
   'coins-1': coins([10, 5]), // dime + nickel = 15¢ (count-pieces trap → 2)
   'coins-2': coins([25, 25]), // two quarters = 50¢
   'coins-3': coins([25, 10, 10, 5]), // 50¢
@@ -969,6 +995,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'skip2-xfer': skip2(50, 25, 3), // 50,75,100 → 125 (by 25s, novel start)
   'equiv-xfer': equivExpr(e(7, '+', 2), e(10, '-', 1)), // 9 == 9 → yes
   'compose-xfer': compose(4, 6), // 46
+  'compose200-xfer': composeHcto(1, 7, 2), // 172 (novel composition)
   'coins-xfer': coins([200, 100, 25]), // toonie + loonie + quarter = 325¢
   'money100-xfer': money100([5000, 2000, 500, 500]), // $80 = 8000¢
   'rep-xfer': repSelect(46, [
@@ -1029,6 +1056,7 @@ export const TRANSFER_TASKS = new Set([
   'skip2-xfer',
   'equiv-xfer',
   'compose-xfer',
+  'compose200-xfer',
   'coins-xfer',
   'money100-xfer',
   'rep-xfer',
@@ -1190,6 +1218,15 @@ export function present(task: Task): { question: string; options: readonly strin
     const onesLabel = `${task.ones} ${task.ones === 1 ? 'one' : 'ones'}`;
     return {
       question: `What number is ${tensLabel} and ${onesLabel}?`,
+      options: [],
+    };
+  }
+  if (task.kind === 'compose_hcto') {
+    const hundredsLabel = `${task.hundreds} ${task.hundreds === 1 ? 'hundred' : 'hundreds'}`;
+    const tensLabel = `${task.tens} ${task.tens === 1 ? 'ten' : 'tens'}`;
+    const onesLabel = `${task.ones} ${task.ones === 1 ? 'one' : 'ones'}`;
+    return {
+      question: `What number is ${hundredsLabel}, ${tensLabel} and ${onesLabel}?`,
       options: [],
     };
   }
@@ -1402,6 +1439,15 @@ export function answerKeyValid(task: Task): boolean {
       claimedValue: composeValue(task.tens, task.ones),
     }).correct;
   }
+  if (task.kind === 'compose_hcto') {
+    return checkComposeHctoTask({
+      kind: 'compose_hcto',
+      hundreds: task.hundreds,
+      tens: task.tens,
+      ones: task.ones,
+      claimedValue: composeHctoValue(task.hundreds, task.tens, task.ones),
+    }).correct;
+  }
   if (task.kind === 'coin_value') {
     return checkCoinValueTask({
       kind: 'coin_value',
@@ -1579,6 +1625,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'skip_count_next') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'expr_equivalence') return a === 'yes' || a === 'no';
   if (task.kind === 'place_value_compose') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'compose_hcto') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'coin_value') return /^\d+$/.test(a); // a total in cents
   if (task.kind === 'number_representation_select' || task.kind === 'positional_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
@@ -1689,6 +1736,15 @@ export function judge(task: Task, raw: string): boolean {
   if (task.kind === 'place_value_compose') {
     return checkComposeTask({
       kind: 'place_value_compose',
+      tens: task.tens,
+      ones: task.ones,
+      claimedValue: Number(a),
+    }).correct;
+  }
+  if (task.kind === 'compose_hcto') {
+    return checkComposeHctoTask({
+      kind: 'compose_hcto',
+      hundreds: task.hundreds,
       tens: task.tens,
       ones: task.ones,
       claimedValue: Number(a),
@@ -1878,6 +1934,8 @@ export function correctAnswerFor(task: Task): string {
       return evalExpr(task.left) === evalExpr(task.right) ? 'yes' : 'no';
     case 'place_value_compose':
       return String(composeValue(task.tens, task.ones));
+    case 'compose_hcto':
+      return String(composeHctoValue(task.hundreds, task.tens, task.ones));
     case 'coin_value':
       return String(coinTotalCents(task.pieces));
     case 'number_representation_select':
@@ -1963,6 +2021,14 @@ export function wrongAnswerFor(task: Task): string {
     case 'place_value_compose':
       // One off the composed value — a valid integer the oracle grades wrong.
       return String(composeValue(task.tens, task.ones) + 1);
+    case 'compose_hcto': {
+      // The add-the-counts place-value error (hundreds+tens+ones) — the real
+      // misconception. Fall back to one-off if a tiny item makes the sum equal
+      // the true value, so the "wrong" answer is always actually wrong.
+      const hctoValue = composeHctoValue(task.hundreds, task.tens, task.ones);
+      const counts = task.hundreds + task.tens + task.ones;
+      return String(counts === hctoValue ? hctoValue + 1 : counts);
+    }
     case 'coin_value':
       // The "count the pieces instead of their value" error — the number of
       // coins, which is wrong whenever any piece is worth more than 1¢ (always).

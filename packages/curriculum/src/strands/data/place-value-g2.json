@@ -1,0 +1,31 @@
+{
+  "strandId": "place-value-g2",
+  "version": "pv-g2-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-compose-200",
+      "competency": "number:place-value",
+      "skill": "Compose and decompose whole numbers to 200 by hundreds, tens and ones"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-add-the-counts",
+      "skillId": "SK-NS-compose-200",
+      "pattern": "Adds the place counts instead of composing by place value (e.g. '1 hundred, 2 tens, 3 ones' read as 1+2+3=6 rather than 123), or drops a zero place ('1 hundred, 0 tens, 5 ones' read as 15).",
+      "probeIds": ["PR-NS-hundreds-compose"],
+      "remediationStrategyIds": ["ST-ns-name-each-place"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-name-each-place",
+      "intent": "Say the value of each place out loud — the hundreds are worth 100 each, the tens 10 each, the ones 1 each — then add those place values, keeping a zero place as a held column.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}
