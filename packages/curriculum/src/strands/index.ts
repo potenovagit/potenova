@@ -6,6 +6,7 @@ import subtractionData from './data/subtraction.json';
 import wholeNumberData from './data/whole-number.json';
 import skipCountData from './data/skip-count.json';
 import algebraEquivData from './data/algebra-equiv.json';
+import placeValueData from './data/place-value.json';
 import englishData from './data/english.json';
 
 /**
@@ -27,6 +28,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   wholeNumberData as StrandDataset,
   skipCountData as StrandDataset,
   algebraEquivData as StrandDataset,
+  placeValueData as StrandDataset,
   englishData as StrandDataset,
 ];
 

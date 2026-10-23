@@ -14,6 +14,8 @@ import {
   checkExprEquivalenceTask,
   evalExpr,
   type Expr,
+  checkComposeTask,
+  composeValue,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -61,6 +63,7 @@ export const CMP_WHOLE = 'SK-NS-compare-whole-50';
 export const ORD_WHOLE = 'SK-NS-order-whole-50';
 export const SKIP_COUNT = 'SK-NS-skip-count-50';
 export const EQUIV_EXPR = 'SK-AL-equiv-expr';
+export const COMPOSE_50 = 'SK-NS-compose-50';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -133,6 +136,14 @@ interface ExprEquivTask {
   readonly left: Expr;
   readonly right: Expr;
 }
+interface ComposeTask {
+  readonly subject: 'math';
+  readonly course: 'place-value';
+  readonly skillId: typeof COMPOSE_50;
+  readonly kind: 'place_value_compose';
+  readonly tens: number;
+  readonly ones: number;
+}
 interface PartitionTask {
   readonly subject: 'math';
   readonly course: 'fractions';
@@ -195,6 +206,7 @@ export type Task =
   | WholeOrderTask
   | SkipCountTaskT
   | ExprEquivTask
+  | ComposeTask
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -275,6 +287,14 @@ const equivExpr = (left: Expr, right: Expr): ExprEquivTask => ({
   kind: 'expr_equivalence',
   left,
   right,
+});
+const compose = (tens: number, ones: number): ComposeTask => ({
+  subject: 'math',
+  course: 'place-value',
+  skillId: COMPOSE_50,
+  kind: 'place_value_compose',
+  tens,
+  ones,
 });
 const partition = (parts: number, shaded: number): PartitionTask => ({
   subject: 'math',
@@ -378,6 +398,10 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'equiv-2': equivExpr(e(5, '+', 2), e(4, '+', 2)), // 7 vs 6 → no
   'equiv-3': equivExpr(e(6, '-', 1), e(2, '+', 3)), // 5 == 5 → yes
   'equiv-4': equivExpr(e(8, '-', 3), e(3, '+', 3)), // 5 vs 6 → no
+  'compose-1': compose(3, 5), // 35
+  'compose-2': compose(4, 0), // 40
+  'compose-3': compose(1, 7), // 17 (concatenation trap → 17 not 107)
+  'compose-4': compose(2, 9), // 29
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -391,6 +415,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'ordw-xfer': ordW([38, 3, 45, 15]), // 3 < 15 < 38 < 45 → 2,4,1,3
   'skip-xfer': skip(15, 5, 3), // 15,20,25 → 30 (by 5s, novel start)
   'equiv-xfer': equivExpr(e(7, '+', 2), e(10, '-', 1)), // 9 == 9 → yes
+  'compose-xfer': compose(4, 6), // 46
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
@@ -408,6 +433,7 @@ export const TRANSFER_TASKS = new Set([
   'ordw-xfer',
   'skip-xfer',
   'equiv-xfer',
+  'compose-xfer',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
@@ -494,6 +520,14 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `Are ${fmtExpr(task.left)} and ${fmtExpr(task.right)} equal in value? (yes / no)`,
       options: ['yes', 'no'],
+    };
+  }
+  if (task.kind === 'place_value_compose') {
+    const tensLabel = `${task.tens} ${task.tens === 1 ? 'ten' : 'tens'}`;
+    const onesLabel = `${task.ones} ${task.ones === 1 ? 'one' : 'ones'}`;
+    return {
+      question: `What number is ${tensLabel} and ${onesLabel}?`,
+      options: [],
     };
   }
   if (task.kind === 'fraction_partition') {
@@ -609,6 +643,14 @@ export function answerKeyValid(task: Task): boolean {
       claimedEquivalent: evalExpr(task.left) === evalExpr(task.right),
     }).correct;
   }
+  if (task.kind === 'place_value_compose') {
+    return checkComposeTask({
+      kind: 'place_value_compose',
+      tens: task.tens,
+      ones: task.ones,
+      claimedValue: composeValue(task.tens, task.ones),
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -681,6 +723,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   }
   if (task.kind === 'skip_count_next') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'expr_equivalence') return a === 'yes' || a === 'no';
+  if (task.kind === 'place_value_compose') return /^\d+$/.test(a); // a non-negative integer
   if (
     task.kind === 'fraction_partition' ||
     task.kind === 'fraction_unit' ||
@@ -760,6 +803,14 @@ export function judge(task: Task, raw: string): boolean {
       left: task.left,
       right: task.right,
       claimedEquivalent: a === 'yes',
+    }).correct;
+  }
+  if (task.kind === 'place_value_compose') {
+    return checkComposeTask({
+      kind: 'place_value_compose',
+      tens: task.tens,
+      ones: task.ones,
+      claimedValue: Number(a),
     }).correct;
   }
   if (task.kind === 'fraction_partition') {
@@ -843,6 +894,8 @@ export function correctAnswerFor(task: Task): string {
       return String(skipCountNext(task.start, task.step, task.length));
     case 'expr_equivalence':
       return evalExpr(task.left) === evalExpr(task.right) ? 'yes' : 'no';
+    case 'place_value_compose':
+      return String(composeValue(task.tens, task.ones));
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -898,6 +951,9 @@ export function wrongAnswerFor(task: Task): string {
       return String(skipCountNext(task.start, task.step, task.length) + 1);
     case 'expr_equivalence':
       return evalExpr(task.left) === evalExpr(task.right) ? 'no' : 'yes';
+    case 'place_value_compose':
+      // One off the composed value — a valid integer the oracle grades wrong.
+      return String(composeValue(task.tens, task.ones) + 1);
     case 'fraction_partition':
       return `${task.shaded === 0 ? 1 : 0}/${task.parts}`;
     case 'fraction_unit':
