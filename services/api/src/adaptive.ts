@@ -31,6 +31,7 @@ import {
   buildConstructionDraftGraph,
   buildWholeNumberG2DraftGraph,
   buildSubtractionG2DraftGraph,
+  buildSkipCountG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -74,6 +75,8 @@ import {
   WHOLE_NUMBER_G2_STRATEGIES,
   SUBTRACTION_G2_MISCONCEPTIONS,
   SUBTRACTION_G2_STRATEGIES,
+  SKIP_COUNT_G2_MISCONCEPTIONS,
+  SKIP_COUNT_G2_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -129,6 +132,7 @@ export type CourseId =
   | 'construction'
   | 'whole-number-g2'
   | 'subtraction-g2'
+  | 'skip-count-g2'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -473,6 +477,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: SUBTRACTION_G2_STRATEGIES,
     transferTask: { 'SK-NS-sub-within100': 'sub100-xfer' },
   },
+  'skip-count-g2': {
+    subject: 'math',
+    buildGraph: buildSkipCountG2DraftGraph,
+    coachableSkillIds: ['SK-NS-skip-count-200'],
+    defaultTask: { 'SK-NS-skip-count-200': 'skip2-1' },
+    practiceTasks: {
+      'SK-NS-skip-count-200': ['skip2-1', 'skip2-2', 'skip2-3', 'skip2-4'],
+    },
+    remediationReps: ['counters', 'number-line', 'symbolic'],
+    misconceptions: SKIP_COUNT_G2_MISCONCEPTIONS,
+    strategies: SKIP_COUNT_G2_STRATEGIES,
+    transferTask: { 'SK-NS-skip-count-200': 'skip2-xfer' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -542,6 +559,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'construction',
     'whole-number-g2',
     'subtraction-g2',
+    'skip-count-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
 };

@@ -1,0 +1,31 @@
+{
+  "strandId": "skip-count-g2",
+  "version": "skip2-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-skip-count-200",
+      "competency": "number:skip-counting",
+      "skill": "Count to 200 by 20s, 25s and 50s"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-skip-wrong-step-200",
+      "skillId": "SK-NS-skip-count-200",
+      "pattern": "Uses the wrong jump — counts on by 10 instead of the shown larger step, or loses the step across a hundreds boundary.",
+      "probeIds": ["PR-NS-skip-next-200"],
+      "remediationStrategyIds": ["ST-ns-same-big-jump"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-same-big-jump",
+      "intent": "Find the size of the jump between the numbers shown, then make that same jump again — even past 100.",
+      "approvedBands": ["primary"],
+      "representations": ["number-line", "counters"]
+    }
+  ]
+}

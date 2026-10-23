@@ -1,17 +1,18 @@
 import type { MathCheckReason } from './math-check';
 
 /**
- * Deterministic skip-counting oracle (Ontario Grade 1 B1.5: count to 50 by 1s,
- * 2s, 5s and 10s). The learner sees the first `length` terms of a skip-count
- * sequence and gives the next term. Closed and rule-decidable: the next term is
- * computed exactly and verified before delivery, and a learner answer is graded
- * without a model.
+ * Deterministic skip-counting oracle (Ontario G1 B1.5: count to 50 by 1s, 2s,
+ * 5s, 10s; G2 B1.4: count to 200 by 20s, 25s, 50s). The learner sees the first
+ * `length` terms of a skip-count sequence and gives the next term. Closed and
+ * rule-decidable: the next term is computed exactly and verified before
+ * delivery, and a learner answer is graded without a model.
  *
- * The allowed steps are the Grade 1 set {1, 2, 5, 10}; any other step is a
- * MALFORMED item (fail-closed) rather than silently accepted.
+ * The allowed steps are the supported skip-count denominations {1, 2, 5, 10, 20,
+ * 25, 50}; any other step is a MALFORMED item (fail-closed) rather than silently
+ * accepted. Each course uses only the steps its grade teaches.
  */
 
-export const SKIP_COUNT_STEPS = [1, 2, 5, 10] as const;
+export const SKIP_COUNT_STEPS = [1, 2, 5, 10, 20, 25, 50] as const;
 export type SkipCountStep = (typeof SKIP_COUNT_STEPS)[number];
 
 export interface SkipCountTask {
