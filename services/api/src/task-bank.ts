@@ -21,6 +21,10 @@ import {
   checkRepresentationSelectTask,
   matchingRepresentationIndices,
   type RepresentationOption,
+  checkPositionalSelectTask,
+  matchingPositionalIndices,
+  type PositionRelation,
+  type PositionalScene,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -71,6 +75,7 @@ export const EQUIV_EXPR = 'SK-AL-equiv-expr';
 export const COMPOSE_50 = 'SK-NS-compose-50';
 export const COIN_VALUE = 'SK-FIN-coin-value';
 export const REPRESENT_50 = 'SK-NS-represent-50';
+export const POSITIONAL = 'SK-GEO-positional-language';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -166,6 +171,14 @@ interface RepresentSelectTask {
   readonly target: number;
   readonly options: readonly RepresentationOption[];
 }
+interface PositionalSelectTaskT {
+  readonly subject: 'math';
+  readonly course: 'spatial';
+  readonly skillId: typeof POSITIONAL;
+  readonly kind: 'positional_select';
+  readonly relation: PositionRelation;
+  readonly options: readonly PositionalScene[];
+}
 interface PartitionTask {
   readonly subject: 'math';
   readonly course: 'fractions';
@@ -231,6 +244,7 @@ export type Task =
   | ComposeTask
   | CoinValueTaskT
   | RepresentSelectTask
+  | PositionalSelectTaskT
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -336,6 +350,17 @@ const repSelect = (
   skillId: REPRESENT_50,
   kind: 'number_representation_select',
   target,
+  options,
+});
+const posSelect = (
+  relation: PositionRelation,
+  options: readonly PositionalScene[],
+): PositionalSelectTaskT => ({
+  subject: 'math',
+  course: 'spatial',
+  skillId: POSITIONAL,
+  kind: 'positional_select',
+  relation,
   options,
 });
 const partition = (parts: number, shaded: number): PartitionTask => ({
@@ -470,6 +495,28 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
     { tens: 5, ones: 3 }, // 53 (swap)
     { tens: 3, ones: 0 }, // 30
   ]),
+  // Positional selection ("which picture shows the star <relation> the box?"):
+  // exactly one scene satisfies the relation; the oracle recomputes it.
+  'pos-1': posSelect('above', [
+    { subject: { r: 0, c: 1 }, reference: { r: 2, c: 1 } }, // above ✓
+    { subject: { r: 2, c: 1 }, reference: { r: 0, c: 1 } }, // below
+    { subject: { r: 1, c: 0 }, reference: { r: 1, c: 2 } }, // same row
+  ]),
+  'pos-2': posSelect('right_of', [
+    { subject: { r: 1, c: 0 }, reference: { r: 1, c: 2 } }, // left
+    { subject: { r: 1, c: 2 }, reference: { r: 1, c: 0 } }, // right ✓
+    { subject: { r: 0, c: 1 }, reference: { r: 2, c: 1 } }, // same col
+  ]),
+  'pos-3': posSelect('below', [
+    { subject: { r: 2, c: 0 }, reference: { r: 0, c: 0 } }, // below ✓
+    { subject: { r: 0, c: 0 }, reference: { r: 2, c: 0 } }, // above
+    { subject: { r: 1, c: 1 }, reference: { r: 1, c: 0 } }, // same row
+  ]),
+  'pos-4': posSelect('left_of', [
+    { subject: { r: 0, c: 2 }, reference: { r: 0, c: 0 } }, // right
+    { subject: { r: 0, c: 0 }, reference: { r: 0, c: 2 } }, // left ✓
+    { subject: { r: 0, c: 1 }, reference: { r: 2, c: 1 } }, // same col
+  ]),
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -489,6 +536,10 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
     { tens: 4, ones: 6 }, // 46 ✓
     { tens: 6, ones: 4 }, // 64 (swap)
     { tens: 4, ones: 0 }, // 40
+  ]),
+  'pos-xfer': posSelect('above', [
+    { subject: { r: 1, c: 2 }, reference: { r: 2, c: 0 } }, // above ✓
+    { subject: { r: 2, c: 0 }, reference: { r: 0, c: 1 } }, // below
   ]),
 };
 
@@ -510,6 +561,7 @@ export const TRANSFER_TASKS = new Set([
   'compose-xfer',
   'coins-xfer',
   'rep-xfer',
+  'pos-xfer',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
@@ -538,6 +590,18 @@ const fmtRepOption = (o: RepresentationOption): string => {
  *  option whose value equals the target); -1 if the item is ill-posed. */
 const correctRepIndex = (task: RepresentSelectTask): number =>
   matchingRepresentationIndices(task.target, task.options)[0] ?? -1;
+/** A positional scene as a child-readable grid description. */
+const fmtScene = (s: PositionalScene): string =>
+  `the star at row ${s.subject.r}, col ${s.subject.c} and the box at row ${s.reference.r}, col ${s.reference.c}`;
+const RELATION_WORD: Readonly<Record<PositionRelation, string>> = {
+  above: 'above',
+  below: 'below',
+  left_of: 'to the left of',
+  right_of: 'to the right of',
+};
+/** The oracle-derived correct 0-based index for a positional selection; -1 if ill-posed. */
+const correctPosIndex = (task: PositionalSelectTaskT): number =>
+  matchingPositionalIndices(task.relation, task.options)[0] ?? -1;
 const isRelation = (v: unknown): v is FractionRelation => v === 'lt' || v === 'eq' || v === 'gt';
 
 /** Parse a learner "a/b" fraction token, or null if malformed. */
@@ -641,6 +705,14 @@ export function present(task: Task): { question: string; options: readonly strin
     const numbered = choices.map((c, i) => `${i + 1}) ${c}`).join('  ');
     return {
       question: `Which one shows ${task.target}? ${numbered}. Type the number of your choice.`,
+      options: choices,
+    };
+  }
+  if (task.kind === 'positional_select') {
+    const choices = task.options.map((o) => fmtScene(o));
+    const numbered = choices.map((c, i) => `${i + 1}) ${c}`).join('  ');
+    return {
+      question: `Which picture shows the star ${RELATION_WORD[task.relation]} the box? ${numbered}. Type the number of your choice.`,
       options: choices,
     };
   }
@@ -782,6 +854,14 @@ export function answerKeyValid(task: Task): boolean {
       claimedIndex: correctRepIndex(task),
     }).correct;
   }
+  if (task.kind === 'positional_select') {
+    return checkPositionalSelectTask({
+      kind: 'positional_select',
+      relation: task.relation,
+      options: task.options,
+      claimedIndex: correctPosIndex(task),
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -856,7 +936,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'expr_equivalence') return a === 'yes' || a === 'no';
   if (task.kind === 'place_value_compose') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'coin_value') return /^\d+$/.test(a); // a total in cents
-  if (task.kind === 'number_representation_select') {
+  if (task.kind === 'number_representation_select' || task.kind === 'positional_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
     return n >= 1 && n <= task.options.length;
@@ -966,6 +1046,14 @@ export function judge(task: Task, raw: string): boolean {
       claimedIndex: Number(a) - 1,
     }).correct;
   }
+  if (task.kind === 'positional_select') {
+    return checkPositionalSelectTask({
+      kind: 'positional_select',
+      relation: task.relation,
+      options: task.options,
+      claimedIndex: Number(a) - 1,
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     const cf = parseFrac(a);
     return cf
@@ -1054,6 +1142,8 @@ export function correctAnswerFor(task: Task): string {
     case 'number_representation_select':
       // The 1-based number of the option the oracle derives as correct.
       return String(correctRepIndex(task) + 1);
+    case 'positional_select':
+      return String(correctPosIndex(task) + 1);
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -1119,6 +1209,11 @@ export function wrongAnswerFor(task: Task): string {
     case 'number_representation_select': {
       // A valid option number that is NOT the correct one (a distractor pick).
       const correct = correctRepIndex(task);
+      const wrong = task.options.findIndex((_, i) => i !== correct);
+      return String((wrong === -1 ? correct : wrong) + 1);
+    }
+    case 'positional_select': {
+      const correct = correctPosIndex(task);
       const wrong = task.options.findIndex((_, i) => i !== correct);
       return String((wrong === -1 ? correct : wrong) + 1);
     }

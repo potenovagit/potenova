@@ -20,6 +20,7 @@ import {
   buildPlaceValueDraftGraph,
   buildFinancialDraftGraph,
   buildNumberRepDraftGraph,
+  buildSpatialDraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -41,6 +42,8 @@ import {
   FINANCIAL_STRATEGIES,
   NUMBER_REP_MISCONCEPTIONS,
   NUMBER_REP_STRATEGIES,
+  SPATIAL_MISCONCEPTIONS,
+  SPATIAL_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -85,6 +88,7 @@ export type CourseId =
   | 'place-value'
   | 'financial'
   | 'number-rep'
+  | 'spatial'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -279,6 +283,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: NUMBER_REP_STRATEGIES,
     transferTask: { 'SK-NS-represent-50': 'rep-xfer' },
   },
+  spatial: {
+    subject: 'math',
+    buildGraph: buildSpatialDraftGraph,
+    coachableSkillIds: ['SK-GEO-positional-language'],
+    defaultTask: { 'SK-GEO-positional-language': 'pos-1' },
+    practiceTasks: {
+      'SK-GEO-positional-language': ['pos-1', 'pos-2', 'pos-3', 'pos-4'],
+    },
+    remediationReps: ['counters', 'symbolic'],
+    misconceptions: SPATIAL_MISCONCEPTIONS,
+    strategies: SPATIAL_STRATEGIES,
+    transferTask: { 'SK-GEO-positional-language': 'pos-xfer' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -337,6 +354,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'place-value',
     'financial',
     'number-rep',
+    'spatial',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
 };
