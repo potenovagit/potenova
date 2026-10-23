@@ -1,0 +1,31 @@
+{
+  "strandId": "multiplication",
+  "version": "mult-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-mult-facts",
+      "competency": "number:multiplication",
+      "skill": "Recall multiplication facts up to 10 × 10"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-adds-instead-of-multiplies",
+      "skillId": "SK-NS-mult-facts",
+      "pattern": "Adds the two factors instead of multiplying them (e.g. 8 × 3 answered as 11 rather than 24), treating × like +.",
+      "probeIds": ["PR-NS-equal-groups"],
+      "remediationStrategyIds": ["ST-ns-equal-groups"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-equal-groups",
+      "intent": "Build the fact as equal groups or an array — a × b is b counted a times — then skip-count the groups to reach the product.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}
