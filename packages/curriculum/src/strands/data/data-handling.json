@@ -1,0 +1,31 @@
+{
+  "strandId": "data-handling",
+  "version": "data-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-DATA-interpret-graph",
+      "competency": "data:interpret",
+      "skill": "Read and interpret a simple graph (which category has the most or fewest)"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-DATA-most-vs-fewest",
+      "skillId": "SK-DATA-interpret-graph",
+      "pattern": "Answers the opposite question — picks the smallest when asked for the most, or reads the longest label instead of the tallest bar.",
+      "probeIds": ["PR-DATA-which-most"],
+      "remediationStrategyIds": ["ST-data-compare-heights"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-data-compare-heights",
+      "intent": "Compare the counts for each category, then pick the one that is biggest (for 'most') or smallest (for 'fewest').",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}
