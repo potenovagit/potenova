@@ -1,0 +1,44 @@
+{
+  "strandId": "subtraction",
+  "version": "sub-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-sub-within10",
+      "competency": "number:subtraction",
+      "skill": "Subtract whole numbers within 10"
+    },
+    {
+      "skillId": "SK-NS-sub-within20",
+      "competency": "number:subtraction",
+      "skill": "Subtract whole numbers within 20 (crossing ten)"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependencyId": "D-ns-sub-1",
+      "fromSkillId": "SK-NS-sub-within10",
+      "toSkillId": "SK-NS-sub-within20",
+      "type": "hardPrerequisite",
+      "weight": 1.0
+    }
+  ],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-sub-smaller-from-larger",
+      "skillId": "SK-NS-sub-within20",
+      "pattern": "Subtracts the smaller digit from the larger within each column regardless of order (e.g. 13 - 5 → takes 3 from 5 → \"2\").",
+      "probeIds": ["PR-NS-borrow-ten"],
+      "remediationStrategyIds": ["ST-ns-count-back"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-count-back",
+      "intent": "Count back from the larger number, or bridge through ten (e.g. 13 - 5 → 13 - 3 - 2).",
+      "approvedBands": ["primary"],
+      "representations": ["number-line", "counters"]
+    }
+  ]
+}

@@ -2,6 +2,7 @@ export * from './asset';
 export * from './math-check';
 export * from './english-check';
 export * from './addition-check';
+export * from './subtraction-check';
 export * from './validation';
 export * from './model-eval';
 export * from './eval-suite';

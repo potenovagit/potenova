@@ -13,6 +13,7 @@ import {
   buildFractionsDraftGraph,
   buildEnglishDraftGraph,
   buildAdditionDraftGraph,
+  buildSubtractionDraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -20,6 +21,8 @@ import {
   ENGLISH_STRATEGIES,
   ADDITION_MISCONCEPTIONS,
   ADDITION_STRATEGIES,
+  SUBTRACTION_MISCONCEPTIONS,
+  SUBTRACTION_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -54,7 +57,13 @@ import type { Deps } from './deps';
  */
 
 export type Subject = 'math' | 'english';
-export type CourseId = 'fractions' | 'addition' | 'plurals' | 'past-tense' | 'comparative';
+export type CourseId =
+  | 'fractions'
+  | 'addition'
+  | 'subtraction'
+  | 'plurals'
+  | 'past-tense'
+  | 'comparative';
 
 /** Fixed seed for a generated-only course's default/practice items: the planner
  *  and diagnostic reference stable generated task ids, resolved deterministically
@@ -150,6 +159,20 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: ADDITION_STRATEGIES,
     transferTask: { 'SK-NS-add-within10': 'add-xfer-10', 'SK-NS-add-within20': 'add-xfer-20' },
   },
+  subtraction: {
+    subject: 'math',
+    buildGraph: buildSubtractionDraftGraph,
+    coachableSkillIds: ['SK-NS-sub-within10', 'SK-NS-sub-within20'],
+    defaultTask: { 'SK-NS-sub-within10': 'sub-10-1', 'SK-NS-sub-within20': 'sub-20-1' },
+    practiceTasks: {
+      'SK-NS-sub-within10': ['sub-10-1', 'sub-10-2', 'sub-10-3', 'sub-10-4'],
+      'SK-NS-sub-within20': ['sub-20-1', 'sub-20-2', 'sub-20-3', 'sub-20-4'],
+    },
+    remediationReps: ['counters', 'number-line', 'symbolic'],
+    misconceptions: SUBTRACTION_MISCONCEPTIONS,
+    strategies: SUBTRACTION_STRATEGIES,
+    transferTask: { 'SK-NS-sub-within10': 'sub-xfer-10', 'SK-NS-sub-within20': 'sub-xfer-20' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -198,7 +221,7 @@ const COURSES: Record<CourseId, CoursePlan> = {
 export const DEFAULT_COURSE: Record<Subject, CourseId> = { math: 'fractions', english: 'plurals' };
 /** Courses a subject offers, for the parent strand-focus control. */
 export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
-  math: ['fractions', 'addition'],
+  math: ['fractions', 'addition', 'subtraction'],
   english: ['plurals', 'past-tense', 'comparative'],
 };
 
