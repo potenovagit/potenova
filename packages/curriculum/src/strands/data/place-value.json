@@ -1,0 +1,31 @@
+{
+  "strandId": "place-value",
+  "version": "pv-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-compose-50",
+      "competency": "number:place-value",
+      "skill": "Compose a whole number to 50 from tens and ones"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-concatenate-digits",
+      "skillId": "SK-NS-compose-50",
+      "pattern": "Writes the digits side by side instead of composing by value (e.g. 1 ten and 5 ones → '105'), or swaps tens and ones.",
+      "probeIds": ["PR-NS-tens-ones"],
+      "remediationStrategyIds": ["ST-ns-tens-are-tens"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-tens-are-tens",
+      "intent": "Count the tens in tens (10, 20, 30…), then add the ones on.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}
