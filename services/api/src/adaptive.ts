@@ -13,6 +13,7 @@ import {
   buildFractionsDraftGraph,
   buildEnglishDraftGraph,
   buildAdditionDraftGraph,
+  buildMultiplicationDraftGraph,
   buildSubtractionDraftGraph,
   buildWholeNumberDraftGraph,
   buildSkipCountDraftGraph,
@@ -44,6 +45,8 @@ import {
   ENGLISH_STRATEGIES,
   ADDITION_MISCONCEPTIONS,
   ADDITION_STRATEGIES,
+  MULTIPLICATION_MISCONCEPTIONS,
+  MULTIPLICATION_STRATEGIES,
   SUBTRACTION_MISCONCEPTIONS,
   SUBTRACTION_STRATEGIES,
   WHOLE_NUMBER_MISCONCEPTIONS,
@@ -129,6 +132,7 @@ export type Subject = 'math' | 'english';
 export type CourseId =
   | 'fractions'
   | 'addition'
+  | 'multiplication'
   | 'subtraction'
   | 'whole-number'
   | 'skip-count'
@@ -250,6 +254,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     misconceptions: ADDITION_MISCONCEPTIONS,
     strategies: ADDITION_STRATEGIES,
     transferTask: { 'SK-NS-add-within10': 'add-xfer-10', 'SK-NS-add-within20': 'add-xfer-20' },
+  },
+  multiplication: {
+    subject: 'math',
+    buildGraph: buildMultiplicationDraftGraph,
+    coachableSkillIds: ['SK-NS-mult-facts'],
+    defaultTask: { 'SK-NS-mult-facts': 'mult-1' },
+    practiceTasks: {
+      'SK-NS-mult-facts': ['mult-1', 'mult-2', 'mult-3', 'mult-4'],
+    },
+    remediationReps: ['counters', 'symbolic'],
+    misconceptions: MULTIPLICATION_MISCONCEPTIONS,
+    strategies: MULTIPLICATION_STRATEGIES,
+    transferTask: { 'SK-NS-mult-facts': 'mult-xfer' },
   },
   subtraction: {
     subject: 'math',
@@ -626,6 +643,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
   math: [
     'fractions',
     'addition',
+    'multiplication',
     'subtraction',
     'whole-number',
     'skip-count',

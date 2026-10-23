@@ -2,6 +2,7 @@ import { loadStrand, buildStrandGraph, type StrandDataset, type LoadedStrand } f
 import { CurriculumGraph } from '../graph';
 import fractionsData from './data/fractions.json';
 import additionData from './data/addition.json';
+import multiplicationData from './data/multiplication.json';
 import subtractionData from './data/subtraction.json';
 import wholeNumberData from './data/whole-number.json';
 import skipCountData from './data/skip-count.json';
@@ -67,6 +68,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   wordProblemsG2Data as StrandDataset,
   estimationG2Data as StrandDataset,
   placeValueG2Data as StrandDataset,
+  multiplicationData as StrandDataset,
   englishData as StrandDataset,
 ];
 

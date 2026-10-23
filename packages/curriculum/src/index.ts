@@ -28,6 +28,7 @@ export * from './money-100-draft';
 export * from './word-problems-g2-draft';
 export * from './estimation-g2-draft';
 export * from './place-value-g2-draft';
+export * from './multiplication-draft';
 export * from './lessons';
 export * from './ontario';
 export * from './overlay';

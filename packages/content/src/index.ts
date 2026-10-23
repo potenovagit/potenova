@@ -2,6 +2,7 @@ export * from './asset';
 export * from './math-check';
 export * from './english-check';
 export * from './addition-check';
+export * from './multiplication-check';
 export * from './subtraction-check';
 export * from './whole-number-check';
 export * from './skip-count-check';
