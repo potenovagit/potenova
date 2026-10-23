@@ -34,6 +34,7 @@ import {
   type ShapeOption,
   checkCalendarTask,
   dayAfter,
+  checkEstimateTask,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -88,6 +89,7 @@ export const POSITIONAL = 'SK-GEO-positional-language';
 export const DATA_INTERPRET = 'SK-DATA-interpret-graph';
 export const SHAPE_ATTR = 'SK-GEO-shape-attribute';
 export const CALENDAR_DAY = 'SK-TIME-calendar-day';
+export const ESTIMATE_50 = 'SK-NS-estimate-50';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -215,6 +217,15 @@ interface CalendarTaskT {
   readonly day: string;
   readonly offset: number;
 }
+interface EstimateTaskT {
+  readonly subject: 'math';
+  readonly course: 'estimation';
+  readonly skillId: typeof ESTIMATE_50;
+  readonly kind: 'estimate_within_band';
+  readonly actual: number;
+  readonly low: number;
+  readonly high: number;
+}
 interface PartitionTask {
   readonly subject: 'math';
   readonly course: 'fractions';
@@ -284,6 +295,7 @@ export type Task =
   | GraphReadSelectTaskT
   | ShapeAttrSelectTaskT
   | CalendarTaskT
+  | EstimateTaskT
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -428,6 +440,15 @@ const calendarDay = (day: string, offset: number): CalendarTaskT => ({
   kind: 'calendar_next_day',
   day,
   offset,
+});
+const estimate = (actual: number, low: number, high: number): EstimateTaskT => ({
+  subject: 'math',
+  course: 'estimation',
+  skillId: ESTIMATE_50,
+  kind: 'estimate_within_band',
+  actual,
+  low,
+  high,
 });
 const partition = (parts: number, shaded: number): PartitionTask => ({
   subject: 'math',
@@ -632,6 +653,12 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'cal-2': calendarDay('monday', 1), // tuesday
   'cal-3': calendarDay('friday', 1), // saturday
   'cal-4': calendarDay('saturday', 1), // sunday (wrap)
+  // Estimation: a reviewed tolerance band around the true count (bands are
+  // placeholders for educator-set values).
+  'est-1': estimate(24, 20, 28), // ~24
+  'est-2': estimate(12, 9, 15), // ~12
+  'est-3': estimate(40, 34, 46), // ~40
+  'est-4': estimate(31, 27, 35), // ~31
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -667,6 +694,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
     { name: 'pentagon', sides: 5 },
   ]),
   'cal-xfer': calendarDay('sunday', -1), // saturday (yesterday, wrap back)
+  'est-xfer': estimate(18, 14, 22), // ~18 (novel collection)
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
@@ -691,6 +719,7 @@ export const TRANSFER_TASKS = new Set([
   'data-xfer',
   'shape-xfer',
   'cal-xfer',
+  'est-xfer',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
@@ -869,6 +898,12 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `Which shape has ${task.targetSides} sides? ${numbered}. Type the number of your choice.`,
       options: choices,
+    };
+  }
+  if (task.kind === 'estimate_within_band') {
+    return {
+      question: `About how many are in this group? Give your best estimate, then you can check by counting.`,
+      options: [],
     };
   }
   if (task.kind === 'calendar_next_day') {
@@ -1053,6 +1088,17 @@ export function answerKeyValid(task: Task): boolean {
       claimedDay: dayAfter(task.day, task.offset) ?? '',
     }).correct;
   }
+  if (task.kind === 'estimate_within_band') {
+    // The content gate confirms the reviewed band is well-posed and brackets
+    // the true count; a mid-band value validates it against itself.
+    return checkEstimateTask({
+      kind: 'estimate_within_band',
+      actual: task.actual,
+      low: task.low,
+      high: task.high,
+      claimed: task.actual,
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -1143,6 +1189,7 @@ export function tokenValid(task: Task, raw: string): boolean {
     return n >= 1 && n <= task.options.length;
   }
   if (task.kind === 'calendar_next_day') return /^[a-z]+$/.test(a); // a day name
+  if (task.kind === 'estimate_within_band') return /^\d+$/.test(a); // a non-negative estimate
   if (
     task.kind === 'fraction_partition' ||
     task.kind === 'fraction_unit' ||
@@ -1280,6 +1327,15 @@ export function judge(task: Task, raw: string): boolean {
       claimedDay: a,
     }).correct;
   }
+  if (task.kind === 'estimate_within_band') {
+    return checkEstimateTask({
+      kind: 'estimate_within_band',
+      actual: task.actual,
+      low: task.low,
+      high: task.high,
+      claimed: Number(a),
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     const cf = parseFrac(a);
     return cf
@@ -1376,6 +1432,9 @@ export function correctAnswerFor(task: Task): string {
       return String(correctShapeIndex(task) + 1);
     case 'calendar_next_day':
       return dayAfter(task.day, task.offset) ?? '';
+    case 'estimate_within_band':
+      // A canonical in-band answer (the true count sits inside the reviewed band).
+      return String(task.actual);
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -1462,6 +1521,9 @@ export function wrongAnswerFor(task: Task): string {
     case 'calendar_next_day':
       // The adjacent day — a valid weekday the oracle grades wrong.
       return dayAfter(task.day, task.offset + 1) ?? 'monday';
+    case 'estimate_within_band':
+      // Just outside the reviewed band — a valid integer graded wrong.
+      return String(task.high + 1);
     case 'fraction_partition':
       return `${task.shaded === 0 ? 1 : 0}/${task.parts}`;
     case 'fraction_unit':

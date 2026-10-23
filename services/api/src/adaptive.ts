@@ -24,6 +24,7 @@ import {
   buildDataHandlingDraftGraph,
   buildGeometryDraftGraph,
   buildCalendarDraftGraph,
+  buildEstimationDraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -53,6 +54,8 @@ import {
   GEOMETRY_STRATEGIES,
   CALENDAR_MISCONCEPTIONS,
   CALENDAR_STRATEGIES,
+  ESTIMATION_MISCONCEPTIONS,
+  ESTIMATION_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -101,6 +104,7 @@ export type CourseId =
   | 'data-handling'
   | 'geometry'
   | 'calendar'
+  | 'estimation'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -347,6 +351,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: CALENDAR_STRATEGIES,
     transferTask: { 'SK-TIME-calendar-day': 'cal-xfer' },
   },
+  estimation: {
+    subject: 'math',
+    buildGraph: buildEstimationDraftGraph,
+    coachableSkillIds: ['SK-NS-estimate-50'],
+    defaultTask: { 'SK-NS-estimate-50': 'est-1' },
+    practiceTasks: {
+      'SK-NS-estimate-50': ['est-1', 'est-2', 'est-3', 'est-4'],
+    },
+    remediationReps: ['counters', 'symbolic'],
+    misconceptions: ESTIMATION_MISCONCEPTIONS,
+    strategies: ESTIMATION_STRATEGIES,
+    transferTask: { 'SK-NS-estimate-50': 'est-xfer' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -409,6 +426,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'data-handling',
     'geometry',
     'calendar',
+    'estimation',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
 };
