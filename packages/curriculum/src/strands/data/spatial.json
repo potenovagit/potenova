@@ -1,0 +1,31 @@
+{
+  "strandId": "spatial",
+  "version": "spatial-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-GEO-positional-language",
+      "competency": "spatial:position",
+      "skill": "Describe and identify the relative position of objects (above, below, left, right)"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-GEO-reverse-relation",
+      "skillId": "SK-GEO-positional-language",
+      "pattern": "Reverses the relation — picks the scene that is below when asked for above, or left when asked for right.",
+      "probeIds": ["PR-GEO-which-picture"],
+      "remediationStrategyIds": ["ST-geo-name-then-check"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-geo-name-then-check",
+      "intent": "Say the position word out loud, point to where that is relative to the other object, then find the picture that matches.",
+      "approvedBands": ["primary"],
+      "representations": ["counters", "symbolic"]
+    }
+  ]
+}
