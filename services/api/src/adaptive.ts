@@ -19,6 +19,7 @@ import {
   buildAlgebraEquivDraftGraph,
   buildPlaceValueDraftGraph,
   buildFinancialDraftGraph,
+  buildNumberRepDraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -38,6 +39,8 @@ import {
   PLACE_VALUE_STRATEGIES,
   FINANCIAL_MISCONCEPTIONS,
   FINANCIAL_STRATEGIES,
+  NUMBER_REP_MISCONCEPTIONS,
+  NUMBER_REP_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -81,6 +84,7 @@ export type CourseId =
   | 'algebra-equiv'
   | 'place-value'
   | 'financial'
+  | 'number-rep'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -262,6 +266,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: FINANCIAL_STRATEGIES,
     transferTask: { 'SK-FIN-coin-value': 'coins-xfer' },
   },
+  'number-rep': {
+    subject: 'math',
+    buildGraph: buildNumberRepDraftGraph,
+    coachableSkillIds: ['SK-NS-represent-50'],
+    defaultTask: { 'SK-NS-represent-50': 'rep-1' },
+    practiceTasks: {
+      'SK-NS-represent-50': ['rep-1', 'rep-2', 'rep-3', 'rep-4'],
+    },
+    remediationReps: ['counters', 'symbolic'],
+    misconceptions: NUMBER_REP_MISCONCEPTIONS,
+    strategies: NUMBER_REP_STRATEGIES,
+    transferTask: { 'SK-NS-represent-50': 'rep-xfer' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -319,6 +336,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'algebra-equiv',
     'place-value',
     'financial',
+    'number-rep',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
 };

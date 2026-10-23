@@ -18,6 +18,9 @@ import {
   composeValue,
   checkCoinValueTask,
   coinTotalCents,
+  checkRepresentationSelectTask,
+  matchingRepresentationIndices,
+  type RepresentationOption,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -67,6 +70,7 @@ export const SKIP_COUNT = 'SK-NS-skip-count-50';
 export const EQUIV_EXPR = 'SK-AL-equiv-expr';
 export const COMPOSE_50 = 'SK-NS-compose-50';
 export const COIN_VALUE = 'SK-FIN-coin-value';
+export const REPRESENT_50 = 'SK-NS-represent-50';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -154,6 +158,14 @@ interface CoinValueTaskT {
   readonly kind: 'coin_value';
   readonly pieces: readonly number[];
 }
+interface RepresentSelectTask {
+  readonly subject: 'math';
+  readonly course: 'number-rep';
+  readonly skillId: typeof REPRESENT_50;
+  readonly kind: 'number_representation_select';
+  readonly target: number;
+  readonly options: readonly RepresentationOption[];
+}
 interface PartitionTask {
   readonly subject: 'math';
   readonly course: 'fractions';
@@ -218,6 +230,7 @@ export type Task =
   | ExprEquivTask
   | ComposeTask
   | CoinValueTaskT
+  | RepresentSelectTask
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -313,6 +326,17 @@ const coins = (pieces: readonly number[]): CoinValueTaskT => ({
   skillId: COIN_VALUE,
   kind: 'coin_value',
   pieces,
+});
+const repSelect = (
+  target: number,
+  options: readonly RepresentationOption[],
+): RepresentSelectTask => ({
+  subject: 'math',
+  course: 'number-rep',
+  skillId: REPRESENT_50,
+  kind: 'number_representation_select',
+  target,
+  options,
 });
 const partition = (parts: number, shaded: number): PartitionTask => ({
   subject: 'math',
@@ -424,6 +448,28 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'coins-2': coins([25, 25]), // two quarters = 50¢
   'coins-3': coins([25, 10, 10, 5]), // 50¢
   'coins-4': coins([100, 25, 10]), // loonie + quarter + dime = 135¢
+  // Selection items ("which shows N?"): exactly one option composes to the target;
+  // distractors swap tens/ones or drop a place. The oracle recomputes the key.
+  'rep-1': repSelect(23, [
+    { tens: 2, ones: 3 }, // 23 ✓
+    { tens: 3, ones: 2 }, // 32 (swap)
+    { tens: 1, ones: 3 }, // 13
+  ]),
+  'rep-2': repSelect(40, [
+    { tens: 0, ones: 4 }, // 4
+    { tens: 4, ones: 0 }, // 40 ✓
+    { tens: 3, ones: 0 }, // 30
+  ]),
+  'rep-3': repSelect(17, [
+    { tens: 7, ones: 1 }, // 71 (swap)
+    { tens: 1, ones: 7 }, // 17 ✓
+    { tens: 1, ones: 0 }, // 10
+  ]),
+  'rep-4': repSelect(35, [
+    { tens: 3, ones: 5 }, // 35 ✓
+    { tens: 5, ones: 3 }, // 53 (swap)
+    { tens: 3, ones: 0 }, // 30
+  ]),
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -439,6 +485,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'equiv-xfer': equivExpr(e(7, '+', 2), e(10, '-', 1)), // 9 == 9 → yes
   'compose-xfer': compose(4, 6), // 46
   'coins-xfer': coins([200, 100, 25]), // toonie + loonie + quarter = 325¢
+  'rep-xfer': repSelect(46, [
+    { tens: 4, ones: 6 }, // 46 ✓
+    { tens: 6, ones: 4 }, // 64 (swap)
+    { tens: 4, ones: 0 }, // 40
+  ]),
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
@@ -458,6 +509,7 @@ export const TRANSFER_TASKS = new Set([
   'equiv-xfer',
   'compose-xfer',
   'coins-xfer',
+  'rep-xfer',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
@@ -476,6 +528,16 @@ const COIN_NAME: Readonly<Record<number, string>> = {
 };
 const fmtPieces = (pieces: readonly number[]): string =>
   pieces.map((p) => COIN_NAME[p] ?? `${p}¢`).join(', ');
+/** A base-ten representation option as a child-readable label. */
+const fmtRepOption = (o: RepresentationOption): string => {
+  const tens = `${o.tens} ${o.tens === 1 ? 'ten' : 'tens'}`;
+  const ones = `${o.ones} ${o.ones === 1 ? 'one' : 'ones'}`;
+  return `${tens} and ${ones}`;
+};
+/** The oracle-derived correct 0-based option index for a selection task (the one
+ *  option whose value equals the target); -1 if the item is ill-posed. */
+const correctRepIndex = (task: RepresentSelectTask): number =>
+  matchingRepresentationIndices(task.target, task.options)[0] ?? -1;
 const isRelation = (v: unknown): v is FractionRelation => v === 'lt' || v === 'eq' || v === 'gt';
 
 /** Parse a learner "a/b" fraction token, or null if malformed. */
@@ -572,6 +634,14 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `How much is this altogether, in cents? ${fmtPieces(task.pieces)}. Type the total in cents.`,
       options: [],
+    };
+  }
+  if (task.kind === 'number_representation_select') {
+    const choices = task.options.map((o) => fmtRepOption(o));
+    const numbered = choices.map((c, i) => `${i + 1}) ${c}`).join('  ');
+    return {
+      question: `Which one shows ${task.target}? ${numbered}. Type the number of your choice.`,
+      options: choices,
     };
   }
   if (task.kind === 'fraction_partition') {
@@ -702,6 +772,16 @@ export function answerKeyValid(task: Task): boolean {
       claimedTotalCents: coinTotalCents(task.pieces),
     }).correct;
   }
+  if (task.kind === 'number_representation_select') {
+    // The content gate confirms the item is well-posed: exactly one option is
+    // correct, and the oracle's own derived index validates against itself.
+    return checkRepresentationSelectTask({
+      kind: 'number_representation_select',
+      target: task.target,
+      options: task.options,
+      claimedIndex: correctRepIndex(task),
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -776,6 +856,11 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'expr_equivalence') return a === 'yes' || a === 'no';
   if (task.kind === 'place_value_compose') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'coin_value') return /^\d+$/.test(a); // a total in cents
+  if (task.kind === 'number_representation_select') {
+    if (!/^\d+$/.test(a)) return false; // a 1-based option number
+    const n = Number(a);
+    return n >= 1 && n <= task.options.length;
+  }
   if (
     task.kind === 'fraction_partition' ||
     task.kind === 'fraction_unit' ||
@@ -872,6 +957,15 @@ export function judge(task: Task, raw: string): boolean {
       claimedTotalCents: Number(a),
     }).correct;
   }
+  if (task.kind === 'number_representation_select') {
+    // The child's answer is a 1-based option number → 0-based claimedIndex.
+    return checkRepresentationSelectTask({
+      kind: 'number_representation_select',
+      target: task.target,
+      options: task.options,
+      claimedIndex: Number(a) - 1,
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     const cf = parseFrac(a);
     return cf
@@ -957,6 +1051,9 @@ export function correctAnswerFor(task: Task): string {
       return String(composeValue(task.tens, task.ones));
     case 'coin_value':
       return String(coinTotalCents(task.pieces));
+    case 'number_representation_select':
+      // The 1-based number of the option the oracle derives as correct.
+      return String(correctRepIndex(task) + 1);
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -1019,6 +1116,12 @@ export function wrongAnswerFor(task: Task): string {
       // The "count the pieces instead of their value" error — the number of
       // coins, which is wrong whenever any piece is worth more than 1¢ (always).
       return String(task.pieces.length);
+    case 'number_representation_select': {
+      // A valid option number that is NOT the correct one (a distractor pick).
+      const correct = correctRepIndex(task);
+      const wrong = task.options.findIndex((_, i) => i !== correct);
+      return String((wrong === -1 ? correct : wrong) + 1);
+    }
     case 'fraction_partition':
       return `${task.shaded === 0 ? 1 : 0}/${task.parts}`;
     case 'fraction_unit':
