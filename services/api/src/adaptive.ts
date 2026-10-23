@@ -34,6 +34,7 @@ import {
   buildSkipCountG2DraftGraph,
   buildEvenOddDraftGraph,
   buildMoney100DraftGraph,
+  buildWordProblemsG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -83,6 +84,8 @@ import {
   EVEN_ODD_STRATEGIES,
   MONEY_100_MISCONCEPTIONS,
   MONEY_100_STRATEGIES,
+  WORD_PROBLEMS_G2_MISCONCEPTIONS,
+  WORD_PROBLEMS_G2_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -141,6 +144,7 @@ export type CourseId =
   | 'skip-count-g2'
   | 'even-odd'
   | 'money-100'
+  | 'word-problems-g2'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -524,6 +528,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: MONEY_100_STRATEGIES,
     transferTask: { 'SK-FIN-money-100': 'money100-xfer' },
   },
+  'word-problems-g2': {
+    subject: 'math',
+    buildGraph: buildWordProblemsG2DraftGraph,
+    coachableSkillIds: ['SK-NS-word-problem-addsub-100'],
+    defaultTask: { 'SK-NS-word-problem-addsub-100': 'wp100-1' },
+    practiceTasks: {
+      'SK-NS-word-problem-addsub-100': ['wp100-1', 'wp100-2', 'wp100-3', 'wp100-4'],
+    },
+    remediationReps: ['counters', 'symbolic'],
+    misconceptions: WORD_PROBLEMS_G2_MISCONCEPTIONS,
+    strategies: WORD_PROBLEMS_G2_STRATEGIES,
+    transferTask: { 'SK-NS-word-problem-addsub-100': 'wp100-xfer' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -596,6 +613,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'skip-count-g2',
     'even-odd',
     'money-100',
+    'word-problems-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
 };

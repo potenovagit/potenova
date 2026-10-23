@@ -113,6 +113,7 @@ export const ESTIMATE_50 = 'SK-NS-estimate-50';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
+export const WORD_PROBLEM_100 = 'SK-NS-word-problem-addsub-100';
 export const BUILD_NUMBER = 'SK-NS-build-number';
 export const EVEN_ODD = 'SK-NS-even-odd';
 
@@ -278,8 +279,8 @@ interface CodeReachSelectTaskT {
 }
 interface WordProblemTaskT {
   readonly subject: 'math';
-  readonly course: 'word-problems';
-  readonly skillId: typeof WORD_PROBLEM;
+  readonly course: 'word-problems' | 'word-problems-g2';
+  readonly skillId: typeof WORD_PROBLEM | typeof WORD_PROBLEM_100;
   readonly kind: 'word_problem';
   readonly a: number;
   readonly b: number;
@@ -613,6 +614,16 @@ const wordProblem = (a: number, op: WordOp, b: number, scenario: string): WordPr
   op,
   scenario,
 });
+const wordProblem100 = (a: number, op: WordOp, b: number, scenario: string): WordProblemTaskT => ({
+  subject: 'math',
+  course: 'word-problems-g2',
+  skillId: WORD_PROBLEM_100,
+  kind: 'word_problem',
+  a,
+  b,
+  op,
+  scenario,
+});
 const buildNumber = (target: number): BuildNumberTaskT => ({
   subject: 'math',
   course: 'construction',
@@ -907,6 +918,15 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'wp-2': wordProblem(7, '-', 2, '7 birds are on a wire. 2 of them fly away.'), // 5
   'wp-3': wordProblem(6, '+', 8, 'A bin has 6 red blocks and 8 blue blocks.'), // 14
   'wp-4': wordProblem(12, '-', 4, 'A box holds 12 crayons. You take out 4.'), // 8
+  'wp100-1': wordProblem100(34, '+', 25, 'The library has 34 picture books. 25 more are donated.'), // 59
+  'wp100-2': wordProblem100(
+    80,
+    '-',
+    45,
+    '80 tickets were printed for the fair. 45 have been sold.',
+  ), // 35
+  'wp100-3': wordProblem100(56, '+', 38, 'A farm collects 56 eggs on Monday and 38 on Tuesday.'), // 94
+  'wp100-4': wordProblem100(72, '-', 19, 'A jar holds 72 beads. 19 are used for a bracelet.'), // 53
   // Construction: build a target number from tens and ones (any valid decomposition).
   'build-1': buildNumber(24),
   'build-2': buildNumber(30),
@@ -969,6 +989,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
     ['up'],
   ]),
   'wp-xfer': wordProblem(9, '+', 5, '9 children are on the bus. At the next stop 5 more get on.'), // 14
+  'wp100-xfer': wordProblem100(63, '+', 29, '63 cars are in the lot. 29 more drive in.'), // 92
   'build-xfer': buildNumber(38),
   'parity-xfer': parity(49), // odd
 };
@@ -1004,6 +1025,7 @@ export const TRANSFER_TASKS = new Set([
   'date-xfer',
   'code-xfer',
   'wp-xfer',
+  'wp100-xfer',
   'build-xfer',
   'parity-xfer',
 ]);
