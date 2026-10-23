@@ -36,6 +36,7 @@ import {
   buildMoney100DraftGraph,
   buildWordProblemsG2DraftGraph,
   buildEstimationG2DraftGraph,
+  buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -89,6 +90,8 @@ import {
   WORD_PROBLEMS_G2_STRATEGIES,
   ESTIMATION_G2_MISCONCEPTIONS,
   ESTIMATION_G2_STRATEGIES,
+  PLACE_VALUE_G2_MISCONCEPTIONS,
+  PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -149,6 +152,7 @@ export type CourseId =
   | 'money-100'
   | 'word-problems-g2'
   | 'estimation-g2'
+  | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -558,6 +562,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: ESTIMATION_G2_STRATEGIES,
     transferTask: { 'SK-NS-estimate-200': 'est200-xfer' },
   },
+  'place-value-g2': {
+    subject: 'math',
+    buildGraph: buildPlaceValueG2DraftGraph,
+    coachableSkillIds: ['SK-NS-compose-200'],
+    defaultTask: { 'SK-NS-compose-200': 'compose200-1' },
+    practiceTasks: {
+      'SK-NS-compose-200': ['compose200-1', 'compose200-2', 'compose200-3', 'compose200-4'],
+    },
+    remediationReps: ['counters', 'symbolic'],
+    misconceptions: PLACE_VALUE_G2_MISCONCEPTIONS,
+    strategies: PLACE_VALUE_G2_STRATEGIES,
+    transferTask: { 'SK-NS-compose-200': 'compose200-xfer' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -632,6 +649,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'money-100',
     'word-problems-g2',
     'estimation-g2',
+    'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
 };
