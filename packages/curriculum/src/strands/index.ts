@@ -32,6 +32,7 @@ import estimationG2Data from './data/estimation-g2.json';
 import placeValueG2Data from './data/place-value-g2.json';
 import roundingData from './data/rounding.json';
 import multiplicationG4Data from './data/multiplication-g4.json';
+import divisionG4Data from './data/division-g4.json';
 import englishData from './data/english.json';
 
 /**
@@ -79,6 +80,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   fractionalGroupsData as StrandDataset,
   roundingData as StrandDataset,
   multiplicationG4Data as StrandDataset,
+  divisionG4Data as StrandDataset,
   englishData as StrandDataset,
 ];
 

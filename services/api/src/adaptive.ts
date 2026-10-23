@@ -42,6 +42,7 @@ import {
   buildEstimationG2DraftGraph,
   buildRoundingDraftGraph,
   buildMultiplicationG4DraftGraph,
+  buildDivisionG4DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -108,6 +109,8 @@ import {
   ROUNDING_STRATEGIES,
   MULTIPLICATION_G4_MISCONCEPTIONS,
   MULTIPLICATION_G4_STRATEGIES,
+  DIVISION_G4_MISCONCEPTIONS,
+  DIVISION_G4_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -176,6 +179,7 @@ export type CourseId =
   | 'estimation-g2'
   | 'rounding'
   | 'multiplication-g4'
+  | 'division-g4'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -664,6 +668,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: MULTIPLICATION_G4_STRATEGIES,
     transferTask: { 'SK-NS-mult-multidigit': 'mmul-xfer' },
   },
+  'division-g4': {
+    subject: 'math',
+    buildGraph: buildDivisionG4DraftGraph,
+    coachableSkillIds: ['SK-NS-div-remainder'],
+    defaultTask: { 'SK-NS-div-remainder': 'drem-1' },
+    practiceTasks: {
+      'SK-NS-div-remainder': ['drem-1', 'drem-2', 'drem-3', 'drem-4'],
+    },
+    remediationReps: ['area-model', 'counters', 'symbolic'],
+    misconceptions: DIVISION_G4_MISCONCEPTIONS,
+    strategies: DIVISION_G4_STRATEGIES,
+    transferTask: { 'SK-NS-div-remainder': 'drem-xfer' },
+  },
   'place-value-g2': {
     subject: 'math',
     buildGraph: buildPlaceValueG2DraftGraph,
@@ -757,6 +774,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'estimation-g2',
     'rounding',
     'multiplication-g4',
+    'division-g4',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],

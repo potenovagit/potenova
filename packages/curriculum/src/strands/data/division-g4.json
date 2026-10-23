@@ -1,0 +1,31 @@
+{
+  "strandId": "division-g4",
+  "version": "div-g4-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-div-remainder",
+      "competency": "number:division",
+      "skill": "Divide a two- or three-digit number by a one-digit number, giving the quotient and remainder"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-drops-remainder",
+      "skillId": "SK-NS-div-remainder",
+      "pattern": "Reports the quotient but drops the remainder (gives remainder 0 when there is a real remainder, e.g. 29 ÷ 6 answered '4 0' instead of '4 5'), or lets the remainder reach or exceed the divisor.",
+      "probeIds": ["PR-NS-share-the-rest"],
+      "remediationStrategyIds": ["ST-ns-what-is-left-over"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-what-is-left-over",
+      "intent": "Take out as many whole groups of the divisor as fit (that count is the quotient), then count what is left over — the remainder, which is always smaller than the divisor.",
+      "approvedBands": ["junior"],
+      "representations": ["area-model", "counters", "symbolic"]
+    }
+  ]
+}

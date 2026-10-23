@@ -48,6 +48,7 @@ import {
   roundToPlace,
   type RoundPlace,
   checkMultidigitMultiplicationTask,
+  checkDivisionRemainderTask,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -131,6 +132,7 @@ export const ESTIMATE_50 = 'SK-NS-estimate-50';
 export const ESTIMATE_200 = 'SK-NS-estimate-200';
 export const ROUND_WHOLE = 'SK-NS-round-whole';
 export const MULT_MULTIDIGIT = 'SK-NS-mult-multidigit';
+export const DIV_REMAINDER = 'SK-NS-div-remainder';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -333,6 +335,14 @@ interface MultidigitMultTaskT {
   readonly multiplicand: number;
   readonly multiplier: number;
 }
+interface DivisionRemainderTaskT {
+  readonly subject: 'math';
+  readonly course: 'division-g4';
+  readonly skillId: typeof DIV_REMAINDER;
+  readonly kind: 'division_with_remainder';
+  readonly dividend: number;
+  readonly divisor: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -457,6 +467,7 @@ export type Task =
   | EstimateTaskT
   | RoundWholeTaskT
   | MultidigitMultTaskT
+  | DivisionRemainderTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -722,6 +733,19 @@ const multidigitMult = (multiplicand: number, multiplier: number): MultidigitMul
   multiplicand,
   multiplier,
 });
+const divRemainder = (dividend: number, divisor: number): DivisionRemainderTaskT => ({
+  subject: 'math',
+  course: 'division-g4',
+  skillId: DIV_REMAINDER,
+  kind: 'division_with_remainder',
+  dividend,
+  divisor,
+});
+/** Parse a "quotient remainder" answer string (two non-negative integers). */
+const parseQuotientRemainder = (a: string): { q: number; r: number } | null => {
+  const m = a.trim().match(/^(\d+)\s+(\d+)$/);
+  return m ? { q: Number(m[1]), r: Number(m[2]) } : null;
+};
 const dateOffset = (
   year: number,
   month: number,
@@ -1054,6 +1078,10 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'mmul-2': multidigitMult(125, 3), // 375 (3-digit × 1-digit)
   'mmul-3': multidigitMult(47, 100), // 4700 (× a power of ten)
   'mmul-4': multidigitMult(28, 5), // 140 (ones-digit-only trap → 40)
+  'drem-1': divRemainder(47, 5), // 9 r 2
+  'drem-2': divRemainder(100, 7), // 14 r 2
+  'drem-3': divRemainder(83, 4), // 20 r 3
+  'drem-4': divRemainder(29, 6), // 4 r 5 (drops-remainder trap → "4 0")
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1170,6 +1198,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'est200-xfer': estimate200(140, 120, 160), // ~140 (novel collection)
   'round-xfer': roundWhole(6512, 1000), // 7000 (novel)
   'mmul-xfer': multidigitMult(216, 4), // 864 (novel)
+  'drem-xfer': divRemainder(75, 8), // 9 r 3 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -1222,6 +1251,7 @@ export const TRANSFER_TASKS = new Set([
   'est200-xfer',
   'round-xfer',
   'mmul-xfer',
+  'drem-xfer',
   'date-xfer',
   'code-xfer',
   'wp-xfer',
@@ -1480,6 +1510,12 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `What is ${task.multiplicand} × ${task.multiplier}?`,
       options: [] /* type the number */,
+    };
+  }
+  if (task.kind === 'division_with_remainder') {
+    return {
+      question: `What is ${task.dividend} ÷ ${task.divisor}? Give the quotient and the remainder, like "9 2".`,
+      options: [] /* type "quotient remainder" */,
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -1763,6 +1799,15 @@ export function answerKeyValid(task: Task): boolean {
       claimedProduct: task.multiplicand * task.multiplier,
     }).correct;
   }
+  if (task.kind === 'division_with_remainder') {
+    return checkDivisionRemainderTask({
+      kind: 'division_with_remainder',
+      dividend: task.dividend,
+      divisor: task.divisor,
+      claimedQuotient: Math.floor(task.dividend / task.divisor),
+      claimedRemainder: task.dividend % task.divisor,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -1904,6 +1949,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'estimate_within_band') return /^\d+$/.test(a); // a non-negative estimate
   if (task.kind === 'round_whole') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'multidigit_multiplication') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'division_with_remainder') return parseQuotientRemainder(a) !== null; // "q r"
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -2116,6 +2162,17 @@ export function judge(task: Task, raw: string): boolean {
       claimedProduct: Number(a),
     }).correct;
   }
+  if (task.kind === 'division_with_remainder') {
+    const parsed = parseQuotientRemainder(a);
+    if (!parsed) return false;
+    return checkDivisionRemainderTask({
+      kind: 'division_with_remainder',
+      dividend: task.dividend,
+      divisor: task.divisor,
+      claimedQuotient: parsed.q,
+      claimedRemainder: parsed.r,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2272,6 +2329,8 @@ export function correctAnswerFor(task: Task): string {
       return String(roundToPlace(task.value, task.place));
     case 'multidigit_multiplication':
       return String(task.multiplicand * task.multiplier);
+    case 'division_with_remainder':
+      return `${Math.floor(task.dividend / task.divisor)} ${task.dividend % task.divisor}`;
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -2416,6 +2475,14 @@ export function wrongAnswerFor(task: Task): string {
       const product = task.multiplicand * task.multiplier;
       const onesOnly = (task.multiplicand % 10) * task.multiplier;
       return String(onesOnly === product ? product + task.multiplier : onesOnly);
+    }
+    case 'division_with_remainder': {
+      // The drops-the-remainder error — right quotient, remainder reported as 0.
+      // Fall back to a wrong quotient when the true remainder is already 0, so
+      // the "wrong" answer is always actually wrong.
+      const q = Math.floor(task.dividend / task.divisor);
+      const r = task.dividend % task.divisor;
+      return r === 0 ? `${q + 1} 0` : `${q} 0`;
     }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
