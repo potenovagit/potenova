@@ -34,6 +34,7 @@ import roundingData from './data/rounding.json';
 import multiplicationG4Data from './data/multiplication-g4.json';
 import divisionG4Data from './data/division-g4.json';
 import addSubtractG4Data from './data/add-subtract-g4.json';
+import decimalsG4Data from './data/decimals-g4.json';
 import englishData from './data/english.json';
 
 /**
@@ -83,6 +84,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   multiplicationG4Data as StrandDataset,
   divisionG4Data as StrandDataset,
   addSubtractG4Data as StrandDataset,
+  decimalsG4Data as StrandDataset,
   englishData as StrandDataset,
 ];
 

@@ -49,6 +49,13 @@ import {
   type RoundPlace,
   checkMultidigitMultiplicationTask,
   checkDivisionRemainderTask,
+  checkDecimalCompareTask,
+  decimalRelation,
+  formatTenths,
+  checkDecimalRoundTask,
+  roundTenthsToWhole,
+  checkFractionDecimalEquivTask,
+  type DecimalRelation,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -135,6 +142,9 @@ export const ESTIMATE_200 = 'SK-NS-estimate-200';
 export const ROUND_WHOLE = 'SK-NS-round-whole';
 export const MULT_MULTIDIGIT = 'SK-NS-mult-multidigit';
 export const DIV_REMAINDER = 'SK-NS-div-remainder';
+export const DEC_COMPARE = 'SK-NS-decimal-compare';
+export const DEC_ROUND = 'SK-NS-decimal-round';
+export const FRAC_DEC_EQUIV = 'SK-NS-fraction-decimal-equiv';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -345,6 +355,30 @@ interface DivisionRemainderTaskT {
   readonly dividend: number;
   readonly divisor: number;
 }
+interface DecimalCompareTaskT {
+  readonly subject: 'math';
+  readonly course: 'decimals-g4';
+  readonly skillId: typeof DEC_COMPARE;
+  readonly kind: 'decimal_tenth_compare';
+  readonly leftTenths: number;
+  readonly rightTenths: number;
+}
+interface DecimalRoundTaskT {
+  readonly subject: 'math';
+  readonly course: 'decimals-g4';
+  readonly skillId: typeof DEC_ROUND;
+  readonly kind: 'decimal_round_whole';
+  readonly tenths: number;
+}
+interface FractionDecimalEquivTaskT {
+  readonly subject: 'math';
+  readonly course: 'decimals-g4';
+  readonly skillId: typeof FRAC_DEC_EQUIV;
+  readonly kind: 'fraction_decimal_equiv';
+  readonly numerator: number;
+  readonly denominator: number;
+  readonly tenths: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -470,6 +504,9 @@ export type Task =
   | RoundWholeTaskT
   | MultidigitMultTaskT
   | DivisionRemainderTaskT
+  | DecimalCompareTaskT
+  | DecimalRoundTaskT
+  | FractionDecimalEquivTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -764,6 +801,34 @@ const parseQuotientRemainder = (a: string): { q: number; r: number } | null => {
   const m = a.trim().match(/^(\d+)\s+(\d+)$/);
   return m ? { q: Number(m[1]), r: Number(m[2]) } : null;
 };
+const decCompare = (leftTenths: number, rightTenths: number): DecimalCompareTaskT => ({
+  subject: 'math',
+  course: 'decimals-g4',
+  skillId: DEC_COMPARE,
+  kind: 'decimal_tenth_compare',
+  leftTenths,
+  rightTenths,
+});
+const decRound = (tenths: number): DecimalRoundTaskT => ({
+  subject: 'math',
+  course: 'decimals-g4',
+  skillId: DEC_ROUND,
+  kind: 'decimal_round_whole',
+  tenths,
+});
+const fracDecEquiv = (
+  numerator: number,
+  denominator: number,
+  tenths: number,
+): FractionDecimalEquivTaskT => ({
+  subject: 'math',
+  course: 'decimals-g4',
+  skillId: FRAC_DEC_EQUIV,
+  kind: 'fraction_decimal_equiv',
+  numerator,
+  denominator,
+  tenths,
+});
 const dateOffset = (
   year: number,
   month: number,
@@ -1109,6 +1174,21 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'drem-2': divRemainder(100, 7), // 14 r 2
   'drem-3': divRemainder(83, 4), // 20 r 3
   'drem-4': divRemainder(29, 6), // 4 r 5 (drops-remainder trap → "4 0")
+  // decimal tenths — compare
+  'dcmp-1': decCompare(23, 27), // 2.3 < 2.7 → lt
+  'dcmp-2': decCompare(8, 10), // 0.8 < 1.0 → lt (point trap: 8 vs 1)
+  'dcmp-3': decCompare(50, 50), // 5.0 == 5.0 → eq
+  'dcmp-4': decCompare(41, 39), // 4.1 > 3.9 → gt
+  // decimal tenths — round to the nearest whole
+  'drnd-1': decRound(24), // 2.4 → 2
+  'drnd-2': decRound(27), // 2.7 → 3
+  'drnd-3': decRound(25), // 2.5 → 3 (half rounds up)
+  'drnd-4': decRound(60), // 6.0 → 6
+  // fraction ↔ decimal tenth equivalence
+  'fde-1': fracDecEquiv(3, 10, 3), // 3/10 == 0.3 → yes
+  'fde-2': fracDecEquiv(1, 2, 5), // 1/2 == 0.5 → yes
+  'fde-3': fracDecEquiv(1, 4, 3), // 1/4 == 0.3? → no
+  'fde-4': fracDecEquiv(7, 10, 7), // 7/10 == 0.7 → yes
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1228,6 +1308,9 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'round-xfer': roundWhole(6512, 1000), // 7000 (novel)
   'mmul-xfer': multidigitMult(216, 4), // 864 (novel)
   'drem-xfer': divRemainder(75, 8), // 9 r 3 (novel)
+  'dcmp-xfer': decCompare(62, 71), // 6.2 < 7.1 → lt (novel)
+  'drnd-xfer': decRound(48), // 4.8 → 5 (novel)
+  'fde-xfer': fracDecEquiv(4, 5, 8), // 4/5 == 0.8 → yes (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -1283,6 +1366,9 @@ export const TRANSFER_TASKS = new Set([
   'round-xfer',
   'mmul-xfer',
   'drem-xfer',
+  'dcmp-xfer',
+  'drnd-xfer',
+  'fde-xfer',
   'date-xfer',
   'code-xfer',
   'wp-xfer',
@@ -1547,6 +1633,28 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `What is ${task.dividend} ÷ ${task.divisor}? Give the quotient and the remainder, like "9 2".`,
       options: [] /* type "quotient remainder" */,
+    };
+  }
+  if (task.kind === 'decimal_tenth_compare') {
+    return {
+      question: `Compare ${formatTenths(task.leftTenths)} and ${formatTenths(
+        task.rightTenths,
+      )} — is the first less than (lt), equal to (eq), or greater than (gt) the second?`,
+      options: ['lt', 'eq', 'gt'],
+    };
+  }
+  if (task.kind === 'decimal_round_whole') {
+    return {
+      question: `Round ${formatTenths(task.tenths)} to the nearest whole number.`,
+      options: [] /* type the number */,
+    };
+  }
+  if (task.kind === 'fraction_decimal_equiv') {
+    return {
+      question: `Is ${task.numerator}/${task.denominator} equal in value to ${formatTenths(
+        task.tenths,
+      )}? (yes / no)`,
+      options: ['yes', 'no'],
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -1839,6 +1947,30 @@ export function answerKeyValid(task: Task): boolean {
       claimedRemainder: task.dividend % task.divisor,
     }).correct;
   }
+  if (task.kind === 'decimal_tenth_compare') {
+    return checkDecimalCompareTask({
+      kind: 'decimal_tenth_compare',
+      leftTenths: task.leftTenths,
+      rightTenths: task.rightTenths,
+      claimedRelation: decimalRelation(task.leftTenths, task.rightTenths),
+    }).correct;
+  }
+  if (task.kind === 'decimal_round_whole') {
+    return checkDecimalRoundTask({
+      kind: 'decimal_round_whole',
+      tenths: task.tenths,
+      claimedWhole: roundTenthsToWhole(task.tenths),
+    }).correct;
+  }
+  if (task.kind === 'fraction_decimal_equiv') {
+    return checkFractionDecimalEquivTask({
+      kind: 'fraction_decimal_equiv',
+      numerator: task.numerator,
+      denominator: task.denominator,
+      tenths: task.tenths,
+      claimedEquivalent: task.numerator * 10 === task.tenths * task.denominator,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -1981,6 +2113,9 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'round_whole') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'multidigit_multiplication') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'division_with_remainder') return parseQuotientRemainder(a) !== null; // "q r"
+  if (task.kind === 'decimal_tenth_compare') return isRelation(a); // lt / eq / gt
+  if (task.kind === 'decimal_round_whole') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'fraction_decimal_equiv') return a === 'yes' || a === 'no';
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -2204,6 +2339,30 @@ export function judge(task: Task, raw: string): boolean {
       claimedRemainder: parsed.r,
     }).correct;
   }
+  if (task.kind === 'decimal_tenth_compare') {
+    return checkDecimalCompareTask({
+      kind: 'decimal_tenth_compare',
+      leftTenths: task.leftTenths,
+      rightTenths: task.rightTenths,
+      claimedRelation: a as DecimalRelation,
+    }).correct;
+  }
+  if (task.kind === 'decimal_round_whole') {
+    return checkDecimalRoundTask({
+      kind: 'decimal_round_whole',
+      tenths: task.tenths,
+      claimedWhole: Number(a),
+    }).correct;
+  }
+  if (task.kind === 'fraction_decimal_equiv') {
+    return checkFractionDecimalEquivTask({
+      kind: 'fraction_decimal_equiv',
+      numerator: task.numerator,
+      denominator: task.denominator,
+      tenths: task.tenths,
+      claimedEquivalent: a === 'yes',
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2362,6 +2521,12 @@ export function correctAnswerFor(task: Task): string {
       return String(task.multiplicand * task.multiplier);
     case 'division_with_remainder':
       return `${Math.floor(task.dividend / task.divisor)} ${task.dividend % task.divisor}`;
+    case 'decimal_tenth_compare':
+      return decimalRelation(task.leftTenths, task.rightTenths);
+    case 'decimal_round_whole':
+      return String(roundTenthsToWhole(task.tenths));
+    case 'fraction_decimal_equiv':
+      return task.numerator * 10 === task.tenths * task.denominator ? 'yes' : 'no';
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -2515,6 +2680,18 @@ export function wrongAnswerFor(task: Task): string {
       const r = task.dividend % task.divisor;
       return r === 0 ? `${q + 1} 0` : `${q} 0`;
     }
+    case 'decimal_tenth_compare':
+      // Any relation other than the true one (eq → lt is wrong too).
+      return decimalRelation(task.leftTenths, task.rightTenths) === 'lt' ? 'gt' : 'lt';
+    case 'decimal_round_whole': {
+      // Truncate instead of round (drop the tenths). Fall back to one-off when
+      // the value already sits on a whole, so the "wrong" answer is always wrong.
+      const rounded = roundTenthsToWhole(task.tenths);
+      const truncated = Math.floor(task.tenths / 10);
+      return String(truncated === rounded ? rounded + 1 : truncated);
+    }
+    case 'fraction_decimal_equiv':
+      return task.numerator * 10 === task.tenths * task.denominator ? 'no' : 'yes';
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
       const wrong = task.options.findIndex((_, i) => i !== correct);

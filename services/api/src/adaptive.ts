@@ -44,6 +44,7 @@ import {
   buildMultiplicationG4DraftGraph,
   buildDivisionG4DraftGraph,
   buildAddSubtractG4DraftGraph,
+  buildDecimalsG4DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -114,6 +115,8 @@ import {
   DIVISION_G4_STRATEGIES,
   ADD_SUBTRACT_G4_MISCONCEPTIONS,
   ADD_SUBTRACT_G4_STRATEGIES,
+  DECIMALS_G4_MISCONCEPTIONS,
+  DECIMALS_G4_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -184,6 +187,7 @@ export type CourseId =
   | 'multiplication-g4'
   | 'division-g4'
   | 'add-subtract-g4'
+  | 'decimals-g4'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -685,6 +689,33 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: DIVISION_G4_STRATEGIES,
     transferTask: { 'SK-NS-div-remainder': 'drem-xfer' },
   },
+  'decimals-g4': {
+    subject: 'math',
+    buildGraph: buildDecimalsG4DraftGraph,
+    coachableSkillIds: [
+      'SK-NS-decimal-compare',
+      'SK-NS-decimal-round',
+      'SK-NS-fraction-decimal-equiv',
+    ],
+    defaultTask: {
+      'SK-NS-decimal-compare': 'dcmp-1',
+      'SK-NS-decimal-round': 'drnd-1',
+      'SK-NS-fraction-decimal-equiv': 'fde-1',
+    },
+    practiceTasks: {
+      'SK-NS-decimal-compare': ['dcmp-1', 'dcmp-2', 'dcmp-3', 'dcmp-4'],
+      'SK-NS-decimal-round': ['drnd-1', 'drnd-2', 'drnd-3', 'drnd-4'],
+      'SK-NS-fraction-decimal-equiv': ['fde-1', 'fde-2', 'fde-3', 'fde-4'],
+    },
+    remediationReps: ['number-line', 'area-model', 'symbolic'],
+    misconceptions: DECIMALS_G4_MISCONCEPTIONS,
+    strategies: DECIMALS_G4_STRATEGIES,
+    transferTask: {
+      'SK-NS-decimal-compare': 'dcmp-xfer',
+      'SK-NS-decimal-round': 'drnd-xfer',
+      'SK-NS-fraction-decimal-equiv': 'fde-xfer',
+    },
+  },
   'add-subtract-g4': {
     subject: 'math',
     buildGraph: buildAddSubtractG4DraftGraph,
@@ -800,6 +831,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'multiplication-g4',
     'division-g4',
     'add-subtract-g4',
+    'decimals-g4',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
