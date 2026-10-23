@@ -5,6 +5,7 @@ import {
   checkEnglishTask,
   checkAdditionTask,
   checkMultiplicationTask,
+  checkDivisionTask,
   checkSubtractionTask,
   checkWholeNumberTask,
   wholeRelation,
@@ -95,6 +96,7 @@ export const COMP = 'SK-EN-comparative';
 export const ADD_10 = 'SK-NS-add-within10';
 export const ADD_20 = 'SK-NS-add-within20';
 export const MULT_FACTS = 'SK-NS-mult-facts';
+export const DIV_FACTS = 'SK-NS-div-facts';
 export const SUB_10 = 'SK-NS-sub-within10';
 export const SUB_20 = 'SK-NS-sub-within20';
 export const SUB_100 = 'SK-NS-sub-within100';
@@ -161,6 +163,14 @@ interface MultiplicationTask {
   readonly kind: 'integer_multiplication';
   readonly a: number;
   readonly b: number;
+}
+interface DivisionTask {
+  readonly subject: 'math';
+  readonly course: 'division';
+  readonly skillId: typeof DIV_FACTS;
+  readonly kind: 'integer_division';
+  readonly dividend: number;
+  readonly divisor: number;
 }
 interface SubtractionTask {
   readonly subject: 'math';
@@ -383,6 +393,7 @@ export type Task =
   | PluralTask
   | AdditionTask
   | MultiplicationTask
+  | DivisionTask
   | SubtractionTask
   | WholeCompareTask
   | WholeOrderTask
@@ -449,6 +460,14 @@ const mult = (a: number, b: number): MultiplicationTask => ({
   kind: 'integer_multiplication',
   a,
   b,
+});
+const div = (dividend: number, divisor: number): DivisionTask => ({
+  subject: 'math',
+  course: 'division',
+  skillId: DIV_FACTS,
+  kind: 'integer_division',
+  dividend,
+  divisor,
 });
 const sub = (skillId: SubtractionTask['skillId'], a: number, b: number): SubtractionTask => ({
   subject: 'math',
@@ -771,6 +790,10 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'mult-2': mult(5, 6), // 30 (facts of 5)
   'mult-3': mult(10, 4), // 40 (facts of 10)
   'mult-4': mult(8, 3), // 24 (adds-instead-of-multiplies trap → 11)
+  'div-1': div(14, 2), // 7 (related to 2 × 7)
+  'div-2': div(30, 5), // 6 (facts of 5)
+  'div-3': div(40, 10), // 4 (facts of 10)
+  'div-4': div(24, 3), // 8 (subtracts-instead-of-divides trap → 21)
   'sub-10-1': sub(SUB_10, 7, 3), // 4
   'sub-10-2': sub(SUB_10, 9, 5), // 4
   'sub-10-3': sub(SUB_10, 8, 2), // 6
@@ -1008,6 +1031,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'add-xfer-10': add(ADD_10, 4, 5), // 9
   'add-xfer-20': add(ADD_20, 8, 7), // 15
   'mult-xfer': mult(6, 7), // 42 (novel fact)
+  'div-xfer': div(42, 6), // 7 (novel fact)
   'sub-xfer-10': sub(SUB_10, 9, 4), // 5
   'sub-xfer-20': sub(SUB_20, 16, 9), // 7 (crossing ten)
   'sub100-xfer': sub2(73, 47), // 26 (regroup)
@@ -1070,6 +1094,7 @@ export const TRANSFER_TASKS = new Set([
   'add-xfer-10',
   'add-xfer-20',
   'mult-xfer',
+  'div-xfer',
   'sub-xfer-10',
   'sub-xfer-20',
   'sub100-xfer',
@@ -1207,6 +1232,12 @@ export function present(task: Task): { question: string; options: readonly strin
   }
   if (task.kind === 'integer_multiplication') {
     return { question: `What is ${task.a} × ${task.b}?`, options: [] /* type the number */ };
+  }
+  if (task.kind === 'integer_division') {
+    return {
+      question: `What is ${task.dividend} ÷ ${task.divisor}?`,
+      options: [] /* type the number */,
+    };
   }
   if (task.kind === 'integer_subtraction') {
     return { question: `What is ${task.a} - ${task.b}?`, options: [] /* type the number */ };
@@ -1425,6 +1456,14 @@ export function answerKeyValid(task: Task): boolean {
       a: task.a,
       b: task.b,
       claimedProduct: task.a * task.b,
+    }).correct;
+  }
+  if (task.kind === 'integer_division') {
+    return checkDivisionTask({
+      kind: 'integer_division',
+      dividend: task.dividend,
+      divisor: task.divisor,
+      claimedQuotient: task.dividend / task.divisor,
     }).correct;
   }
   if (task.kind === 'integer_subtraction') {
@@ -1654,6 +1693,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'fraction_equivalence') return a === 'yes' || a === 'no';
   if (task.kind === 'integer_addition') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'integer_multiplication') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'integer_division') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'integer_subtraction') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'integer_comparison') return isRelation(a);
   if (task.kind === 'integer_ordering') {
@@ -1736,6 +1776,14 @@ export function judge(task: Task, raw: string): boolean {
       a: task.a,
       b: task.b,
       claimedProduct: Number(a),
+    }).correct;
+  }
+  if (task.kind === 'integer_division') {
+    return checkDivisionTask({
+      kind: 'integer_division',
+      dividend: task.dividend,
+      divisor: task.divisor,
+      claimedQuotient: Number(a),
     }).correct;
   }
   if (task.kind === 'integer_subtraction') {
@@ -1967,6 +2015,8 @@ export function correctAnswerFor(task: Task): string {
       return String(task.a + task.b);
     case 'integer_multiplication':
       return String(task.a * task.b);
+    case 'integer_division':
+      return String(task.dividend / task.divisor);
     case 'integer_subtraction':
       return String(task.a - task.b);
     case 'integer_comparison':
@@ -2051,6 +2101,14 @@ export function wrongAnswerFor(task: Task): string {
       const product = task.a * task.b;
       const sum = task.a + task.b;
       return String(sum === product ? product + 1 : sum);
+    }
+    case 'integer_division': {
+      // The subtracts-instead-of-divides error (dividend - divisor) — the real
+      // misconception. Fall back to one-off if that coincides with the quotient
+      // or is negative, so the "wrong" answer is always a valid, wrong token.
+      const quotient = task.dividend / task.divisor;
+      const subtracted = task.dividend - task.divisor;
+      return String(subtracted === quotient || subtracted < 0 ? quotient + 1 : subtracted);
     }
     case 'integer_subtraction':
       // A valid non-negative integer that is one off the true difference; when the
