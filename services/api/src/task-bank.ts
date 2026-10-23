@@ -43,6 +43,9 @@ import {
   reachingProgramIndices,
   type Move,
   type Cell,
+  checkWordProblemTask,
+  wordProblemResult,
+  type WordOp,
   pluralize,
   pastTenseRegular,
   comparativeRegular,
@@ -100,6 +103,7 @@ export const CALENDAR_DAY = 'SK-TIME-calendar-day';
 export const ESTIMATE_50 = 'SK-NS-estimate-50';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
+export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
 
 interface CompareTask {
   readonly subject: 'math';
@@ -258,6 +262,17 @@ interface CodeReachSelectTaskT {
   readonly goal: Cell;
   readonly options: readonly (readonly Move[])[];
 }
+interface WordProblemTaskT {
+  readonly subject: 'math';
+  readonly course: 'word-problems';
+  readonly skillId: typeof WORD_PROBLEM;
+  readonly kind: 'word_problem';
+  readonly a: number;
+  readonly b: number;
+  readonly op: WordOp;
+  /** The authored story the quantities fill (presentation only). */
+  readonly scenario: string;
+}
 interface PartitionTask {
   readonly subject: 'math';
   readonly course: 'fractions';
@@ -330,6 +345,7 @@ export type Task =
   | EstimateTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
+  | WordProblemTaskT
   | PartitionTask
   | UnitTask
   | NonUnitTask
@@ -517,6 +533,16 @@ const codeReach = (
   start,
   goal,
   options,
+});
+const wordProblem = (a: number, op: WordOp, b: number, scenario: string): WordProblemTaskT => ({
+  subject: 'math',
+  course: 'word-problems',
+  skillId: WORD_PROBLEM,
+  kind: 'word_problem',
+  a,
+  b,
+  op,
+  scenario,
 });
 const partition = (parts: number, shaded: number): PartitionTask => ({
   subject: 'math',
@@ -769,6 +795,12 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
     ['down'],
     ['left', 'up'],
   ]),
+  // Word problems: an authored story + a templated operation; the oracle checks
+  // the arithmetic (no free-text comprehension).
+  'wp-1': wordProblem(5, '+', 3, 'There are 5 apples in a basket. You put in 3 more.'), // 8
+  'wp-2': wordProblem(7, '-', 2, '7 birds are on a wire. 2 of them fly away.'), // 5
+  'wp-3': wordProblem(6, '+', 8, 'A bin has 6 red blocks and 8 blue blocks.'), // 14
+  'wp-4': wordProblem(12, '-', 4, 'A box holds 12 crayons. You take out 4.'), // 8
   // Transfer (novel-context) tasks — a mastered skill applied to fresh items.
   'frac-xfer-cmp': cmp(f(3, 4), f(2, 3)), // gt
   'frac-xfer-eq': eq(f(3, 6), f(1, 2)), // yes
@@ -815,6 +847,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
     ['down', 'right'],
     ['up'],
   ]),
+  'wp-xfer': wordProblem(9, '+', 5, '9 children are on the bus. At the next stop 5 more get on.'), // 14
 };
 
 /** Tasks that exercise a skill in a NOVEL context — graded as transfer_check so a
@@ -842,6 +875,7 @@ export const TRANSFER_TASKS = new Set([
   'est-xfer',
   'date-xfer',
   'code-xfer',
+  'wp-xfer',
 ]);
 
 const fmt = (x: Fraction): string => `${x.numerator}/${x.denominator}`;
@@ -1053,6 +1087,10 @@ export function present(task: Task): { question: string; options: readonly strin
       question: `On a ${task.rows}×${task.cols} grid the robot starts at row ${task.start.r}, col ${task.start.c} and must reach row ${task.goal.r}, col ${task.goal.c}. Which program gets it there? ${numbered}. Type the number of your choice.`,
       options: choices,
     };
+  }
+  if (task.kind === 'word_problem') {
+    const ask = task.op === '+' ? 'How many are there now?' : 'How many are left?';
+    return { question: `${task.scenario} ${ask} Type the number.`, options: [] };
   }
   if (task.kind === 'calendar_next_day') {
     const when =
@@ -1269,6 +1307,15 @@ export function answerKeyValid(task: Task): boolean {
       claimedIndex: correctCodeIndex(task),
     }).correct;
   }
+  if (task.kind === 'word_problem') {
+    return checkWordProblemTask({
+      kind: 'word_problem',
+      a: task.a,
+      b: task.b,
+      op: task.op,
+      claimed: wordProblemResult(task.a, task.op, task.b) ?? -1,
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     return checkMathTask({
       kind: 'fraction_partition',
@@ -1365,6 +1412,7 @@ export function tokenValid(task: Task, raw: string): boolean {
     const n = Number(a);
     return n >= 1 && n <= task.options.length;
   }
+  if (task.kind === 'word_problem') return /^\d+$/.test(a); // a non-negative answer
   if (
     task.kind === 'fraction_partition' ||
     task.kind === 'fraction_unit' ||
@@ -1533,6 +1581,15 @@ export function judge(task: Task, raw: string): boolean {
       claimedIndex: Number(a) - 1,
     }).correct;
   }
+  if (task.kind === 'word_problem') {
+    return checkWordProblemTask({
+      kind: 'word_problem',
+      a: task.a,
+      b: task.b,
+      op: task.op,
+      claimed: Number(a),
+    }).correct;
+  }
   if (task.kind === 'fraction_partition') {
     const cf = parseFrac(a);
     return cf
@@ -1636,6 +1693,8 @@ export function correctAnswerFor(task: Task): string {
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
       return String(correctCodeIndex(task) + 1);
+    case 'word_problem':
+      return String(wordProblemResult(task.a, task.op, task.b) ?? 0);
     case 'fraction_partition':
       return `${task.shaded}/${task.parts}`;
     case 'fraction_unit':
@@ -1735,6 +1794,10 @@ export function wrongAnswerFor(task: Task): string {
       const wrong = task.options.findIndex((_, i) => i !== correct);
       return String((wrong === -1 ? correct : wrong) + 1);
     }
+    case 'word_problem':
+      // The wrong-operation slip: compute with the opposite operation (clamped
+      // to a valid non-negative token), a classic word-problem error.
+      return String(Math.abs(task.op === '+' ? task.a - task.b : task.a + task.b));
     case 'fraction_partition':
       return `${task.shaded === 0 ? 1 : 0}/${task.parts}`;
     case 'fraction_unit':

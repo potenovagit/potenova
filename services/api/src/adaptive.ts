@@ -27,6 +27,7 @@ import {
   buildEstimationDraftGraph,
   buildDateCalendarDraftGraph,
   buildCodingDraftGraph,
+  buildWordProblemsDraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -62,6 +63,8 @@ import {
   DATE_CALENDAR_STRATEGIES,
   CODING_MISCONCEPTIONS,
   CODING_STRATEGIES,
+  WORD_PROBLEM_MISCONCEPTIONS,
+  WORD_PROBLEM_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -113,6 +116,7 @@ export type CourseId =
   | 'estimation'
   | 'date-calendar'
   | 'coding'
+  | 'word-problems'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -398,6 +402,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: CODING_STRATEGIES,
     transferTask: { 'SK-AL-code-sequence': 'code-xfer' },
   },
+  'word-problems': {
+    subject: 'math',
+    buildGraph: buildWordProblemsDraftGraph,
+    coachableSkillIds: ['SK-NS-word-problem-addsub'],
+    defaultTask: { 'SK-NS-word-problem-addsub': 'wp-1' },
+    practiceTasks: {
+      'SK-NS-word-problem-addsub': ['wp-1', 'wp-2', 'wp-3', 'wp-4'],
+    },
+    remediationReps: ['counters', 'symbolic'],
+    misconceptions: WORD_PROBLEM_MISCONCEPTIONS,
+    strategies: WORD_PROBLEM_STRATEGIES,
+    transferTask: { 'SK-NS-word-problem-addsub': 'wp-xfer' },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -463,6 +480,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'estimation',
     'date-calendar',
     'coding',
+    'word-problems',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
 };
