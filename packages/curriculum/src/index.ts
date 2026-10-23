@@ -20,6 +20,7 @@ export * from './date-calendar-draft';
 export * from './coding-draft';
 export * from './word-problems-draft';
 export * from './construction-draft';
+export * from './whole-number-g2-draft';
 export * from './lessons';
 export * from './ontario';
 export * from './overlay';

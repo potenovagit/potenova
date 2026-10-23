@@ -29,6 +29,7 @@ import {
   buildCodingDraftGraph,
   buildWordProblemsDraftGraph,
   buildConstructionDraftGraph,
+  buildWholeNumberG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
   FRACTION_STRATEGIES,
@@ -68,6 +69,8 @@ import {
   WORD_PROBLEM_STRATEGIES,
   CONSTRUCTION_MISCONCEPTIONS,
   CONSTRUCTION_STRATEGIES,
+  WHOLE_NUMBER_G2_MISCONCEPTIONS,
+  WHOLE_NUMBER_G2_STRATEGIES,
   CurriculumGraph,
   type MisconceptionDefinition,
   type InstructionalStrategy,
@@ -121,6 +124,7 @@ export type CourseId =
   | 'coding'
   | 'word-problems'
   | 'construction'
+  | 'whole-number-g2'
   | 'plurals'
   | 'past-tense'
   | 'comparative';
@@ -432,6 +436,26 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: CONSTRUCTION_STRATEGIES,
     transferTask: { 'SK-NS-build-number': 'build-xfer' },
   },
+  'whole-number-g2': {
+    subject: 'math',
+    buildGraph: buildWholeNumberG2DraftGraph,
+    coachableSkillIds: ['SK-NS-compare-whole-200', 'SK-NS-order-whole-200'],
+    defaultTask: {
+      'SK-NS-compare-whole-200': 'cmpw2-1',
+      'SK-NS-order-whole-200': 'ordw2-1',
+    },
+    practiceTasks: {
+      'SK-NS-compare-whole-200': ['cmpw2-1', 'cmpw2-2', 'cmpw2-3', 'cmpw2-4'],
+      'SK-NS-order-whole-200': ['ordw2-1', 'ordw2-2', 'ordw2-3', 'ordw2-4'],
+    },
+    remediationReps: ['counters', 'number-line', 'symbolic'],
+    misconceptions: WHOLE_NUMBER_G2_MISCONCEPTIONS,
+    strategies: WHOLE_NUMBER_G2_STRATEGIES,
+    transferTask: {
+      'SK-NS-compare-whole-200': 'cmpw2-xfer',
+      'SK-NS-order-whole-200': 'ordw2-xfer',
+    },
+  },
   plurals: {
     subject: 'english',
     buildGraph: buildEnglishDraftGraph,
@@ -499,6 +523,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'coding',
     'word-problems',
     'construction',
+    'whole-number-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
 };

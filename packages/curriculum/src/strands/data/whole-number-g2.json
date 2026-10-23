@@ -1,0 +1,44 @@
+{
+  "strandId": "whole-number-g2",
+  "version": "wn2-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-compare-whole-200",
+      "competency": "number:whole-number",
+      "skill": "Compare two whole numbers to 200"
+    },
+    {
+      "skillId": "SK-NS-order-whole-200",
+      "competency": "number:whole-number",
+      "skill": "Order whole numbers to 200 from least to greatest"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependencyId": "D-ns-wn2-1",
+      "fromSkillId": "SK-NS-compare-whole-200",
+      "toSkillId": "SK-NS-order-whole-200",
+      "type": "hardPrerequisite",
+      "weight": 1.0
+    }
+  ],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-hundreds-then-down",
+      "skillId": "SK-NS-compare-whole-200",
+      "pattern": "Compares by digit count or a lower place first, so a 2-digit number is judged bigger than a 3-digit one, or the tens/ones decide before the hundreds.",
+      "probeIds": ["PR-NS-compare-200"],
+      "remediationStrategyIds": ["ST-ns-hundreds-tens-ones"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-hundreds-tens-ones",
+      "intent": "Compare the hundreds first; if they are equal, the tens; only then the ones.",
+      "approvedBands": ["primary"],
+      "representations": ["number-line", "symbolic"]
+    }
+  ]
+}

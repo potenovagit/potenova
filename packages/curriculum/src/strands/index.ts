@@ -18,6 +18,7 @@ import dateCalendarData from './data/date-calendar.json';
 import codingData from './data/coding.json';
 import wordProblemsData from './data/word-problems.json';
 import constructionData from './data/construction.json';
+import wholeNumberG2Data from './data/whole-number-g2.json';
 import englishData from './data/english.json';
 
 /**
@@ -51,6 +52,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   codingData as StrandDataset,
   wordProblemsData as StrandDataset,
   constructionData as StrandDataset,
+  wholeNumberG2Data as StrandDataset,
   englishData as StrandDataset,
 ];
 
