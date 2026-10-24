@@ -51,6 +51,7 @@ import {
   buildMultiplicationG5DraftGraph,
   buildDivisionG5DraftGraph,
   buildPercentsG5DraftGraph,
+  buildAreaG5DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -135,6 +136,8 @@ import {
   DIVISION_G5_STRATEGIES,
   PERCENTS_G5_MISCONCEPTIONS,
   PERCENTS_G5_STRATEGIES,
+  AREA_G5_MISCONCEPTIONS,
+  AREA_G5_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -212,6 +215,7 @@ export type CourseId =
   | 'multiplication-g5'
   | 'division-g5'
   | 'percents-g5'
+  | 'area-g5'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -713,6 +717,26 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: DIVISION_G4_STRATEGIES,
     transferTask: { 'SK-NS-div-remainder': 'drem-xfer' },
   },
+  'area-g5': {
+    subject: 'math',
+    buildGraph: buildAreaG5DraftGraph,
+    coachableSkillIds: ['SK-ME-parallelogram-area', 'SK-ME-triangle-area'],
+    defaultTask: {
+      'SK-ME-parallelogram-area': 'pga-1',
+      'SK-ME-triangle-area': 'tri-1',
+    },
+    practiceTasks: {
+      'SK-ME-parallelogram-area': ['pga-1', 'pga-2', 'pga-3', 'pga-4'],
+      'SK-ME-triangle-area': ['tri-1', 'tri-2', 'tri-3', 'tri-4'],
+    },
+    remediationReps: ['area-model', 'symbolic'],
+    misconceptions: AREA_G5_MISCONCEPTIONS,
+    strategies: AREA_G5_STRATEGIES,
+    transferTask: {
+      'SK-ME-parallelogram-area': 'pga-xfer',
+      'SK-ME-triangle-area': 'tri-xfer',
+    },
+  },
   'percents-g5': {
     subject: 'math',
     buildGraph: buildPercentsG5DraftGraph,
@@ -954,6 +978,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'multiplication-g5',
     'division-g5',
     'percents-g5',
+    'area-g5',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],

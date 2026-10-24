@@ -71,6 +71,9 @@ import {
   checkMult2x2Task,
   checkDivision2DigitTask,
   checkFractionPercentEquivTask,
+  checkParallelogramAreaTask,
+  parallelogramArea,
+  checkTriangleAreaTask,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -168,6 +171,8 @@ export const FRAC_ADDSUB_LIKE = 'SK-NS-fraction-addsub-like';
 export const MULT_2X2 = 'SK-NS-mult-2x2';
 export const DIV_2DIGIT = 'SK-NS-div-2digit';
 export const FRAC_PCT_EQUIV = 'SK-NS-fraction-percent-equiv';
+export const PARALLELOGRAM_AREA = 'SK-ME-parallelogram-area';
+export const TRIANGLE_AREA = 'SK-ME-triangle-area';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -468,6 +473,22 @@ interface FractionPercentEquivTaskT {
   readonly denominator: number;
   readonly percent: number;
 }
+interface ParallelogramAreaTaskT {
+  readonly subject: 'math';
+  readonly course: 'area-g5';
+  readonly skillId: typeof PARALLELOGRAM_AREA;
+  readonly kind: 'parallelogram_area';
+  readonly base: number;
+  readonly height: number;
+}
+interface TriangleAreaTaskT {
+  readonly subject: 'math';
+  readonly course: 'area-g5';
+  readonly skillId: typeof TRIANGLE_AREA;
+  readonly kind: 'triangle_area';
+  readonly base: number;
+  readonly height: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -604,6 +625,8 @@ export type Task =
   | Mult2x2TaskT
   | Division2DigitTaskT
   | FractionPercentEquivTaskT
+  | ParallelogramAreaTaskT
+  | TriangleAreaTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -1003,6 +1026,22 @@ const fracPercent = (
   numerator,
   denominator,
   percent,
+});
+const pgramArea = (base: number, height: number): ParallelogramAreaTaskT => ({
+  subject: 'math',
+  course: 'area-g5',
+  skillId: PARALLELOGRAM_AREA,
+  kind: 'parallelogram_area',
+  base,
+  height,
+});
+const triArea = (base: number, height: number): TriangleAreaTaskT => ({
+  subject: 'math',
+  course: 'area-g5',
+  skillId: TRIANGLE_AREA,
+  kind: 'triangle_area',
+  base,
+  height,
 });
 /** Parse a fraction answer string "n/d" (or a whole "n" = n/1); null if malformed. */
 const parseFraction = (a: string): { num: number; denom: number } | null => {
@@ -1413,6 +1452,15 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'fpc-2': fracPercent(3, 4, 75), // 3/4 == 75% → yes
   'fpc-3': fracPercent(1, 4, 40), // 1/4 == 40%? → no
   'fpc-4': fracPercent(1, 5, 20), // 1/5 == 20% → yes
+  // parallelogram & triangle area
+  'pga-1': pgramArea(6, 4), // 24
+  'pga-2': pgramArea(9, 7), // 63
+  'pga-3': pgramArea(12, 5), // 60
+  'pga-4': pgramArea(8, 8), // 64 (adds-sides trap → 16)
+  'tri-1': triArea(6, 4), // 12
+  'tri-2': triArea(10, 5), // 25
+  'tri-3': triArea(8, 7), // 28
+  'tri-4': triArea(12, 9), // 54 (forgot-to-halve trap → 108)
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1543,6 +1591,8 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'm2-xfer': mult2x2(38, 26), // 988 (novel)
   'd2-xfer': div2digit(375, 18), // 20 r 15 (novel)
   'fpc-xfer': fracPercent(3, 5, 60), // 3/5 == 60% → yes (novel)
+  'pga-xfer': pgramArea(7, 9), // 63 (novel)
+  'tri-xfer': triArea(14, 6), // 42 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -1609,6 +1659,8 @@ export const TRANSFER_TASKS = new Set([
   'm2-xfer',
   'd2-xfer',
   'fpc-xfer',
+  'pga-xfer',
+  'tri-xfer',
   'date-xfer',
   'code-xfer',
   'wp-xfer',
@@ -1946,6 +1998,18 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `Is ${task.numerator}/${task.denominator} equal in value to ${task.percent}%? (yes / no)`,
       options: ['yes', 'no'],
+    };
+  }
+  if (task.kind === 'parallelogram_area') {
+    return {
+      question: `A parallelogram has base ${task.base} and height ${task.height}. What is its area (square units)?`,
+      options: [] /* type the number */,
+    };
+  }
+  if (task.kind === 'triangle_area') {
+    return {
+      question: `A triangle has base ${task.base} and height ${task.height}. What is its area (square units)?`,
+      options: [] /* type the number */,
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -2332,6 +2396,22 @@ export function answerKeyValid(task: Task): boolean {
       claimedEquivalent: task.numerator * 100 === task.percent * task.denominator,
     }).correct;
   }
+  if (task.kind === 'parallelogram_area') {
+    return checkParallelogramAreaTask({
+      kind: 'parallelogram_area',
+      base: task.base,
+      height: task.height,
+      claimedArea: parallelogramArea(task.base, task.height),
+    }).correct;
+  }
+  if (task.kind === 'triangle_area') {
+    return checkTriangleAreaTask({
+      kind: 'triangle_area',
+      base: task.base,
+      height: task.height,
+      claimedArea: (task.base * task.height) / 2,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2485,6 +2565,8 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'mult_2x2') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'division_2digit') return parseQuotientRemainder(a) !== null; // "q r"
   if (task.kind === 'fraction_percent_equiv') return a === 'yes' || a === 'no';
+  if (task.kind === 'parallelogram_area') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'triangle_area') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -2806,6 +2888,22 @@ export function judge(task: Task, raw: string): boolean {
       claimedEquivalent: a === 'yes',
     }).correct;
   }
+  if (task.kind === 'parallelogram_area') {
+    return checkParallelogramAreaTask({
+      kind: 'parallelogram_area',
+      base: task.base,
+      height: task.height,
+      claimedArea: Number(a),
+    }).correct;
+  }
+  if (task.kind === 'triangle_area') {
+    return checkTriangleAreaTask({
+      kind: 'triangle_area',
+      base: task.base,
+      height: task.height,
+      claimedArea: Number(a),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2986,6 +3084,10 @@ export function correctAnswerFor(task: Task): string {
       return `${Math.floor(task.dividend / task.divisor)} ${task.dividend % task.divisor}`;
     case 'fraction_percent_equiv':
       return task.numerator * 100 === task.percent * task.denominator ? 'yes' : 'no';
+    case 'parallelogram_area':
+      return String(parallelogramArea(task.base, task.height));
+    case 'triangle_area':
+      return String((task.base * task.height) / 2);
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -3193,6 +3295,17 @@ export function wrongAnswerFor(task: Task): string {
     }
     case 'fraction_percent_equiv':
       return task.numerator * 100 === task.percent * task.denominator ? 'no' : 'yes';
+    case 'parallelogram_area': {
+      // The adds-the-sides error (base + height) instead of base × height. Fall
+      // back to one-off if that coincides with the product, so it is always wrong.
+      const area = parallelogramArea(task.base, task.height);
+      const sum = task.base + task.height;
+      return String(sum === area ? area + 1 : sum);
+    }
+    case 'triangle_area':
+      // The forgot-to-halve error (base × height) — always larger than the true
+      // half for a valid item, so always wrong.
+      return String(task.base * task.height);
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
       const wrong = task.options.findIndex((_, i) => i !== correct);

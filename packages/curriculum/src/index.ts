@@ -43,6 +43,7 @@ export * from './fractions-g5-draft';
 export * from './multiplication-g5-draft';
 export * from './division-g5-draft';
 export * from './percents-g5-draft';
+export * from './area-g5-draft';
 export * from './lessons';
 export * from './ontario';
 export * from './overlay';

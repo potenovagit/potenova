@@ -34,6 +34,7 @@ export * from './fraction-addsub-check';
 export * from './mult-2x2-check';
 export * from './division-2digit-check';
 export * from './fraction-percent-check';
+export * from './polygon-area-check';
 export * from './validation';
 export * from './model-eval';
 export * from './eval-suite';
