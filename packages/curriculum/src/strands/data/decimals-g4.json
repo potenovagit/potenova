@@ -1,0 +1,75 @@
+{
+  "strandId": "decimals-g4",
+  "version": "dec-g4-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-decimal-compare",
+      "competency": "number:decimals",
+      "skill": "Compare and order decimal tenths"
+    },
+    {
+      "skillId": "SK-NS-decimal-round",
+      "competency": "number:decimals",
+      "skill": "Round a decimal number to the nearest whole number"
+    },
+    {
+      "skillId": "SK-NS-fraction-decimal-equiv",
+      "competency": "number:decimals",
+      "skill": "Recognize equivalences between fractions and decimal tenths"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependencyId": "D-ns-dec-compare-round",
+      "fromSkillId": "SK-NS-decimal-compare",
+      "toSkillId": "SK-NS-decimal-round",
+      "type": "supporting",
+      "weight": 0.4
+    }
+  ],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-decimal-point-ignored",
+      "skillId": "SK-NS-decimal-compare",
+      "pattern": "Compares decimals as if the point were not there, judging by the digits alone (e.g. thinks 0.8 > 1.0 because 8 > 1, or 2.3 > 2.15-style confusions).",
+      "probeIds": ["PR-NS-which-decimal-bigger"],
+      "remediationStrategyIds": ["ST-ns-line-up-the-point"]
+    },
+    {
+      "misconceptionId": "MC-NS-decimal-truncates",
+      "skillId": "SK-NS-decimal-round",
+      "pattern": "Drops the tenths instead of rounding (e.g. 2.7 to the nearest whole answered 2 rather than 3).",
+      "probeIds": ["PR-NS-nearest-whole"],
+      "remediationStrategyIds": ["ST-ns-tenths-decide"]
+    },
+    {
+      "misconceptionId": "MC-NS-fraction-decimal-mismatch",
+      "skillId": "SK-NS-fraction-decimal-equiv",
+      "pattern": "Reads the fraction's numerator as the decimal digit without scaling to tenths (e.g. thinks 1/4 = 0.4, or 1/2 = 0.2).",
+      "probeIds": ["PR-NS-same-value"],
+      "remediationStrategyIds": ["ST-ns-rewrite-in-tenths"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-line-up-the-point",
+      "intent": "Line the numbers up on their decimal point and compare place by place, biggest place first — the ones before the tenths.",
+      "approvedBands": ["junior"],
+      "representations": ["number-line", "symbolic"]
+    },
+    {
+      "strategyId": "ST-ns-tenths-decide",
+      "intent": "Look at the tenths digit: 5 or more rounds the whole up, less than 5 keeps it; then drop the tenths.",
+      "approvedBands": ["junior"],
+      "representations": ["number-line", "symbolic"]
+    },
+    {
+      "strategyId": "ST-ns-rewrite-in-tenths",
+      "intent": "Rewrite the fraction with denominator 10 (or picture it on a tenths grid), then read off the matching decimal — a decimal tenth is that many tenths.",
+      "approvedBands": ["junior"],
+      "representations": ["area-model", "symbolic"]
+    }
+  ]
+}
