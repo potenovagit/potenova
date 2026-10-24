@@ -50,6 +50,7 @@ import {
   buildFractionsG5DraftGraph,
   buildMultiplicationG5DraftGraph,
   buildDivisionG5DraftGraph,
+  buildPercentsG5DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -132,6 +133,8 @@ import {
   MULTIPLICATION_G5_STRATEGIES,
   DIVISION_G5_MISCONCEPTIONS,
   DIVISION_G5_STRATEGIES,
+  PERCENTS_G5_MISCONCEPTIONS,
+  PERCENTS_G5_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -208,6 +211,7 @@ export type CourseId =
   | 'fractions-g5'
   | 'multiplication-g5'
   | 'division-g5'
+  | 'percents-g5'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -709,6 +713,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: DIVISION_G4_STRATEGIES,
     transferTask: { 'SK-NS-div-remainder': 'drem-xfer' },
   },
+  'percents-g5': {
+    subject: 'math',
+    buildGraph: buildPercentsG5DraftGraph,
+    coachableSkillIds: ['SK-NS-fraction-percent-equiv'],
+    defaultTask: { 'SK-NS-fraction-percent-equiv': 'fpc-1' },
+    practiceTasks: {
+      'SK-NS-fraction-percent-equiv': ['fpc-1', 'fpc-2', 'fpc-3', 'fpc-4'],
+    },
+    remediationReps: ['area-model', 'symbolic'],
+    misconceptions: PERCENTS_G5_MISCONCEPTIONS,
+    strategies: PERCENTS_G5_STRATEGIES,
+    transferTask: { 'SK-NS-fraction-percent-equiv': 'fpc-xfer' },
+  },
   'division-g5': {
     subject: 'math',
     buildGraph: buildDivisionG5DraftGraph,
@@ -936,6 +953,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'fractions-g5',
     'multiplication-g5',
     'division-g5',
+    'percents-g5',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],

@@ -1,0 +1,31 @@
+{
+  "strandId": "percents-g5",
+  "version": "pct-g5-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-fraction-percent-equiv",
+      "competency": "number:percent",
+      "skill": "Recognize equivalences between fractions and whole-number percents"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-percent-reads-numerator",
+      "skillId": "SK-NS-fraction-percent-equiv",
+      "pattern": "Reads the fraction's numerator (or denominator) as the percent without scaling to hundredths (e.g. thinks 1/4 = 4% or 25% without checking, or 1/5 = 5%).",
+      "probeIds": ["PR-NS-same-value-percent"],
+      "remediationStrategyIds": ["ST-ns-rewrite-per-hundred"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-rewrite-per-hundred",
+      "intent": "Rewrite the fraction with denominator 100 (scale the numerator by the same factor) — that numerator is the percent; then compare.",
+      "approvedBands": ["junior"],
+      "representations": ["area-model", "symbolic"]
+    }
+  ]
+}

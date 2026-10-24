@@ -40,6 +40,7 @@ import decimalsG5Data from './data/decimals-g5.json';
 import fractionsG5Data from './data/fractions-g5.json';
 import multiplicationG5Data from './data/multiplication-g5.json';
 import divisionG5Data from './data/division-g5.json';
+import percentsG5Data from './data/percents-g5.json';
 import englishData from './data/english.json';
 
 /**
@@ -95,6 +96,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   fractionsG5Data as StrandDataset,
   multiplicationG5Data as StrandDataset,
   divisionG5Data as StrandDataset,
+  percentsG5Data as StrandDataset,
   englishData as StrandDataset,
 ];
 
