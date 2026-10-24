@@ -103,6 +103,11 @@ import {
   checkFractionMulDivTask,
   fractionMulDivResult,
   type FractionMulDivOp,
+  checkDecimalMulDivTask,
+  decimalMulDivTenThousandths,
+  formatTenThousandths,
+  parseToTenThousandths,
+  type DecimalMulDivOp,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -214,6 +219,7 @@ export const POWER_EVAL = 'SK-NS-power-eval';
 export const GCF_PAIR = 'SK-NS-gcf-pair';
 export const LCM_PAIR = 'SK-NS-lcm-pair';
 export const FRAC_MULDIV = 'SK-NS-fraction-muldiv';
+export const DEC_MULDIV = 'SK-NS-decimal-muldiv';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -630,6 +636,15 @@ interface FractionMulDivTaskT {
   readonly rightDenom: number;
   readonly op: FractionMulDivOp;
 }
+interface DecimalMulDivTaskT {
+  readonly subject: 'math';
+  readonly course: 'decimals-muldiv-g7';
+  readonly skillId: typeof DEC_MULDIV;
+  readonly kind: 'decimal_muldiv';
+  readonly leftHundredths: number;
+  readonly rightHundredths: number;
+  readonly op: DecimalMulDivOp;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -780,6 +795,7 @@ export type Task =
   | GcfPairTaskT
   | LcmPairTaskT
   | FractionMulDivTaskT
+  | DecimalMulDivTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -1311,6 +1327,19 @@ const fracMulDiv = (
   rightDenom,
   op,
 });
+const decMulDiv = (
+  leftHundredths: number,
+  rightHundredths: number,
+  op: DecimalMulDivOp,
+): DecimalMulDivTaskT => ({
+  subject: 'math',
+  course: 'decimals-muldiv-g7',
+  skillId: DEC_MULDIV,
+  kind: 'decimal_muldiv',
+  leftHundredths,
+  rightHundredths,
+  op,
+});
 /** Parse a signed-integer answer string like "-7", "+3", or "12"; null if malformed. */
 const parseSignedInt = (a: string): number | null => {
   const m = a.trim().match(/^[+-]?\d+$/);
@@ -1794,6 +1823,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'fmd-2': fracMulDiv(1, 2, 3, 4, '÷'), // 1/2 ÷ 3/4 = 4/6 = 2/3
   'fmd-3': fracMulDiv(3, 5, 5, 6, '×'), // 3/5 × 5/6 = 15/30 = 1/2
   'fmd-4': fracMulDiv(3, 4, 1, 2, '÷'), // 3/4 ÷ 1/2 = 6/4 = 3/2
+  // decimal multiply / divide (float-free; operands are hundredths)
+  'dmd-1': decMulDiv(50, 40, '×'), // 0.5 × 0.4 = 0.2
+  'dmd-2': decMulDiv(60, 20, '÷'), // 0.6 ÷ 0.2 = 3
+  'dmd-3': decMulDiv(120, 30, '×'), // 1.2 × 0.3 = 0.36
+  'dmd-4': decMulDiv(250, 50, '÷'), // 2.5 ÷ 0.5 = 5
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1938,6 +1972,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'gcf-xfer': gcfPair(48, 72), // GCF = 24 (novel)
   'lcm-xfer': lcmPair(9, 12), // LCM = 36 (novel)
   'fmd-xfer': fracMulDiv(2, 5, 3, 4, '×'), // 2/5 × 3/4 = 6/20 = 3/10 (novel)
+  'dmd-xfer': decMulDiv(80, 150, '×'), // 0.8 × 1.5 = 1.2 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -2434,6 +2469,12 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `What is ${task.leftNum}/${task.leftDenom} ${task.op} ${task.rightNum}/${task.rightDenom}? Write your answer as a fraction, like "3/5".`,
       options: [] /* type "n/d" */,
+    };
+  }
+  if (task.kind === 'decimal_muldiv') {
+    return {
+      question: `What is ${formatHundredths(task.leftHundredths)} ${task.op} ${formatHundredths(task.rightHundredths)}?`,
+      options: [] /* type the decimal */,
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -2960,6 +3001,21 @@ export function answerKeyValid(task: Task): boolean {
       claimedDenom: result.denom,
     }).correct;
   }
+  if (task.kind === 'decimal_muldiv') {
+    const expected = decimalMulDivTenThousandths(
+      task.op,
+      task.leftHundredths,
+      task.rightHundredths,
+    );
+    if (expected === null) return false;
+    return checkDecimalMulDivTask({
+      kind: 'decimal_muldiv',
+      op: task.op,
+      leftHundredths: task.leftHundredths,
+      rightHundredths: task.rightHundredths,
+      claimedTenThousandths: expected,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3126,6 +3182,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'power_eval') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'gcf_pair' || task.kind === 'lcm_pair') return /^\d+$/.test(a); // positive integer
   if (task.kind === 'fraction_muldiv') return parseFraction(a) !== null; // "n/d"
+  if (task.kind === 'decimal_muldiv') return parseToTenThousandths(a) !== null; // a decimal (≤4 dp)
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -3573,6 +3630,17 @@ export function judge(task: Task, raw: string): boolean {
       claimedDenom: parsed.denom,
     }).correct;
   }
+  if (task.kind === 'decimal_muldiv') {
+    const parsed = parseToTenThousandths(a);
+    if (parsed === null) return false;
+    return checkDecimalMulDivTask({
+      kind: 'decimal_muldiv',
+      op: task.op,
+      leftHundredths: task.leftHundredths,
+      rightHundredths: task.rightHundredths,
+      claimedTenThousandths: parsed,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3797,6 +3865,10 @@ export function correctAnswerFor(task: Task): string {
       );
       return `${r?.num ?? 0}/${r?.denom ?? task.leftDenom * task.rightDenom}`;
     }
+    case 'decimal_muldiv':
+      return formatTenThousandths(
+        decimalMulDivTenThousandths(task.op, task.leftHundredths, task.rightHundredths) ?? 0,
+      );
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -4111,6 +4183,13 @@ export function wrongAnswerFor(task: Task): string {
       const candWrong =
         cand.num >= 0 && cand.denom > 0 && cand.num * r.denom !== r.num * cand.denom;
       return candWrong ? `${cand.num}/${cand.denom}` : `${r.num + 1}/${r.denom}`;
+    }
+    case 'decimal_muldiv': {
+      // The "misplaced decimal point" error — ten times the true value (a valid
+      // ≤4dp decimal, never correct); fall back to +0.0001 when the result is 0.
+      const expected =
+        decimalMulDivTenThousandths(task.op, task.leftHundredths, task.rightHundredths) ?? 0;
+      return formatTenThousandths(expected > 0 ? expected * 10 : 1);
     }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);

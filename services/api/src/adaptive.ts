@@ -61,6 +61,7 @@ import {
   buildExponentsG7DraftGraph,
   buildFactorsG7DraftGraph,
   buildFractionsMulDivG7DraftGraph,
+  buildDecimalsMulDivG7DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -165,6 +166,8 @@ import {
   FACTORS_G7_STRATEGIES,
   FRACTIONS_MULDIV_G7_MISCONCEPTIONS,
   FRACTIONS_MULDIV_G7_STRATEGIES,
+  DECIMALS_MULDIV_G7_MISCONCEPTIONS,
+  DECIMALS_MULDIV_G7_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -252,6 +255,7 @@ export type CourseId =
   | 'exponents-g7'
   | 'factors-g7'
   | 'fractions-muldiv-g7'
+  | 'decimals-muldiv-g7'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -891,6 +895,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: FRACTIONS_MULDIV_G7_STRATEGIES,
     transferTask: { 'SK-NS-fraction-muldiv': 'fmd-xfer' },
   },
+  'decimals-muldiv-g7': {
+    subject: 'math',
+    buildGraph: buildDecimalsMulDivG7DraftGraph,
+    coachableSkillIds: ['SK-NS-decimal-muldiv'],
+    defaultTask: { 'SK-NS-decimal-muldiv': 'dmd-1' },
+    practiceTasks: {
+      'SK-NS-decimal-muldiv': ['dmd-1', 'dmd-2', 'dmd-3', 'dmd-4'],
+    },
+    remediationReps: ['symbolic'],
+    misconceptions: DECIMALS_MULDIV_G7_MISCONCEPTIONS,
+    strategies: DECIMALS_MULDIV_G7_STRATEGIES,
+    transferTask: { 'SK-NS-decimal-muldiv': 'dmd-xfer' },
+  },
   'area-g5': {
     subject: 'math',
     buildGraph: buildAreaG5DraftGraph,
@@ -1162,6 +1179,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'exponents-g7',
     'factors-g7',
     'fractions-muldiv-g7',
+    'decimals-muldiv-g7',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
