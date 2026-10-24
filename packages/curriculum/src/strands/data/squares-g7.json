@@ -1,0 +1,51 @@
+{
+  "strandId": "squares-g7",
+  "version": "sq-g7-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-is-perfect-square",
+      "competency": "number:powers",
+      "skill": "Identify whether a whole number is a perfect square"
+    },
+    {
+      "skillId": "SK-NS-perfect-square-root",
+      "competency": "number:powers",
+      "skill": "Determine the square root of a perfect square"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependencyId": "D-ns-square-identify-root",
+      "fromSkillId": "SK-NS-is-perfect-square",
+      "toSkillId": "SK-NS-perfect-square-root",
+      "type": "supporting",
+      "weight": 0.4
+    }
+  ],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-square-root-is-half",
+      "skillId": "SK-NS-perfect-square-root",
+      "pattern": "Halves the number instead of finding the square root (answers √144 as 72), confusing the square root with division by two.",
+      "probeIds": ["PR-NS-root-of-square"],
+      "remediationStrategyIds": ["ST-ns-find-the-factor-pair"]
+    },
+    {
+      "misconceptionId": "MC-NS-every-even-is-square",
+      "skillId": "SK-NS-is-perfect-square",
+      "pattern": "Assumes a large or even number must be a perfect square without checking for an integer factor that multiplies by itself.",
+      "probeIds": ["PR-NS-is-it-a-square"],
+      "remediationStrategyIds": ["ST-ns-find-the-factor-pair"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-find-the-factor-pair",
+      "intent": "Look for a whole number that multiplies by itself to make n (1×1, 2×2, 3×3, …). If one exists, n is a perfect square and that number is its root; if none does by the time the product passes n, it is not.",
+      "approvedBands": ["intermediate"],
+      "representations": ["area-model", "symbolic"]
+    }
+  ]
+}

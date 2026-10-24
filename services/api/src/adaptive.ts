@@ -56,6 +56,7 @@ import {
   buildDecimalsG6DraftGraph,
   buildFractionsG6DraftGraph,
   buildPercentsG6DraftGraph,
+  buildSquaresG7DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -150,6 +151,8 @@ import {
   FRACTIONS_G6_STRATEGIES,
   PERCENTS_G6_MISCONCEPTIONS,
   PERCENTS_G6_STRATEGIES,
+  SQUARES_G7_MISCONCEPTIONS,
+  SQUARES_G7_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -232,6 +235,7 @@ export type CourseId =
   | 'decimals-g6'
   | 'fractions-g6'
   | 'percents-g6'
+  | 'squares-g7'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -792,6 +796,26 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: PERCENTS_G6_STRATEGIES,
     transferTask: { 'SK-NS-percent-of': 'pof-xfer' },
   },
+  'squares-g7': {
+    subject: 'math',
+    buildGraph: buildSquaresG7DraftGraph,
+    coachableSkillIds: ['SK-NS-is-perfect-square', 'SK-NS-perfect-square-root'],
+    defaultTask: {
+      'SK-NS-is-perfect-square': 'ips-1',
+      'SK-NS-perfect-square-root': 'psr-1',
+    },
+    practiceTasks: {
+      'SK-NS-is-perfect-square': ['ips-1', 'ips-2', 'ips-3', 'ips-4'],
+      'SK-NS-perfect-square-root': ['psr-1', 'psr-2', 'psr-3', 'psr-4'],
+    },
+    remediationReps: ['area-model', 'symbolic'],
+    misconceptions: SQUARES_G7_MISCONCEPTIONS,
+    strategies: SQUARES_G7_STRATEGIES,
+    transferTask: {
+      'SK-NS-is-perfect-square': 'ips-xfer',
+      'SK-NS-perfect-square-root': 'psr-xfer',
+    },
+  },
   'area-g5': {
     subject: 'math',
     buildGraph: buildAreaG5DraftGraph,
@@ -1058,6 +1082,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'decimals-g6',
     'fractions-g6',
     'percents-g6',
+    'squares-g7',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
