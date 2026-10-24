@@ -55,6 +55,7 @@ import decimalsMulDivG7Data from './data/decimals-muldiv-g7.json';
 import proportionsG7Data from './data/proportions-g7.json';
 import integersMulDivG8Data from './data/integers-muldiv-g8.json';
 import powersOfTenG8Data from './data/powers-of-ten-g8.json';
+import sqrtEstimateG8Data from './data/sqrt-estimate-g8.json';
 import englishData from './data/english.json';
 
 /**
@@ -125,6 +126,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   proportionsG7Data as StrandDataset,
   integersMulDivG8Data as StrandDataset,
   powersOfTenG8Data as StrandDataset,
+  sqrtEstimateG8Data as StrandDataset,
   englishData as StrandDataset,
 ];
 

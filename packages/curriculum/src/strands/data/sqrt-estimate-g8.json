@@ -1,0 +1,31 @@
+{
+  "strandId": "sqrt-estimate-g8",
+  "version": "sqe-g8-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-sqrt-between",
+      "competency": "number:powers",
+      "skill": "Estimate the square root of a non-perfect-square between two consecutive whole numbers"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-sqrt-is-half",
+      "skillId": "SK-NS-sqrt-between",
+      "pattern": "Estimates the square root by halving the number instead of finding the whole number whose square is just below it (places √50 near 25 rather than between 7 and 8).",
+      "probeIds": ["PR-NS-sqrt-between"],
+      "remediationStrategyIds": ["ST-ns-bracket-with-squares"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-bracket-with-squares",
+      "intent": "List the perfect squares and find the two that the number falls between (49 and 64 for 50); the square roots of those squares (7 and 8) bracket the answer, and the smaller one is the lower bound.",
+      "approvedBands": ["intermediate"],
+      "representations": ["number-line", "symbolic"]
+    }
+  ]
+}

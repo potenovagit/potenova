@@ -116,6 +116,8 @@ import {
   checkPowerOfTenScaleTask,
   powerOfTenScaleThousandths,
   type PowerOfTenOp,
+  checkSqrtBetweenTask,
+  floorSqrt,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -231,6 +233,7 @@ export const DEC_MULDIV = 'SK-NS-decimal-muldiv';
 export const PROPORTION_SOLVE = 'SK-NS-proportion-solve';
 export const INT_MULDIV_SIGNED = 'SK-NS-integer-muldiv-signed';
 export const POWER_OF_TEN_SCALE = 'SK-NS-power-of-ten-scale';
+export const SQRT_BETWEEN = 'SK-NS-sqrt-between';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -683,6 +686,13 @@ interface PowerOfTenScaleTaskT {
   readonly exponent: number;
   readonly op: PowerOfTenOp;
 }
+interface SqrtBetweenTaskT {
+  readonly subject: 'math';
+  readonly course: 'sqrt-estimate-g8';
+  readonly skillId: typeof SQRT_BETWEEN;
+  readonly kind: 'sqrt_between';
+  readonly value: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -837,6 +847,7 @@ export type Task =
   | ProportionSolveTaskT
   | IntegerMulDivTaskT
   | PowerOfTenScaleTaskT
+  | SqrtBetweenTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -1412,6 +1423,13 @@ const powerOfTen = (
   exponent,
   op,
 });
+const sqrtBetween = (value: number): SqrtBetweenTaskT => ({
+  subject: 'math',
+  course: 'sqrt-estimate-g8',
+  skillId: SQRT_BETWEEN,
+  kind: 'sqrt_between',
+  value,
+});
 /** Parse a signed-integer answer string like "-7", "+3", or "12"; null if malformed. */
 const parseSignedInt = (a: string): number | null => {
   const m = a.trim().match(/^[+-]?\d+$/);
@@ -1915,6 +1933,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'pt-2': powerOfTen(42, 3, '×'), // 0.042 × 1000 = 42
   'pt-3': powerOfTen(350000, 2, '÷'), // 350 ÷ 100 = 3.5
   'pt-4': powerOfTen(60000, 3, '÷'), // 60 ÷ 1000 = 0.06
+  // estimate a square root between two consecutive whole numbers (non-perfect-square)
+  'sqb-1': sqrtBetween(50), // √50 between 7 and 8
+  'sqb-2': sqrtBetween(30), // √30 between 5 and 6
+  'sqb-3': sqrtBetween(99), // √99 between 9 and 10
+  'sqb-4': sqrtBetween(72), // √72 between 8 and 9
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -2063,6 +2086,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'prop-xfer': proportion(3, 7, 6), // 3/7 = 6/x → x = 14 (novel)
   'imd-xfer': intMulDiv(9, -8, '×'), // 9 × -8 = -72 (novel)
   'pt-xfer': powerOfTen(1250, 2, '×'), // 1.25 × 100 = 125 (novel)
+  'sqb-xfer': sqrtBetween(40), // √40 between 6 and 7 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -2585,6 +2609,12 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `What is ${formatThousandths(task.valueThousandths)} ${task.op} ${factor}?`,
       options: [] /* type the decimal */,
+    };
+  }
+  if (task.kind === 'sqrt_between') {
+    return {
+      question: `The square root of ${task.value} is between two consecutive whole numbers. Enter the smaller one.`,
+      options: [] /* type the number */,
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -3159,6 +3189,13 @@ export function answerKeyValid(task: Task): boolean {
       claimedThousandths: expected,
     }).correct;
   }
+  if (task.kind === 'sqrt_between') {
+    return checkSqrtBetweenTask({
+      kind: 'sqrt_between',
+      value: task.value,
+      claimedLower: floorSqrt(task.value),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3329,6 +3366,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'proportion_solve') return /^\d+$/.test(a); // a positive integer
   if (task.kind === 'integer_muldiv_signed') return parseSignedInt(a) !== null; // signed integer
   if (task.kind === 'power_of_ten_scale') return parseToThousandths(a) !== null; // a decimal (≤3 dp)
+  if (task.kind === 'sqrt_between') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -3818,6 +3856,13 @@ export function judge(task: Task, raw: string): boolean {
       claimedThousandths: parsed,
     }).correct;
   }
+  if (task.kind === 'sqrt_between') {
+    return checkSqrtBetweenTask({
+      kind: 'sqrt_between',
+      value: task.value,
+      claimedLower: Number(a),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -4054,6 +4099,8 @@ export function correctAnswerFor(task: Task): string {
       return formatThousandths(
         powerOfTenScaleThousandths(task.op, task.valueThousandths, task.exponent) ?? 0,
       );
+    case 'sqrt_between':
+      return String(floorSqrt(task.value));
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -4400,6 +4447,10 @@ export function wrongAnswerFor(task: Task): string {
       const oppValid = Number.isInteger(opposite) && opposite >= 0 && opposite !== expected;
       return formatThousandths(oppValid ? opposite : expected + 1);
     }
+    case 'sqrt_between':
+      // The "picked the upper neighbour" error — the larger of the two
+      // consecutive integers (k+1) instead of the smaller (k).
+      return String(floorSqrt(task.value) + 1);
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
       const wrong = task.options.findIndex((_, i) => i !== correct);
