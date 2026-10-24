@@ -46,6 +46,7 @@ export * from './gcf-lcm-check';
 export * from './fraction-muldiv-check';
 export * from './decimal-muldiv-check';
 export * from './proportion-check';
+export * from './integer-muldiv-check';
 export * from './validation';
 export * from './model-eval';
 export * from './eval-suite';

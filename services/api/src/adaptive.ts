@@ -63,6 +63,7 @@ import {
   buildFractionsMulDivG7DraftGraph,
   buildDecimalsMulDivG7DraftGraph,
   buildProportionsG7DraftGraph,
+  buildIntegersMulDivG8DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -171,6 +172,8 @@ import {
   DECIMALS_MULDIV_G7_STRATEGIES,
   PROPORTIONS_G7_MISCONCEPTIONS,
   PROPORTIONS_G7_STRATEGIES,
+  INTEGERS_MULDIV_G8_MISCONCEPTIONS,
+  INTEGERS_MULDIV_G8_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -260,6 +263,7 @@ export type CourseId =
   | 'fractions-muldiv-g7'
   | 'decimals-muldiv-g7'
   | 'proportions-g7'
+  | 'integers-muldiv-g8'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -925,6 +929,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: PROPORTIONS_G7_STRATEGIES,
     transferTask: { 'SK-NS-proportion-solve': 'prop-xfer' },
   },
+  'integers-muldiv-g8': {
+    subject: 'math',
+    buildGraph: buildIntegersMulDivG8DraftGraph,
+    coachableSkillIds: ['SK-NS-integer-muldiv-signed'],
+    defaultTask: { 'SK-NS-integer-muldiv-signed': 'imd-1' },
+    practiceTasks: {
+      'SK-NS-integer-muldiv-signed': ['imd-1', 'imd-2', 'imd-3', 'imd-4'],
+    },
+    remediationReps: ['symbolic'],
+    misconceptions: INTEGERS_MULDIV_G8_MISCONCEPTIONS,
+    strategies: INTEGERS_MULDIV_G8_STRATEGIES,
+    transferTask: { 'SK-NS-integer-muldiv-signed': 'imd-xfer' },
+  },
   'area-g5': {
     subject: 'math',
     buildGraph: buildAreaG5DraftGraph,
@@ -1198,6 +1215,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'fractions-muldiv-g7',
     'decimals-muldiv-g7',
     'proportions-g7',
+    'integers-muldiv-g8',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
