@@ -108,6 +108,8 @@ import {
   formatTenThousandths,
   parseToTenThousandths,
   type DecimalMulDivOp,
+  checkProportionSolveTask,
+  proportionSolve,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -220,6 +222,7 @@ export const GCF_PAIR = 'SK-NS-gcf-pair';
 export const LCM_PAIR = 'SK-NS-lcm-pair';
 export const FRAC_MULDIV = 'SK-NS-fraction-muldiv';
 export const DEC_MULDIV = 'SK-NS-decimal-muldiv';
+export const PROPORTION_SOLVE = 'SK-NS-proportion-solve';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -645,6 +648,15 @@ interface DecimalMulDivTaskT {
   readonly rightHundredths: number;
   readonly op: DecimalMulDivOp;
 }
+interface ProportionSolveTaskT {
+  readonly subject: 'math';
+  readonly course: 'proportions-g7';
+  readonly skillId: typeof PROPORTION_SOLVE;
+  readonly kind: 'proportion_solve';
+  readonly a: number;
+  readonly b: number;
+  readonly c: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -796,6 +808,7 @@ export type Task =
   | LcmPairTaskT
   | FractionMulDivTaskT
   | DecimalMulDivTaskT
+  | ProportionSolveTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -1340,6 +1353,15 @@ const decMulDiv = (
   rightHundredths,
   op,
 });
+const proportion = (a: number, b: number, c: number): ProportionSolveTaskT => ({
+  subject: 'math',
+  course: 'proportions-g7',
+  skillId: PROPORTION_SOLVE,
+  kind: 'proportion_solve',
+  a,
+  b,
+  c,
+});
 /** Parse a signed-integer answer string like "-7", "+3", or "12"; null if malformed. */
 const parseSignedInt = (a: string): number | null => {
   const m = a.trim().match(/^[+-]?\d+$/);
@@ -1828,6 +1850,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'dmd-2': decMulDiv(60, 20, '÷'), // 0.6 ÷ 0.2 = 3
   'dmd-3': decMulDiv(120, 30, '×'), // 1.2 × 0.3 = 0.36
   'dmd-4': decMulDiv(250, 50, '÷'), // 2.5 ÷ 0.5 = 5
+  // proportional reasoning — solve a/b = c/x for x
+  'prop-1': proportion(2, 3, 4), // 2/3 = 4/x → x = 6
+  'prop-2': proportion(3, 4, 9), // 3/4 = 9/x → x = 12
+  'prop-3': proportion(5, 2, 10), // 5/2 = 10/x → x = 4
+  'prop-4': proportion(4, 5, 8), // 4/5 = 8/x → x = 10
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1973,6 +2000,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'lcm-xfer': lcmPair(9, 12), // LCM = 36 (novel)
   'fmd-xfer': fracMulDiv(2, 5, 3, 4, '×'), // 2/5 × 3/4 = 6/20 = 3/10 (novel)
   'dmd-xfer': decMulDiv(80, 150, '×'), // 0.8 × 1.5 = 1.2 (novel)
+  'prop-xfer': proportion(3, 7, 6), // 3/7 = 6/x → x = 14 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -2475,6 +2503,12 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `What is ${formatHundredths(task.leftHundredths)} ${task.op} ${formatHundredths(task.rightHundredths)}?`,
       options: [] /* type the decimal */,
+    };
+  }
+  if (task.kind === 'proportion_solve') {
+    return {
+      question: `Solve for the missing number: ${task.a}/${task.b} = ${task.c}/? — what is the missing number?`,
+      options: [] /* type the number */,
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -3016,6 +3050,17 @@ export function answerKeyValid(task: Task): boolean {
       claimedTenThousandths: expected,
     }).correct;
   }
+  if (task.kind === 'proportion_solve') {
+    const x = proportionSolve(task.a, task.b, task.c);
+    if (x === null) return false;
+    return checkProportionSolveTask({
+      kind: 'proportion_solve',
+      a: task.a,
+      b: task.b,
+      c: task.c,
+      claimedX: x,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3183,6 +3228,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'gcf_pair' || task.kind === 'lcm_pair') return /^\d+$/.test(a); // positive integer
   if (task.kind === 'fraction_muldiv') return parseFraction(a) !== null; // "n/d"
   if (task.kind === 'decimal_muldiv') return parseToTenThousandths(a) !== null; // a decimal (≤4 dp)
+  if (task.kind === 'proportion_solve') return /^\d+$/.test(a); // a positive integer
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -3641,6 +3687,15 @@ export function judge(task: Task, raw: string): boolean {
       claimedTenThousandths: parsed,
     }).correct;
   }
+  if (task.kind === 'proportion_solve') {
+    return checkProportionSolveTask({
+      kind: 'proportion_solve',
+      a: task.a,
+      b: task.b,
+      c: task.c,
+      claimedX: Number(a),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3869,6 +3924,8 @@ export function correctAnswerFor(task: Task): string {
       return formatTenThousandths(
         decimalMulDivTenThousandths(task.op, task.leftHundredths, task.rightHundredths) ?? 0,
       );
+    case 'proportion_solve':
+      return String(proportionSolve(task.a, task.b, task.c) ?? 0);
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -4190,6 +4247,14 @@ export function wrongAnswerFor(task: Task): string {
       const expected =
         decimalMulDivTenThousandths(task.op, task.leftHundredths, task.rightHundredths) ?? 0;
       return formatTenThousandths(expected > 0 ? expected * 10 : 1);
+    }
+    case 'proportion_solve': {
+      // The "cross-multiplied the wrong pair" error — a·c/b style slip. Compute
+      // a different value than the true x; fall back to x+1 on coincidence.
+      const x = proportionSolve(task.a, task.b, task.c) ?? 0;
+      // b·c swapped to a·c (used the wrong known term): a·c/b when divisible.
+      const alt = (task.a * task.c) % task.b === 0 ? (task.a * task.c) / task.b : -1;
+      return String(alt >= 1 && alt !== x ? alt : x + 1);
     }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);

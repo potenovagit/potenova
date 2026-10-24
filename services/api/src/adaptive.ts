@@ -62,6 +62,7 @@ import {
   buildFactorsG7DraftGraph,
   buildFractionsMulDivG7DraftGraph,
   buildDecimalsMulDivG7DraftGraph,
+  buildProportionsG7DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -168,6 +169,8 @@ import {
   FRACTIONS_MULDIV_G7_STRATEGIES,
   DECIMALS_MULDIV_G7_MISCONCEPTIONS,
   DECIMALS_MULDIV_G7_STRATEGIES,
+  PROPORTIONS_G7_MISCONCEPTIONS,
+  PROPORTIONS_G7_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -256,6 +259,7 @@ export type CourseId =
   | 'factors-g7'
   | 'fractions-muldiv-g7'
   | 'decimals-muldiv-g7'
+  | 'proportions-g7'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -908,6 +912,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: DECIMALS_MULDIV_G7_STRATEGIES,
     transferTask: { 'SK-NS-decimal-muldiv': 'dmd-xfer' },
   },
+  'proportions-g7': {
+    subject: 'math',
+    buildGraph: buildProportionsG7DraftGraph,
+    coachableSkillIds: ['SK-NS-proportion-solve'],
+    defaultTask: { 'SK-NS-proportion-solve': 'prop-1' },
+    practiceTasks: {
+      'SK-NS-proportion-solve': ['prop-1', 'prop-2', 'prop-3', 'prop-4'],
+    },
+    remediationReps: ['symbolic'],
+    misconceptions: PROPORTIONS_G7_MISCONCEPTIONS,
+    strategies: PROPORTIONS_G7_STRATEGIES,
+    transferTask: { 'SK-NS-proportion-solve': 'prop-xfer' },
+  },
   'area-g5': {
     subject: 'math',
     buildGraph: buildAreaG5DraftGraph,
@@ -1180,6 +1197,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'factors-g7',
     'fractions-muldiv-g7',
     'decimals-muldiv-g7',
+    'proportions-g7',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
