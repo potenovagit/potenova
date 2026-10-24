@@ -118,6 +118,8 @@ import {
   type PowerOfTenOp,
   checkSqrtBetweenTask,
   floorSqrt,
+  checkScientificNotationTask,
+  scientificToStandard,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -234,6 +236,7 @@ export const PROPORTION_SOLVE = 'SK-NS-proportion-solve';
 export const INT_MULDIV_SIGNED = 'SK-NS-integer-muldiv-signed';
 export const POWER_OF_TEN_SCALE = 'SK-NS-power-of-ten-scale';
 export const SQRT_BETWEEN = 'SK-NS-sqrt-between';
+export const SCIENTIFIC_NOTATION = 'SK-NS-scientific-notation';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -693,6 +696,14 @@ interface SqrtBetweenTaskT {
   readonly kind: 'sqrt_between';
   readonly value: number;
 }
+interface ScientificNotationTaskT {
+  readonly subject: 'math';
+  readonly course: 'scientific-notation-g8';
+  readonly skillId: typeof SCIENTIFIC_NOTATION;
+  readonly kind: 'scientific_notation';
+  readonly coefficientHundredths: number;
+  readonly exponent: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -848,6 +859,7 @@ export type Task =
   | IntegerMulDivTaskT
   | PowerOfTenScaleTaskT
   | SqrtBetweenTaskT
+  | ScientificNotationTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -1430,6 +1442,14 @@ const sqrtBetween = (value: number): SqrtBetweenTaskT => ({
   kind: 'sqrt_between',
   value,
 });
+const sciNotation = (coefficientHundredths: number, exponent: number): ScientificNotationTaskT => ({
+  subject: 'math',
+  course: 'scientific-notation-g8',
+  skillId: SCIENTIFIC_NOTATION,
+  kind: 'scientific_notation',
+  coefficientHundredths,
+  exponent,
+});
 /** Parse a signed-integer answer string like "-7", "+3", or "12"; null if malformed. */
 const parseSignedInt = (a: string): number | null => {
   const m = a.trim().match(/^[+-]?\d+$/);
@@ -1938,6 +1958,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'sqb-2': sqrtBetween(30), // √30 between 5 and 6
   'sqb-3': sqrtBetween(99), // √99 between 9 and 10
   'sqb-4': sqrtBetween(72), // √72 between 8 and 9
+  // scientific notation → standard form (coefficient as hundredths)
+  'sci-1': sciNotation(320, 3), // 3.2 × 10^3 = 3200
+  'sci-2': sciNotation(100, 6), // 1.0 × 10^6 = 1000000
+  'sci-3': sciNotation(725, 2), // 7.25 × 10^2 = 725
+  'sci-4': sciNotation(450, 4), // 4.5 × 10^4 = 45000
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -2087,6 +2112,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'imd-xfer': intMulDiv(9, -8, '×'), // 9 × -8 = -72 (novel)
   'pt-xfer': powerOfTen(1250, 2, '×'), // 1.25 × 100 = 125 (novel)
   'sqb-xfer': sqrtBetween(40), // √40 between 6 and 7 (novel)
+  'sci-xfer': sciNotation(205, 3), // 2.05 × 10^3 = 2050 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -2614,6 +2640,12 @@ export function present(task: Task): { question: string; options: readonly strin
   if (task.kind === 'sqrt_between') {
     return {
       question: `The square root of ${task.value} is between two consecutive whole numbers. Enter the smaller one.`,
+      options: [] /* type the number */,
+    };
+  }
+  if (task.kind === 'scientific_notation') {
+    return {
+      question: `Write ${formatHundredths(task.coefficientHundredths)} × 10^${task.exponent} in standard form (as an ordinary number).`,
       options: [] /* type the number */,
     };
   }
@@ -3196,6 +3228,16 @@ export function answerKeyValid(task: Task): boolean {
       claimedLower: floorSqrt(task.value),
     }).correct;
   }
+  if (task.kind === 'scientific_notation') {
+    const value = scientificToStandard(task.coefficientHundredths, task.exponent);
+    if (value === null) return false;
+    return checkScientificNotationTask({
+      kind: 'scientific_notation',
+      coefficientHundredths: task.coefficientHundredths,
+      exponent: task.exponent,
+      claimedValue: value,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3367,6 +3409,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'integer_muldiv_signed') return parseSignedInt(a) !== null; // signed integer
   if (task.kind === 'power_of_ten_scale') return parseToThousandths(a) !== null; // a decimal (≤3 dp)
   if (task.kind === 'sqrt_between') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'scientific_notation') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -3863,6 +3906,14 @@ export function judge(task: Task, raw: string): boolean {
       claimedLower: Number(a),
     }).correct;
   }
+  if (task.kind === 'scientific_notation') {
+    return checkScientificNotationTask({
+      kind: 'scientific_notation',
+      coefficientHundredths: task.coefficientHundredths,
+      exponent: task.exponent,
+      claimedValue: Number(a),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -4101,6 +4152,8 @@ export function correctAnswerFor(task: Task): string {
       );
     case 'sqrt_between':
       return String(floorSqrt(task.value));
+    case 'scientific_notation':
+      return String(scientificToStandard(task.coefficientHundredths, task.exponent) ?? 0);
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -4451,6 +4504,17 @@ export function wrongAnswerFor(task: Task): string {
       // The "picked the upper neighbour" error — the larger of the two
       // consecutive integers (k+1) instead of the smaller (k).
       return String(floorSqrt(task.value) + 1);
+    case 'scientific_notation': {
+      // The "one zero short" error — standard form with the exponent one too
+      // small (shifted one place fewer). Always differs from the true value;
+      // fall back to true+1 on the rare coincidence.
+      const value = scientificToStandard(task.coefficientHundredths, task.exponent) ?? 0;
+      const short =
+        task.exponent >= 1
+          ? scientificToStandard(task.coefficientHundredths, task.exponent - 1)
+          : null;
+      return String(short !== null && short !== value ? short : value + 1);
+    }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
       const wrong = task.options.findIndex((_, i) => i !== correct);

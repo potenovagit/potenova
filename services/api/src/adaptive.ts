@@ -66,6 +66,7 @@ import {
   buildIntegersMulDivG8DraftGraph,
   buildPowersOfTenG8DraftGraph,
   buildSqrtEstimateG8DraftGraph,
+  buildScientificNotationG8DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -180,6 +181,8 @@ import {
   POWERS_OF_TEN_G8_STRATEGIES,
   SQRT_ESTIMATE_G8_MISCONCEPTIONS,
   SQRT_ESTIMATE_G8_STRATEGIES,
+  SCIENTIFIC_NOTATION_G8_MISCONCEPTIONS,
+  SCIENTIFIC_NOTATION_G8_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -272,6 +275,7 @@ export type CourseId =
   | 'integers-muldiv-g8'
   | 'powers-of-ten-g8'
   | 'sqrt-estimate-g8'
+  | 'scientific-notation-g8'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -976,6 +980,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: SQRT_ESTIMATE_G8_STRATEGIES,
     transferTask: { 'SK-NS-sqrt-between': 'sqb-xfer' },
   },
+  'scientific-notation-g8': {
+    subject: 'math',
+    buildGraph: buildScientificNotationG8DraftGraph,
+    coachableSkillIds: ['SK-NS-scientific-notation'],
+    defaultTask: { 'SK-NS-scientific-notation': 'sci-1' },
+    practiceTasks: {
+      'SK-NS-scientific-notation': ['sci-1', 'sci-2', 'sci-3', 'sci-4'],
+    },
+    remediationReps: ['symbolic'],
+    misconceptions: SCIENTIFIC_NOTATION_G8_MISCONCEPTIONS,
+    strategies: SCIENTIFIC_NOTATION_G8_STRATEGIES,
+    transferTask: { 'SK-NS-scientific-notation': 'sci-xfer' },
+  },
   'area-g5': {
     subject: 'math',
     buildGraph: buildAreaG5DraftGraph,
@@ -1252,6 +1269,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'integers-muldiv-g8',
     'powers-of-ten-g8',
     'sqrt-estimate-g8',
+    'scientific-notation-g8',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
