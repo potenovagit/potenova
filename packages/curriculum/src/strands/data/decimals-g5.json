@@ -1,0 +1,57 @@
+{
+  "strandId": "decimals-g5",
+  "version": "dec-g5-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-decimal-hundredth-compare",
+      "competency": "number:decimals",
+      "skill": "Compare and order decimal numbers up to hundredths"
+    },
+    {
+      "skillId": "SK-NS-decimal-round-tenth",
+      "competency": "number:decimals",
+      "skill": "Round a decimal number to the nearest tenth"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependencyId": "D-ns-dec-h-compare-round",
+      "fromSkillId": "SK-NS-decimal-hundredth-compare",
+      "toSkillId": "SK-NS-decimal-round-tenth",
+      "type": "supporting",
+      "weight": 0.4
+    }
+  ],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-longer-decimal-bigger",
+      "skillId": "SK-NS-decimal-hundredth-compare",
+      "pattern": "Thinks a decimal with more digits is larger (e.g. 2.47 > 2.5 because 47 > 5), comparing the fractional part as a whole number instead of place by place.",
+      "probeIds": ["PR-NS-which-hundredth-bigger"],
+      "remediationStrategyIds": ["ST-ns-pad-and-compare-places"]
+    },
+    {
+      "misconceptionId": "MC-NS-decimal-tenth-truncates",
+      "skillId": "SK-NS-decimal-round-tenth",
+      "pattern": "Drops the hundredths digit instead of rounding to the nearest tenth (e.g. 2.47 answered 2.4 rather than 2.5).",
+      "probeIds": ["PR-NS-nearest-tenth"],
+      "remediationStrategyIds": ["ST-ns-hundredths-decide"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-pad-and-compare-places",
+      "intent": "Give both numbers the same number of decimal places (pad with a zero), then compare place by place from the largest place down.",
+      "approvedBands": ["junior"],
+      "representations": ["number-line", "symbolic"]
+    },
+    {
+      "strategyId": "ST-ns-hundredths-decide",
+      "intent": "Look at the hundredths digit: 5 or more rounds the tenth up, less than 5 keeps it; then drop the hundredths.",
+      "approvedBands": ["junior"],
+      "representations": ["number-line", "symbolic"]
+    }
+  ]
+}
