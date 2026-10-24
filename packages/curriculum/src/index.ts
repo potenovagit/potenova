@@ -48,6 +48,7 @@ export * from './integers-g6-draft';
 export * from './decimals-g6-draft';
 export * from './fractions-g6-draft';
 export * from './percents-g6-draft';
+export * from './squares-g7-draft';
 export * from './lessons';
 export * from './ontario';
 export * from './overlay';

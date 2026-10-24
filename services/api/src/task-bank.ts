@@ -87,6 +87,10 @@ import {
   fractionAddSubUnlikeResult,
   checkPercentOfTask,
   percentOfResult,
+  checkPerfectSquareRootTask,
+  checkIsPerfectSquareTask,
+  exactSqrt,
+  isPerfectSquare,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -191,6 +195,8 @@ export const DEC_T_COMPARE = 'SK-NS-decimal-thousandth-compare';
 export const DEC_ROUND_HUNDREDTH = 'SK-NS-decimal-round-hundredth';
 export const FRAC_ADDSUB_UNLIKE = 'SK-NS-fraction-addsub-unlike';
 export const PERCENT_OF = 'SK-NS-percent-of';
+export const PERFECT_SQUARE_ROOT = 'SK-NS-perfect-square-root';
+export const IS_PERFECT_SQUARE = 'SK-NS-is-perfect-square';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -549,6 +555,20 @@ interface PercentOfTaskT {
   readonly percent: number;
   readonly whole: number;
 }
+interface PerfectSquareRootTaskT {
+  readonly subject: 'math';
+  readonly course: 'squares-g7';
+  readonly skillId: typeof PERFECT_SQUARE_ROOT;
+  readonly kind: 'perfect_square_root';
+  readonly square: number;
+}
+interface IsPerfectSquareTaskT {
+  readonly subject: 'math';
+  readonly course: 'squares-g7';
+  readonly skillId: typeof IS_PERFECT_SQUARE;
+  readonly kind: 'is_perfect_square';
+  readonly value: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -692,6 +712,8 @@ export type Task =
   | DecimalRoundHundredthTaskT
   | FractionAddSubUnlikeTaskT
   | PercentOfTaskT
+  | PerfectSquareRootTaskT
+  | IsPerfectSquareTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -1159,6 +1181,20 @@ const percentOf = (percent: number, whole: number): PercentOfTaskT => ({
   percent,
   whole,
 });
+const squareRoot = (square: number): PerfectSquareRootTaskT => ({
+  subject: 'math',
+  course: 'squares-g7',
+  skillId: PERFECT_SQUARE_ROOT,
+  kind: 'perfect_square_root',
+  square,
+});
+const isSquare = (value: number): IsPerfectSquareTaskT => ({
+  subject: 'math',
+  course: 'squares-g7',
+  skillId: IS_PERFECT_SQUARE,
+  kind: 'is_perfect_square',
+  value,
+});
 /** Parse a fraction answer string "n/d" (or a whole "n" = n/1); null if malformed. */
 const parseFraction = (a: string): { num: number; denom: number } | null => {
   const frac = a.trim().match(/^(\d+)\s*\/\s*(\d+)$/);
@@ -1602,6 +1638,16 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'pof-2': percentOf(10, 350), // 10% of 350 = 35
   'pof-3': percentOf(50, 46), // 50% of 46 = 23
   'pof-4': percentOf(100, 7), // 100% of 7 = 7
+  // perfect squares — determine the root of a perfect square
+  'psr-1': squareRoot(144), // √144 = 12
+  'psr-2': squareRoot(49), // √49 = 7
+  'psr-3': squareRoot(100), // √100 = 10
+  'psr-4': squareRoot(225), // √225 = 15
+  // perfect squares — is n a perfect square? (yes/no)
+  'ips-1': isSquare(64), // yes (8²)
+  'ips-2': isSquare(50), // no
+  'ips-3': isSquare(121), // yes (11²)
+  'ips-4': isSquare(90), // no
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1739,6 +1785,8 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'drh-xfer': decRoundHundredth(1678), // 1.678 → 1.68 (novel)
   'fau-xfer': fracAddSubUnlike(3, 8, 1, 4, '+'), // 3/8 + 1/4 = 5/8 (novel; = 20/32)
   'pof-xfer': percentOf(20, 65), // 20% of 65 = 13 (novel)
+  'psr-xfer': squareRoot(169), // √169 = 13 (novel)
+  'ips-xfer': isSquare(196), // yes (14²) (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -2194,6 +2242,18 @@ export function present(task: Task): { question: string; options: readonly strin
       options: [] /* type the number */,
     };
   }
+  if (task.kind === 'perfect_square_root') {
+    return {
+      question: `What is the square root of ${task.square}?`,
+      options: [] /* type the number */,
+    };
+  }
+  if (task.kind === 'is_perfect_square') {
+    return {
+      question: `Is ${task.value} a perfect square? Answer "yes" or "no".`,
+      options: [] /* type yes / no */,
+    };
+  }
   if (task.kind === 'date_offset_select') {
     const choices = task.options.map((o) => fmtDate(o));
     const numbered = choices.map((c, i) => `${i + 1}) ${c}`).join('  ');
@@ -2647,6 +2707,22 @@ export function answerKeyValid(task: Task): boolean {
       claimedResult: result,
     }).correct;
   }
+  if (task.kind === 'perfect_square_root') {
+    const root = exactSqrt(task.square);
+    if (root === null) return false;
+    return checkPerfectSquareRootTask({
+      kind: 'perfect_square_root',
+      square: task.square,
+      claimedRoot: root,
+    }).correct;
+  }
+  if (task.kind === 'is_perfect_square') {
+    return checkIsPerfectSquareTask({
+      kind: 'is_perfect_square',
+      value: task.value,
+      claimedIsSquare: isPerfectSquare(task.value),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2807,6 +2883,8 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'decimal_round_hundredth') return parseToThousandths(a) !== null; // a decimal
   if (task.kind === 'fraction_addsub_unlike') return parseFraction(a) !== null; // "n/d"
   if (task.kind === 'percent_of') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'perfect_square_root') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'is_perfect_square') return a === 'yes' || a === 'no';
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -3191,6 +3269,20 @@ export function judge(task: Task, raw: string): boolean {
       claimedResult: Number(a),
     }).correct;
   }
+  if (task.kind === 'perfect_square_root') {
+    return checkPerfectSquareRootTask({
+      kind: 'perfect_square_root',
+      square: task.square,
+      claimedRoot: Number(a),
+    }).correct;
+  }
+  if (task.kind === 'is_perfect_square') {
+    return checkIsPerfectSquareTask({
+      kind: 'is_perfect_square',
+      value: task.value,
+      claimedIsSquare: a === 'yes',
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3393,6 +3485,10 @@ export function correctAnswerFor(task: Task): string {
     }
     case 'percent_of':
       return String(percentOfResult(task.percent, task.whole) ?? 0);
+    case 'perfect_square_root':
+      return String(exactSqrt(task.square) ?? 0);
+    case 'is_perfect_square':
+      return isPerfectSquare(task.value) ? 'yes' : 'no';
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -3654,6 +3750,15 @@ export function wrongAnswerFor(task: Task): string {
       const slip = product % 10 === 0 ? product / 10 : -1;
       return slip >= 0 && slip !== trueResult ? String(slip) : String(trueResult + 1);
     }
+    case 'perfect_square_root': {
+      // An off-by-one root — a clean non-negative integer that is never the true
+      // root (root−1, or root+1 when the root is 0).
+      const root = exactSqrt(task.square) ?? 0;
+      return String(root > 0 ? root - 1 : root + 1);
+    }
+    case 'is_perfect_square':
+      // The opposite judgement.
+      return isPerfectSquare(task.value) ? 'no' : 'yes';
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
       const wrong = task.options.findIndex((_, i) => i !== correct);
