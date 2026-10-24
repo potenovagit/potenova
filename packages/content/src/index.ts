@@ -42,6 +42,7 @@ export * from './percent-of-check';
 export * from './perfect-square-check';
 export * from './integer-addsub-check';
 export * from './power-check';
+export * from './gcf-lcm-check';
 export * from './validation';
 export * from './model-eval';
 export * from './eval-suite';

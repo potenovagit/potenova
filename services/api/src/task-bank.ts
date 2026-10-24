@@ -96,6 +96,10 @@ import {
   type IntegerAddSubOp,
   checkPowerEvalTask,
   powerValue,
+  checkGcfPairTask,
+  checkLcmPairTask,
+  gcd,
+  lcm,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -204,6 +208,8 @@ export const PERFECT_SQUARE_ROOT = 'SK-NS-perfect-square-root';
 export const IS_PERFECT_SQUARE = 'SK-NS-is-perfect-square';
 export const INT_ADDSUB_SIGNED = 'SK-NS-integer-addsub-signed';
 export const POWER_EVAL = 'SK-NS-power-eval';
+export const GCF_PAIR = 'SK-NS-gcf-pair';
+export const LCM_PAIR = 'SK-NS-lcm-pair';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -593,6 +599,22 @@ interface PowerEvalTaskT {
   readonly base: number;
   readonly exponent: number;
 }
+interface GcfPairTaskT {
+  readonly subject: 'math';
+  readonly course: 'factors-g7';
+  readonly skillId: typeof GCF_PAIR;
+  readonly kind: 'gcf_pair';
+  readonly a: number;
+  readonly b: number;
+}
+interface LcmPairTaskT {
+  readonly subject: 'math';
+  readonly course: 'factors-g7';
+  readonly skillId: typeof LCM_PAIR;
+  readonly kind: 'lcm_pair';
+  readonly a: number;
+  readonly b: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -740,6 +762,8 @@ export type Task =
   | IsPerfectSquareTaskT
   | IntegerAddSubTaskT
   | PowerEvalTaskT
+  | GcfPairTaskT
+  | LcmPairTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -1238,6 +1262,22 @@ const power = (base: number, exponent: number): PowerEvalTaskT => ({
   base,
   exponent,
 });
+const gcfPair = (a: number, b: number): GcfPairTaskT => ({
+  subject: 'math',
+  course: 'factors-g7',
+  skillId: GCF_PAIR,
+  kind: 'gcf_pair',
+  a,
+  b,
+});
+const lcmPair = (a: number, b: number): LcmPairTaskT => ({
+  subject: 'math',
+  course: 'factors-g7',
+  skillId: LCM_PAIR,
+  kind: 'lcm_pair',
+  a,
+  b,
+});
 /** Parse a signed-integer answer string like "-7", "+3", or "12"; null if malformed. */
 const parseSignedInt = (a: string): number | null => {
   const m = a.trim().match(/^[+-]?\d+$/);
@@ -1706,6 +1746,16 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'pow-2': power(10, 3), // 10^3 = 1000
   'pow-3': power(7, 2), // 7^2 = 49
   'pow-4': power(3, 4), // 3^4 = 81
+  // greatest common factor of two whole numbers (≤144)
+  'gcf-1': gcfPair(12, 18), // GCF = 6
+  'gcf-2': gcfPair(144, 60), // GCF = 12
+  'gcf-3': gcfPair(7, 13), // GCF = 1 (coprime)
+  'gcf-4': gcfPair(24, 36), // GCF = 12
+  // lowest common multiple of two whole numbers
+  'lcm-1': lcmPair(4, 6), // LCM = 12
+  'lcm-2': lcmPair(8, 12), // LCM = 24
+  'lcm-3': lcmPair(5, 9), // LCM = 45
+  'lcm-4': lcmPair(6, 10), // LCM = 30
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1847,6 +1897,8 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'ips-xfer': isSquare(196), // yes (14²) (novel)
   'ias-xfer': intAddSub(7, -10, '+'), // 7 + (-10) = -3 (novel)
   'pow-xfer': power(5, 3), // 5^3 = 125 (novel)
+  'gcf-xfer': gcfPair(48, 72), // GCF = 24 (novel)
+  'lcm-xfer': lcmPair(9, 12), // LCM = 36 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -2324,6 +2376,18 @@ export function present(task: Task): { question: string; options: readonly strin
   if (task.kind === 'power_eval') {
     return {
       question: `What is ${task.base} to the power of ${task.exponent} (${task.base}^${task.exponent})?`,
+      options: [] /* type the number */,
+    };
+  }
+  if (task.kind === 'gcf_pair') {
+    return {
+      question: `What is the greatest common factor (GCF) of ${task.a} and ${task.b}?`,
+      options: [] /* type the number */,
+    };
+  }
+  if (task.kind === 'lcm_pair') {
+    return {
+      question: `What is the lowest common multiple (LCM) of ${task.a} and ${task.b}?`,
       options: [] /* type the number */,
     };
   }
@@ -2815,6 +2879,22 @@ export function answerKeyValid(task: Task): boolean {
       claimedResult: value,
     }).correct;
   }
+  if (task.kind === 'gcf_pair') {
+    return checkGcfPairTask({
+      kind: 'gcf_pair',
+      a: task.a,
+      b: task.b,
+      claimedResult: gcd(task.a, task.b),
+    }).correct;
+  }
+  if (task.kind === 'lcm_pair') {
+    return checkLcmPairTask({
+      kind: 'lcm_pair',
+      a: task.a,
+      b: task.b,
+      claimedResult: lcm(task.a, task.b),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2979,6 +3059,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'is_perfect_square') return a === 'yes' || a === 'no';
   if (task.kind === 'integer_addsub_signed') return parseSignedInt(a) !== null; // signed integer
   if (task.kind === 'power_eval') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'gcf_pair' || task.kind === 'lcm_pair') return /^\d+$/.test(a); // positive integer
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -3396,6 +3477,22 @@ export function judge(task: Task, raw: string): boolean {
       claimedResult: Number(a),
     }).correct;
   }
+  if (task.kind === 'gcf_pair') {
+    return checkGcfPairTask({
+      kind: 'gcf_pair',
+      a: task.a,
+      b: task.b,
+      claimedResult: Number(a),
+    }).correct;
+  }
+  if (task.kind === 'lcm_pair') {
+    return checkLcmPairTask({
+      kind: 'lcm_pair',
+      a: task.a,
+      b: task.b,
+      claimedResult: Number(a),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3606,6 +3703,10 @@ export function correctAnswerFor(task: Task): string {
       return String(integerAddSubResult(task.left, task.right, task.op));
     case 'power_eval':
       return String(powerValue(task.base, task.exponent) ?? 0);
+    case 'gcf_pair':
+      return String(gcd(task.a, task.b));
+    case 'lcm_pair':
+      return String(lcm(task.a, task.b));
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -3887,6 +3988,20 @@ export function wrongAnswerFor(task: Task): string {
       const trueVal = powerValue(task.base, task.exponent) ?? 0;
       const product = task.base * task.exponent;
       return String(product !== trueVal ? product : trueVal + 1);
+    }
+    case 'gcf_pair': {
+      // The "confused GCF with LCM" error — the LCM is wrong whenever the two
+      // numbers are not equal; fall back to gcf+1 when they coincide (a === b).
+      const g = gcd(task.a, task.b);
+      const l = lcm(task.a, task.b);
+      return String(l !== g ? l : g + 1);
+    }
+    case 'lcm_pair': {
+      // The "confused LCM with GCF" error — the GCF is wrong whenever the two
+      // numbers are not equal; fall back to lcm+1 when they coincide (a === b).
+      const g = gcd(task.a, task.b);
+      const l = lcm(task.a, task.b);
+      return String(g !== l ? g : l + 1);
     }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);

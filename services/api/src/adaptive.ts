@@ -59,6 +59,7 @@ import {
   buildSquaresG7DraftGraph,
   buildIntegersArithG7DraftGraph,
   buildExponentsG7DraftGraph,
+  buildFactorsG7DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -159,6 +160,8 @@ import {
   INTEGERS_ARITH_G7_STRATEGIES,
   EXPONENTS_G7_MISCONCEPTIONS,
   EXPONENTS_G7_STRATEGIES,
+  FACTORS_G7_MISCONCEPTIONS,
+  FACTORS_G7_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -244,6 +247,7 @@ export type CourseId =
   | 'squares-g7'
   | 'integers-arith-g7'
   | 'exponents-g7'
+  | 'factors-g7'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -850,6 +854,26 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: EXPONENTS_G7_STRATEGIES,
     transferTask: { 'SK-NS-power-eval': 'pow-xfer' },
   },
+  'factors-g7': {
+    subject: 'math',
+    buildGraph: buildFactorsG7DraftGraph,
+    coachableSkillIds: ['SK-NS-gcf-pair', 'SK-NS-lcm-pair'],
+    defaultTask: {
+      'SK-NS-gcf-pair': 'gcf-1',
+      'SK-NS-lcm-pair': 'lcm-1',
+    },
+    practiceTasks: {
+      'SK-NS-gcf-pair': ['gcf-1', 'gcf-2', 'gcf-3', 'gcf-4'],
+      'SK-NS-lcm-pair': ['lcm-1', 'lcm-2', 'lcm-3', 'lcm-4'],
+    },
+    remediationReps: ['symbolic'],
+    misconceptions: FACTORS_G7_MISCONCEPTIONS,
+    strategies: FACTORS_G7_STRATEGIES,
+    transferTask: {
+      'SK-NS-gcf-pair': 'gcf-xfer',
+      'SK-NS-lcm-pair': 'lcm-xfer',
+    },
+  },
   'area-g5': {
     subject: 'math',
     buildGraph: buildAreaG5DraftGraph,
@@ -1119,6 +1143,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'squares-g7',
     'integers-arith-g7',
     'exponents-g7',
+    'factors-g7',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
