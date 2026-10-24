@@ -64,6 +64,7 @@ import {
   buildDecimalsMulDivG7DraftGraph,
   buildProportionsG7DraftGraph,
   buildIntegersMulDivG8DraftGraph,
+  buildPowersOfTenG8DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -174,6 +175,8 @@ import {
   PROPORTIONS_G7_STRATEGIES,
   INTEGERS_MULDIV_G8_MISCONCEPTIONS,
   INTEGERS_MULDIV_G8_STRATEGIES,
+  POWERS_OF_TEN_G8_MISCONCEPTIONS,
+  POWERS_OF_TEN_G8_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -264,6 +267,7 @@ export type CourseId =
   | 'decimals-muldiv-g7'
   | 'proportions-g7'
   | 'integers-muldiv-g8'
+  | 'powers-of-ten-g8'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -942,6 +946,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: INTEGERS_MULDIV_G8_STRATEGIES,
     transferTask: { 'SK-NS-integer-muldiv-signed': 'imd-xfer' },
   },
+  'powers-of-ten-g8': {
+    subject: 'math',
+    buildGraph: buildPowersOfTenG8DraftGraph,
+    coachableSkillIds: ['SK-NS-power-of-ten-scale'],
+    defaultTask: { 'SK-NS-power-of-ten-scale': 'pt-1' },
+    practiceTasks: {
+      'SK-NS-power-of-ten-scale': ['pt-1', 'pt-2', 'pt-3', 'pt-4'],
+    },
+    remediationReps: ['symbolic'],
+    misconceptions: POWERS_OF_TEN_G8_MISCONCEPTIONS,
+    strategies: POWERS_OF_TEN_G8_STRATEGIES,
+    transferTask: { 'SK-NS-power-of-ten-scale': 'pt-xfer' },
+  },
   'area-g5': {
     subject: 'math',
     buildGraph: buildAreaG5DraftGraph,
@@ -1216,6 +1233,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'decimals-muldiv-g7',
     'proportions-g7',
     'integers-muldiv-g8',
+    'powers-of-ten-g8',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],

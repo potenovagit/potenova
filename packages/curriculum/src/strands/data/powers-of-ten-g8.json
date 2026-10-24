@@ -1,0 +1,31 @@
+{
+  "strandId": "powers-of-ten-g8",
+  "version": "pt-g8-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-power-of-ten-scale",
+      "competency": "number:decimals",
+      "skill": "Multiply and divide whole and decimal numbers by powers of ten"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-decimal-shift-wrong-way",
+      "skillId": "SK-NS-power-of-ten-scale",
+      "pattern": "Shifts the decimal point the wrong way or the wrong number of places (answers 3.5 × 100 as 0.035 or 35 instead of 350).",
+      "probeIds": ["PR-NS-power-of-ten-scale"],
+      "remediationStrategyIds": ["ST-ns-count-the-zeros"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-count-the-zeros",
+      "intent": "The power of ten tells you how many places to move the decimal point: multiplying moves it right (the number gets bigger), dividing moves it left (the number gets smaller). Move one place per zero.",
+      "approvedBands": ["intermediate"],
+      "representations": ["symbolic"]
+    }
+  ]
+}
