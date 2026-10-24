@@ -1,0 +1,31 @@
+{
+  "strandId": "decimals-muldiv-g7",
+  "version": "decmd-g7-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-decimal-muldiv",
+      "competency": "number:decimals",
+      "skill": "Multiply and divide decimal numbers by decimal numbers"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-decimal-point-misplaced",
+      "skillId": "SK-NS-decimal-muldiv",
+      "pattern": "Misplaces the decimal point in the result (answers 0.5 × 0.4 as 2.0 instead of 0.2), not accounting for the number of decimal places in the factors.",
+      "probeIds": ["PR-NS-decimal-muldiv"],
+      "remediationStrategyIds": ["ST-ns-count-the-decimal-places"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-count-the-decimal-places",
+      "intent": "Multiply as whole numbers, then place the decimal point so the product has as many decimal places as the two factors combined. To divide, scale both numbers up to whole numbers first, then divide.",
+      "approvedBands": ["intermediate"],
+      "representations": ["symbolic"]
+    }
+  ]
+}
