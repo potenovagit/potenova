@@ -56,6 +56,9 @@ import {
   roundTenthsToWhole,
   checkFractionDecimalEquivTask,
   type DecimalRelation,
+  checkRectangleAreaTask,
+  rectangleArea,
+  checkRectangleMissingSideTask,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -145,6 +148,8 @@ export const DIV_REMAINDER = 'SK-NS-div-remainder';
 export const DEC_COMPARE = 'SK-NS-decimal-compare';
 export const DEC_ROUND = 'SK-NS-decimal-round';
 export const FRAC_DEC_EQUIV = 'SK-NS-fraction-decimal-equiv';
+export const RECT_AREA = 'SK-ME-rect-area';
+export const RECT_SIDE = 'SK-ME-rect-missing-side';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -379,6 +384,22 @@ interface FractionDecimalEquivTaskT {
   readonly denominator: number;
   readonly tenths: number;
 }
+interface RectangleAreaTaskT {
+  readonly subject: 'math';
+  readonly course: 'area-g4';
+  readonly skillId: typeof RECT_AREA;
+  readonly kind: 'rectangle_area';
+  readonly length: number;
+  readonly width: number;
+}
+interface RectangleMissingSideTaskT {
+  readonly subject: 'math';
+  readonly course: 'area-g4';
+  readonly skillId: typeof RECT_SIDE;
+  readonly kind: 'rectangle_missing_side';
+  readonly area: number;
+  readonly knownSide: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -507,6 +528,8 @@ export type Task =
   | DecimalCompareTaskT
   | DecimalRoundTaskT
   | FractionDecimalEquivTaskT
+  | RectangleAreaTaskT
+  | RectangleMissingSideTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -828,6 +851,22 @@ const fracDecEquiv = (
   numerator,
   denominator,
   tenths,
+});
+const rectArea = (length: number, width: number): RectangleAreaTaskT => ({
+  subject: 'math',
+  course: 'area-g4',
+  skillId: RECT_AREA,
+  kind: 'rectangle_area',
+  length,
+  width,
+});
+const rectSide = (area: number, knownSide: number): RectangleMissingSideTaskT => ({
+  subject: 'math',
+  course: 'area-g4',
+  skillId: RECT_SIDE,
+  kind: 'rectangle_missing_side',
+  area,
+  knownSide,
 });
 const dateOffset = (
   year: number,
@@ -1189,6 +1228,15 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'fde-2': fracDecEquiv(1, 2, 5), // 1/2 == 0.5 → yes
   'fde-3': fracDecEquiv(1, 4, 3), // 1/4 == 0.3? → no
   'fde-4': fracDecEquiv(7, 10, 7), // 7/10 == 0.7 → yes
+  // rectangle area and missing side
+  'rarea-1': rectArea(6, 4), // 24
+  'rarea-2': rectArea(9, 7), // 63
+  'rarea-3': rectArea(12, 5), // 60
+  'rarea-4': rectArea(8, 8), // 64 (adds-sides trap → 16)
+  'rside-1': rectSide(24, 6), // 4
+  'rside-2': rectSide(63, 9), // 7
+  'rside-3': rectSide(48, 6), // 8
+  'rside-4': rectSide(100, 4), // 25
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1311,6 +1359,8 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'dcmp-xfer': decCompare(62, 71), // 6.2 < 7.1 → lt (novel)
   'drnd-xfer': decRound(48), // 4.8 → 5 (novel)
   'fde-xfer': fracDecEquiv(4, 5, 8), // 4/5 == 0.8 → yes (novel)
+  'rarea-xfer': rectArea(7, 9), // 63 (novel)
+  'rside-xfer': rectSide(72, 8), // 9 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -1369,6 +1419,8 @@ export const TRANSFER_TASKS = new Set([
   'dcmp-xfer',
   'drnd-xfer',
   'fde-xfer',
+  'rarea-xfer',
+  'rside-xfer',
   'date-xfer',
   'code-xfer',
   'wp-xfer',
@@ -1655,6 +1707,18 @@ export function present(task: Task): { question: string; options: readonly strin
         task.tenths,
       )}? (yes / no)`,
       options: ['yes', 'no'],
+    };
+  }
+  if (task.kind === 'rectangle_area') {
+    return {
+      question: `A rectangle is ${task.length} by ${task.width}. What is its area (square units)?`,
+      options: [] /* type the number */,
+    };
+  }
+  if (task.kind === 'rectangle_missing_side') {
+    return {
+      question: `A rectangle has an area of ${task.area} square units and one side of ${task.knownSide}. How long is the other side?`,
+      options: [] /* type the number */,
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -1971,6 +2035,22 @@ export function answerKeyValid(task: Task): boolean {
       claimedEquivalent: task.numerator * 10 === task.tenths * task.denominator,
     }).correct;
   }
+  if (task.kind === 'rectangle_area') {
+    return checkRectangleAreaTask({
+      kind: 'rectangle_area',
+      length: task.length,
+      width: task.width,
+      claimedArea: rectangleArea(task.length, task.width),
+    }).correct;
+  }
+  if (task.kind === 'rectangle_missing_side') {
+    return checkRectangleMissingSideTask({
+      kind: 'rectangle_missing_side',
+      area: task.area,
+      knownSide: task.knownSide,
+      claimedSide: task.area / task.knownSide,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2116,6 +2196,8 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'decimal_tenth_compare') return isRelation(a); // lt / eq / gt
   if (task.kind === 'decimal_round_whole') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'fraction_decimal_equiv') return a === 'yes' || a === 'no';
+  if (task.kind === 'rectangle_area') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'rectangle_missing_side') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -2363,6 +2445,22 @@ export function judge(task: Task, raw: string): boolean {
       claimedEquivalent: a === 'yes',
     }).correct;
   }
+  if (task.kind === 'rectangle_area') {
+    return checkRectangleAreaTask({
+      kind: 'rectangle_area',
+      length: task.length,
+      width: task.width,
+      claimedArea: Number(a),
+    }).correct;
+  }
+  if (task.kind === 'rectangle_missing_side') {
+    return checkRectangleMissingSideTask({
+      kind: 'rectangle_missing_side',
+      area: task.area,
+      knownSide: task.knownSide,
+      claimedSide: Number(a),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2527,6 +2625,10 @@ export function correctAnswerFor(task: Task): string {
       return String(roundTenthsToWhole(task.tenths));
     case 'fraction_decimal_equiv':
       return task.numerator * 10 === task.tenths * task.denominator ? 'yes' : 'no';
+    case 'rectangle_area':
+      return String(rectangleArea(task.length, task.width));
+    case 'rectangle_missing_side':
+      return String(task.area / task.knownSide);
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -2692,6 +2794,18 @@ export function wrongAnswerFor(task: Task): string {
     }
     case 'fraction_decimal_equiv':
       return task.numerator * 10 === task.tenths * task.denominator ? 'no' : 'yes';
+    case 'rectangle_area': {
+      // The perimeter/adds-the-sides error (length + width) instead of area.
+      // Fall back to one-off if that coincides with the product, so it is always wrong.
+      const area = rectangleArea(task.length, task.width);
+      const sum = task.length + task.width;
+      return String(sum === area ? area + 1 : sum);
+    }
+    case 'rectangle_missing_side': {
+      // Multiply instead of divide (area × known side). Always larger than the
+      // true side for a valid item, so always wrong.
+      return String(task.area * task.knownSide);
+    }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
       const wrong = task.options.findIndex((_, i) => i !== correct);

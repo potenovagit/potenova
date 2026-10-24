@@ -45,6 +45,7 @@ import {
   buildDivisionG4DraftGraph,
   buildAddSubtractG4DraftGraph,
   buildDecimalsG4DraftGraph,
+  buildAreaG4DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -117,6 +118,8 @@ import {
   ADD_SUBTRACT_G4_STRATEGIES,
   DECIMALS_G4_MISCONCEPTIONS,
   DECIMALS_G4_STRATEGIES,
+  AREA_G4_MISCONCEPTIONS,
+  AREA_G4_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -188,6 +191,7 @@ export type CourseId =
   | 'division-g4'
   | 'add-subtract-g4'
   | 'decimals-g4'
+  | 'area-g4'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -689,6 +693,26 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: DIVISION_G4_STRATEGIES,
     transferTask: { 'SK-NS-div-remainder': 'drem-xfer' },
   },
+  'area-g4': {
+    subject: 'math',
+    buildGraph: buildAreaG4DraftGraph,
+    coachableSkillIds: ['SK-ME-rect-area', 'SK-ME-rect-missing-side'],
+    defaultTask: {
+      'SK-ME-rect-area': 'rarea-1',
+      'SK-ME-rect-missing-side': 'rside-1',
+    },
+    practiceTasks: {
+      'SK-ME-rect-area': ['rarea-1', 'rarea-2', 'rarea-3', 'rarea-4'],
+      'SK-ME-rect-missing-side': ['rside-1', 'rside-2', 'rside-3', 'rside-4'],
+    },
+    remediationReps: ['area-model', 'symbolic'],
+    misconceptions: AREA_G4_MISCONCEPTIONS,
+    strategies: AREA_G4_STRATEGIES,
+    transferTask: {
+      'SK-ME-rect-area': 'rarea-xfer',
+      'SK-ME-rect-missing-side': 'rside-xfer',
+    },
+  },
   'decimals-g4': {
     subject: 'math',
     buildGraph: buildDecimalsG4DraftGraph,
@@ -832,6 +856,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'division-g4',
     'add-subtract-g4',
     'decimals-g4',
+    'area-g4',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
