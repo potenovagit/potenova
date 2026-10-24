@@ -1,0 +1,57 @@
+{
+  "strandId": "area-g4",
+  "version": "area-g4-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-ME-rect-area",
+      "competency": "measurement:area",
+      "skill": "Find the area of a rectangle as length × width"
+    },
+    {
+      "skillId": "SK-ME-rect-missing-side",
+      "competency": "measurement:area",
+      "skill": "Find an unknown side of a rectangle given its area and the other side"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependencyId": "D-me-area-side",
+      "fromSkillId": "SK-ME-rect-area",
+      "toSkillId": "SK-ME-rect-missing-side",
+      "type": "strong",
+      "weight": 0.7
+    }
+  ],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-ME-adds-sides-for-area",
+      "skillId": "SK-ME-rect-area",
+      "pattern": "Adds the two sides (or computes the perimeter) instead of multiplying them for area (e.g. an 8 by 8 rectangle answered 16 or 32 rather than 64).",
+      "probeIds": ["PR-ME-rows-and-columns"],
+      "remediationStrategyIds": ["ST-me-array-rows-columns"]
+    },
+    {
+      "misconceptionId": "MC-ME-multiplies-for-missing-side",
+      "skillId": "SK-ME-rect-missing-side",
+      "pattern": "Multiplies the area by the known side instead of dividing when finding the unknown side.",
+      "probeIds": ["PR-ME-undo-the-area"],
+      "remediationStrategyIds": ["ST-me-divide-to-undo"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-me-array-rows-columns",
+      "intent": "See the rectangle as rows and columns of unit squares — the area is how many squares fill it, which is the number in a row times the number of rows.",
+      "approvedBands": ["junior"],
+      "representations": ["area-model", "symbolic"]
+    },
+    {
+      "strategyId": "ST-me-divide-to-undo",
+      "intent": "Area = one side × the other, so the missing side undoes that: divide the area by the side you know.",
+      "approvedBands": ["junior"],
+      "representations": ["area-model", "symbolic"]
+    }
+  ]
+}

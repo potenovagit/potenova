@@ -28,6 +28,7 @@ export * from './round-check';
 export * from './multidigit-multiplication-check';
 export * from './division-remainder-check';
 export * from './decimal-check';
+export * from './rectangle-area-check';
 export * from './validation';
 export * from './model-eval';
 export * from './eval-suite';
