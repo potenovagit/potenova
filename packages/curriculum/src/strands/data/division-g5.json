@@ -1,0 +1,31 @@
+{
+  "strandId": "division-g5",
+  "version": "div-g5-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-div-2digit",
+      "competency": "number:division",
+      "skill": "Divide a three-digit number by a two-digit number, giving the quotient and remainder"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-drops-remainder-2digit",
+      "skillId": "SK-NS-div-2digit",
+      "pattern": "Reports the quotient but drops the remainder (gives remainder 0 when there is a real remainder), or lets the remainder reach or exceed the two-digit divisor.",
+      "probeIds": ["PR-NS-share-the-rest-2digit"],
+      "remediationStrategyIds": ["ST-ns-estimate-then-adjust"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-estimate-then-adjust",
+      "intent": "Estimate how many whole divisors fit (round the divisor to the nearest ten to guess the quotient), multiply back, then take the difference from the dividend as the remainder — which must be smaller than the divisor.",
+      "approvedBands": ["junior"],
+      "representations": ["area-model", "symbolic"]
+    }
+  ]
+}

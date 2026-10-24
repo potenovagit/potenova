@@ -69,6 +69,7 @@ import {
   fractionAddSubResultNum,
   type FractionOp,
   checkMult2x2Task,
+  checkDivision2DigitTask,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -164,6 +165,7 @@ export const DEC_H_COMPARE = 'SK-NS-decimal-hundredth-compare';
 export const DEC_ROUND_TENTH = 'SK-NS-decimal-round-tenth';
 export const FRAC_ADDSUB_LIKE = 'SK-NS-fraction-addsub-like';
 export const MULT_2X2 = 'SK-NS-mult-2x2';
+export const DIV_2DIGIT = 'SK-NS-div-2digit';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -447,6 +449,14 @@ interface Mult2x2TaskT {
   readonly factorA: number;
   readonly factorB: number;
 }
+interface Division2DigitTaskT {
+  readonly subject: 'math';
+  readonly course: 'division-g5';
+  readonly skillId: typeof DIV_2DIGIT;
+  readonly kind: 'division_2digit';
+  readonly dividend: number;
+  readonly divisor: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -581,6 +591,7 @@ export type Task =
   | DecimalRoundTenthTaskT
   | FractionAddSubLikeTaskT
   | Mult2x2TaskT
+  | Division2DigitTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -959,6 +970,14 @@ const mult2x2 = (factorA: number, factorB: number): Mult2x2TaskT => ({
   kind: 'mult_2x2',
   factorA,
   factorB,
+});
+const div2digit = (dividend: number, divisor: number): Division2DigitTaskT => ({
+  subject: 'math',
+  course: 'division-g5',
+  skillId: DIV_2DIGIT,
+  kind: 'division_2digit',
+  dividend,
+  divisor,
 });
 /** Parse a fraction answer string "n/d" (or a whole "n" = n/1); null if malformed. */
 const parseFraction = (a: string): { num: number; denom: number } | null => {
@@ -1359,6 +1378,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'm2-2': mult2x2(34, 12), // 408
   'm2-3': mult2x2(50, 60), // 3000
   'm2-4': mult2x2(27, 19), // 513 (ones-digit-only trap → 171)
+  // 3-digit ÷ 2-digit division with remainder
+  'd2-1': div2digit(247, 12), // 20 r 7
+  'd2-2': div2digit(500, 25), // 20 r 0
+  'd2-3': div2digit(963, 40), // 24 r 3
+  'd2-4': div2digit(184, 15), // 12 r 4 (drops-remainder trap → "12 0")
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1487,6 +1511,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'drt-xfer': decRoundTenth(168), // 1.68 → 1.7 (novel)
   'fas-xfer': fracAddSub(4, 5, 12, '+'), // 4/12 + 5/12 = 9/12 (novel)
   'm2-xfer': mult2x2(38, 26), // 988 (novel)
+  'd2-xfer': div2digit(375, 18), // 20 r 15 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -1551,6 +1576,7 @@ export const TRANSFER_TASKS = new Set([
   'drt-xfer',
   'fas-xfer',
   'm2-xfer',
+  'd2-xfer',
   'date-xfer',
   'code-xfer',
   'wp-xfer',
@@ -1876,6 +1902,12 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `What is ${task.factorA} × ${task.factorB}?`,
       options: [] /* type the number */,
+    };
+  }
+  if (task.kind === 'division_2digit') {
+    return {
+      question: `What is ${task.dividend} ÷ ${task.divisor}? Give the quotient and the remainder, like "20 7".`,
+      options: [] /* type "quotient remainder" */,
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -2244,6 +2276,15 @@ export function answerKeyValid(task: Task): boolean {
       claimedProduct: task.factorA * task.factorB,
     }).correct;
   }
+  if (task.kind === 'division_2digit') {
+    return checkDivision2DigitTask({
+      kind: 'division_2digit',
+      dividend: task.dividend,
+      divisor: task.divisor,
+      claimedQuotient: Math.floor(task.dividend / task.divisor),
+      claimedRemainder: task.dividend % task.divisor,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2395,6 +2436,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'decimal_round_tenth') return parseToHundredths(a) !== null; // a decimal
   if (task.kind === 'fraction_addsub_like') return parseFraction(a) !== null; // "n/d"
   if (task.kind === 'mult_2x2') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'division_2digit') return parseQuotientRemainder(a) !== null; // "q r"
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -2696,6 +2738,17 @@ export function judge(task: Task, raw: string): boolean {
       claimedProduct: Number(a),
     }).correct;
   }
+  if (task.kind === 'division_2digit') {
+    const parsed = parseQuotientRemainder(a);
+    if (!parsed) return false;
+    return checkDivision2DigitTask({
+      kind: 'division_2digit',
+      dividend: task.dividend,
+      divisor: task.divisor,
+      claimedQuotient: parsed.q,
+      claimedRemainder: parsed.r,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2872,6 +2925,8 @@ export function correctAnswerFor(task: Task): string {
       return `${fractionAddSubResultNum(task.leftNum, task.rightNum, task.op) ?? 0}/${task.denom}`;
     case 'mult_2x2':
       return String(task.factorA * task.factorB);
+    case 'division_2digit':
+      return `${Math.floor(task.dividend / task.divisor)} ${task.dividend % task.divisor}`;
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -3070,6 +3125,13 @@ export function wrongAnswerFor(task: Task): string {
       // The ones-digit-only partial-product error (ones of A × B). Always smaller
       // than the true product for two-digit factors, so always wrong.
       return String((task.factorA % 10) * task.factorB);
+    case 'division_2digit': {
+      // The drops-the-remainder error — right quotient, remainder reported as 0.
+      // Fall back to a wrong quotient when the true remainder is already 0.
+      const q = Math.floor(task.dividend / task.divisor);
+      const r = task.dividend % task.divisor;
+      return r === 0 ? `${q + 1} 0` : `${q} 0`;
+    }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
       const wrong = task.options.findIndex((_, i) => i !== correct);

@@ -41,6 +41,7 @@ export * from './area-g4-draft';
 export * from './decimals-g5-draft';
 export * from './fractions-g5-draft';
 export * from './multiplication-g5-draft';
+export * from './division-g5-draft';
 export * from './lessons';
 export * from './ontario';
 export * from './overlay';
