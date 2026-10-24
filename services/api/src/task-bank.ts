@@ -70,6 +70,7 @@ import {
   type FractionOp,
   checkMult2x2Task,
   checkDivision2DigitTask,
+  checkFractionPercentEquivTask,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -166,6 +167,7 @@ export const DEC_ROUND_TENTH = 'SK-NS-decimal-round-tenth';
 export const FRAC_ADDSUB_LIKE = 'SK-NS-fraction-addsub-like';
 export const MULT_2X2 = 'SK-NS-mult-2x2';
 export const DIV_2DIGIT = 'SK-NS-div-2digit';
+export const FRAC_PCT_EQUIV = 'SK-NS-fraction-percent-equiv';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -457,6 +459,15 @@ interface Division2DigitTaskT {
   readonly dividend: number;
   readonly divisor: number;
 }
+interface FractionPercentEquivTaskT {
+  readonly subject: 'math';
+  readonly course: 'percents-g5';
+  readonly skillId: typeof FRAC_PCT_EQUIV;
+  readonly kind: 'fraction_percent_equiv';
+  readonly numerator: number;
+  readonly denominator: number;
+  readonly percent: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -592,6 +603,7 @@ export type Task =
   | FractionAddSubLikeTaskT
   | Mult2x2TaskT
   | Division2DigitTaskT
+  | FractionPercentEquivTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -978,6 +990,19 @@ const div2digit = (dividend: number, divisor: number): Division2DigitTaskT => ({
   kind: 'division_2digit',
   dividend,
   divisor,
+});
+const fracPercent = (
+  numerator: number,
+  denominator: number,
+  percent: number,
+): FractionPercentEquivTaskT => ({
+  subject: 'math',
+  course: 'percents-g5',
+  skillId: FRAC_PCT_EQUIV,
+  kind: 'fraction_percent_equiv',
+  numerator,
+  denominator,
+  percent,
 });
 /** Parse a fraction answer string "n/d" (or a whole "n" = n/1); null if malformed. */
 const parseFraction = (a: string): { num: number; denom: number } | null => {
@@ -1383,6 +1408,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'd2-2': div2digit(500, 25), // 20 r 0
   'd2-3': div2digit(963, 40), // 24 r 3
   'd2-4': div2digit(184, 15), // 12 r 4 (drops-remainder trap → "12 0")
+  // fraction ↔ percent equivalence
+  'fpc-1': fracPercent(1, 2, 50), // 1/2 == 50% → yes
+  'fpc-2': fracPercent(3, 4, 75), // 3/4 == 75% → yes
+  'fpc-3': fracPercent(1, 4, 40), // 1/4 == 40%? → no
+  'fpc-4': fracPercent(1, 5, 20), // 1/5 == 20% → yes
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1512,6 +1542,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'fas-xfer': fracAddSub(4, 5, 12, '+'), // 4/12 + 5/12 = 9/12 (novel)
   'm2-xfer': mult2x2(38, 26), // 988 (novel)
   'd2-xfer': div2digit(375, 18), // 20 r 15 (novel)
+  'fpc-xfer': fracPercent(3, 5, 60), // 3/5 == 60% → yes (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -1577,6 +1608,7 @@ export const TRANSFER_TASKS = new Set([
   'fas-xfer',
   'm2-xfer',
   'd2-xfer',
+  'fpc-xfer',
   'date-xfer',
   'code-xfer',
   'wp-xfer',
@@ -1908,6 +1940,12 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `What is ${task.dividend} ÷ ${task.divisor}? Give the quotient and the remainder, like "20 7".`,
       options: [] /* type "quotient remainder" */,
+    };
+  }
+  if (task.kind === 'fraction_percent_equiv') {
+    return {
+      question: `Is ${task.numerator}/${task.denominator} equal in value to ${task.percent}%? (yes / no)`,
+      options: ['yes', 'no'],
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -2285,6 +2323,15 @@ export function answerKeyValid(task: Task): boolean {
       claimedRemainder: task.dividend % task.divisor,
     }).correct;
   }
+  if (task.kind === 'fraction_percent_equiv') {
+    return checkFractionPercentEquivTask({
+      kind: 'fraction_percent_equiv',
+      numerator: task.numerator,
+      denominator: task.denominator,
+      percent: task.percent,
+      claimedEquivalent: task.numerator * 100 === task.percent * task.denominator,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2437,6 +2484,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'fraction_addsub_like') return parseFraction(a) !== null; // "n/d"
   if (task.kind === 'mult_2x2') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'division_2digit') return parseQuotientRemainder(a) !== null; // "q r"
+  if (task.kind === 'fraction_percent_equiv') return a === 'yes' || a === 'no';
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -2749,6 +2797,15 @@ export function judge(task: Task, raw: string): boolean {
       claimedRemainder: parsed.r,
     }).correct;
   }
+  if (task.kind === 'fraction_percent_equiv') {
+    return checkFractionPercentEquivTask({
+      kind: 'fraction_percent_equiv',
+      numerator: task.numerator,
+      denominator: task.denominator,
+      percent: task.percent,
+      claimedEquivalent: a === 'yes',
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2927,6 +2984,8 @@ export function correctAnswerFor(task: Task): string {
       return String(task.factorA * task.factorB);
     case 'division_2digit':
       return `${Math.floor(task.dividend / task.divisor)} ${task.dividend % task.divisor}`;
+    case 'fraction_percent_equiv':
+      return task.numerator * 100 === task.percent * task.denominator ? 'yes' : 'no';
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -3132,6 +3191,8 @@ export function wrongAnswerFor(task: Task): string {
       const r = task.dividend % task.divisor;
       return r === 0 ? `${q + 1} 0` : `${q} 0`;
     }
+    case 'fraction_percent_equiv':
+      return task.numerator * 100 === task.percent * task.denominator ? 'no' : 'yes';
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
       const wrong = task.options.findIndex((_, i) => i !== correct);
