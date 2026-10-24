@@ -65,6 +65,9 @@ import {
   parseToHundredths,
   checkDecimalRoundTenthTask,
   roundHundredthsToTenth,
+  checkFractionAddSubLikeTask,
+  fractionAddSubResultNum,
+  type FractionOp,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -158,6 +161,7 @@ export const RECT_AREA = 'SK-ME-rect-area';
 export const RECT_SIDE = 'SK-ME-rect-missing-side';
 export const DEC_H_COMPARE = 'SK-NS-decimal-hundredth-compare';
 export const DEC_ROUND_TENTH = 'SK-NS-decimal-round-tenth';
+export const FRAC_ADDSUB_LIKE = 'SK-NS-fraction-addsub-like';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -423,6 +427,16 @@ interface DecimalRoundTenthTaskT {
   readonly kind: 'decimal_round_tenth';
   readonly hundredths: number;
 }
+interface FractionAddSubLikeTaskT {
+  readonly subject: 'math';
+  readonly course: 'fractions-g5';
+  readonly skillId: typeof FRAC_ADDSUB_LIKE;
+  readonly kind: 'fraction_addsub_like';
+  readonly leftNum: number;
+  readonly rightNum: number;
+  readonly denom: number;
+  readonly op: FractionOp;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -555,6 +569,7 @@ export type Task =
   | RectangleMissingSideTaskT
   | DecimalHundredthCompareTaskT
   | DecimalRoundTenthTaskT
+  | FractionAddSubLikeTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -911,6 +926,31 @@ const decRoundTenth = (hundredths: number): DecimalRoundTenthTaskT => ({
   kind: 'decimal_round_tenth',
   hundredths,
 });
+const fracAddSub = (
+  leftNum: number,
+  rightNum: number,
+  denom: number,
+  op: FractionOp,
+): FractionAddSubLikeTaskT => ({
+  subject: 'math',
+  course: 'fractions-g5',
+  skillId: FRAC_ADDSUB_LIKE,
+  kind: 'fraction_addsub_like',
+  leftNum,
+  rightNum,
+  denom,
+  op,
+});
+/** Parse a fraction answer string "n/d" (or a whole "n" = n/1); null if malformed. */
+const parseFraction = (a: string): { num: number; denom: number } | null => {
+  const frac = a.trim().match(/^(\d+)\s*\/\s*(\d+)$/);
+  if (frac) {
+    const denom = Number(frac[2]);
+    return denom > 0 ? { num: Number(frac[1]), denom } : null;
+  }
+  const whole = a.trim().match(/^(\d+)$/);
+  return whole ? { num: Number(whole[1]), denom: 1 } : null;
+};
 const dateOffset = (
   year: number,
   month: number,
@@ -1290,6 +1330,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'drt-2': decRoundTenth(243), // 2.43 → 2.4
   'drt-3': decRoundTenth(295), // 2.95 → 3.0 (carries to the whole)
   'drt-4': decRoundTenth(60), // 0.60 → 0.6
+  // add/subtract fractions with like denominators
+  'fas-1': fracAddSub(1, 2, 5, '+'), // 1/5 + 2/5 = 3/5
+  'fas-2': fracAddSub(5, 2, 6, '-'), // 5/6 - 2/6 = 3/6 (= 1/2)
+  'fas-3': fracAddSub(3, 3, 8, '+'), // 3/8 + 3/8 = 6/8
+  'fas-4': fracAddSub(7, 4, 10, '-'), // 7/10 - 4/10 = 3/10
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1416,6 +1461,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'rside-xfer': rectSide(72, 8), // 9 (novel)
   'dhc-xfer': decHCompare(409, 490), // 4.09 < 4.90 → lt (novel)
   'drt-xfer': decRoundTenth(168), // 1.68 → 1.7 (novel)
+  'fas-xfer': fracAddSub(4, 5, 12, '+'), // 4/12 + 5/12 = 9/12 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -1478,6 +1524,7 @@ export const TRANSFER_TASKS = new Set([
   'rside-xfer',
   'dhc-xfer',
   'drt-xfer',
+  'fas-xfer',
   'date-xfer',
   'code-xfer',
   'wp-xfer',
@@ -1790,6 +1837,13 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `Round ${formatHundredths(task.hundredths)} to the nearest tenth.`,
       options: [] /* type the decimal, e.g. 2.5 */,
+    };
+  }
+  if (task.kind === 'fraction_addsub_like') {
+    const sign = task.op === '+' ? '+' : '−';
+    return {
+      question: `What is ${task.leftNum}/${task.denom} ${sign} ${task.rightNum}/${task.denom}? Write your answer as a fraction, like "3/5".`,
+      options: [] /* type "n/d" */,
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -2137,6 +2191,19 @@ export function answerKeyValid(task: Task): boolean {
       claimedHundredths: roundHundredthsToTenth(task.hundredths),
     }).correct;
   }
+  if (task.kind === 'fraction_addsub_like') {
+    const resultNum = fractionAddSubResultNum(task.leftNum, task.rightNum, task.op);
+    if (resultNum === null) return false;
+    return checkFractionAddSubLikeTask({
+      kind: 'fraction_addsub_like',
+      leftNum: task.leftNum,
+      rightNum: task.rightNum,
+      denom: task.denom,
+      op: task.op,
+      claimedNum: resultNum,
+      claimedDenom: task.denom,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2286,6 +2353,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'rectangle_missing_side') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'decimal_hundredth_compare') return isRelation(a); // lt / eq / gt
   if (task.kind === 'decimal_round_tenth') return parseToHundredths(a) !== null; // a decimal
+  if (task.kind === 'fraction_addsub_like') return parseFraction(a) !== null; // "n/d"
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -2566,6 +2634,19 @@ export function judge(task: Task, raw: string): boolean {
       claimedHundredths: parsed,
     }).correct;
   }
+  if (task.kind === 'fraction_addsub_like') {
+    const parsed = parseFraction(a);
+    if (!parsed) return false;
+    return checkFractionAddSubLikeTask({
+      kind: 'fraction_addsub_like',
+      leftNum: task.leftNum,
+      rightNum: task.rightNum,
+      denom: task.denom,
+      op: task.op,
+      claimedNum: parsed.num,
+      claimedDenom: parsed.denom,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2738,6 +2819,8 @@ export function correctAnswerFor(task: Task): string {
       return hundredthsRelation(task.leftHundredths, task.rightHundredths);
     case 'decimal_round_tenth':
       return formatHundredths(roundHundredthsToTenth(task.hundredths));
+    case 'fraction_addsub_like':
+      return `${fractionAddSubResultNum(task.leftNum, task.rightNum, task.op) ?? 0}/${task.denom}`;
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -2925,6 +3008,12 @@ export function wrongAnswerFor(task: Task): string {
       const rounded = roundHundredthsToTenth(task.hundredths);
       const truncated = Math.floor(task.hundredths / 10) * 10;
       return formatHundredths(truncated === rounded ? rounded + 10 : truncated);
+    }
+    case 'fraction_addsub_like': {
+      // The "added the denominators too" error — correct numerator over a doubled
+      // denominator (value-wrong). Fall back for a zero result so it is always wrong.
+      const resultNum = fractionAddSubResultNum(task.leftNum, task.rightNum, task.op) ?? 0;
+      return resultNum === 0 ? `1/${task.denom}` : `${resultNum}/${task.denom * 2}`;
     }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
