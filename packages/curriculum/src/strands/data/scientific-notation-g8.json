@@ -1,0 +1,31 @@
+{
+  "strandId": "scientific-notation-g8",
+  "version": "sci-g8-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-scientific-notation",
+      "competency": "number:powers",
+      "skill": "Expand a number given in scientific notation into standard form"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-sci-wrong-zero-count",
+      "skillId": "SK-NS-scientific-notation",
+      "pattern": "Shifts the decimal point the wrong number of places when expanding (answers 3.2 × 10^3 as 320 or 32000 instead of 3200), mis-counting against the exponent.",
+      "probeIds": ["PR-NS-scientific-notation"],
+      "remediationStrategyIds": ["ST-ns-exponent-counts-places"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-exponent-counts-places",
+      "intent": "The exponent tells you how many places to move the decimal point to the right: 3.2 × 10^3 moves the point three places to make 3200. Add zeros as needed to fill the places.",
+      "approvedBands": ["intermediate"],
+      "representations": ["symbolic"]
+    }
+  ]
+}

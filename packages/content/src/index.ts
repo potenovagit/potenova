@@ -49,6 +49,7 @@ export * from './proportion-check';
 export * from './integer-muldiv-check';
 export * from './power-of-ten-check';
 export * from './sqrt-estimate-check';
+export * from './scientific-notation-check';
 export * from './validation';
 export * from './model-eval';
 export * from './eval-suite';
