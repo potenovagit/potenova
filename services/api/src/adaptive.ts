@@ -55,6 +55,7 @@ import {
   buildIntegersG6DraftGraph,
   buildDecimalsG6DraftGraph,
   buildFractionsG6DraftGraph,
+  buildPercentsG6DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -147,6 +148,8 @@ import {
   DECIMALS_G6_STRATEGIES,
   FRACTIONS_G6_MISCONCEPTIONS,
   FRACTIONS_G6_STRATEGIES,
+  PERCENTS_G6_MISCONCEPTIONS,
+  PERCENTS_G6_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -228,6 +231,7 @@ export type CourseId =
   | 'integers-g6'
   | 'decimals-g6'
   | 'fractions-g6'
+  | 'percents-g6'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -775,6 +779,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: FRACTIONS_G6_STRATEGIES,
     transferTask: { 'SK-NS-fraction-addsub-unlike': 'fau-xfer' },
   },
+  'percents-g6': {
+    subject: 'math',
+    buildGraph: buildPercentsG6DraftGraph,
+    coachableSkillIds: ['SK-NS-percent-of'],
+    defaultTask: { 'SK-NS-percent-of': 'pof-1' },
+    practiceTasks: {
+      'SK-NS-percent-of': ['pof-1', 'pof-2', 'pof-3', 'pof-4'],
+    },
+    remediationReps: ['area-model', 'symbolic'],
+    misconceptions: PERCENTS_G6_MISCONCEPTIONS,
+    strategies: PERCENTS_G6_STRATEGIES,
+    transferTask: { 'SK-NS-percent-of': 'pof-xfer' },
+  },
   'area-g5': {
     subject: 'math',
     buildGraph: buildAreaG5DraftGraph,
@@ -1040,6 +1057,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'integers-g6',
     'decimals-g6',
     'fractions-g6',
+    'percents-g6',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],

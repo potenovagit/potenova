@@ -85,6 +85,8 @@ import {
   roundThousandthsToHundredth,
   checkFractionAddSubUnlikeTask,
   fractionAddSubUnlikeResult,
+  checkPercentOfTask,
+  percentOfResult,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -188,6 +190,7 @@ export const INT_SIGNED_COMPARE = 'SK-NS-integer-signed-compare';
 export const DEC_T_COMPARE = 'SK-NS-decimal-thousandth-compare';
 export const DEC_ROUND_HUNDREDTH = 'SK-NS-decimal-round-hundredth';
 export const FRAC_ADDSUB_UNLIKE = 'SK-NS-fraction-addsub-unlike';
+export const PERCENT_OF = 'SK-NS-percent-of';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -538,6 +541,14 @@ interface FractionAddSubUnlikeTaskT {
   readonly rightDenom: number;
   readonly op: FractionOp;
 }
+interface PercentOfTaskT {
+  readonly subject: 'math';
+  readonly course: 'percents-g6';
+  readonly skillId: typeof PERCENT_OF;
+  readonly kind: 'percent_of';
+  readonly percent: number;
+  readonly whole: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -680,6 +691,7 @@ export type Task =
   | DecimalThousandthCompareTaskT
   | DecimalRoundHundredthTaskT
   | FractionAddSubUnlikeTaskT
+  | PercentOfTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -1139,6 +1151,14 @@ const fracAddSubUnlike = (
   rightDenom,
   op,
 });
+const percentOf = (percent: number, whole: number): PercentOfTaskT => ({
+  subject: 'math',
+  course: 'percents-g6',
+  skillId: PERCENT_OF,
+  kind: 'percent_of',
+  percent,
+  whole,
+});
 /** Parse a fraction answer string "n/d" (or a whole "n" = n/1); null if malformed. */
 const parseFraction = (a: string): { num: number; denom: number } | null => {
   const frac = a.trim().match(/^(\d+)\s*\/\s*(\d+)$/);
@@ -1577,6 +1597,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'fau-2': fracAddSubUnlike(3, 4, 1, 2, '-'), // 3/4 - 1/2 = 1/4 (= 2/8)
   'fau-3': fracAddSubUnlike(2, 3, 1, 6, '+'), // 2/3 + 1/6 = 5/6 (= 10/12)
   'fau-4': fracAddSubUnlike(5, 6, 1, 3, '-'), // 5/6 - 1/3 = 1/2 (= 3/6)
+  // percent of a whole number (whole-number result only)
+  'pof-1': percentOf(25, 80), // 25% of 80 = 20
+  'pof-2': percentOf(10, 350), // 10% of 350 = 35
+  'pof-3': percentOf(50, 46), // 50% of 46 = 23
+  'pof-4': percentOf(100, 7), // 100% of 7 = 7
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1713,6 +1738,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'dtc-xfer': decTCompare(4090, 4900), // 4.090 < 4.900 → lt (novel)
   'drh-xfer': decRoundHundredth(1678), // 1.678 → 1.68 (novel)
   'fau-xfer': fracAddSubUnlike(3, 8, 1, 4, '+'), // 3/8 + 1/4 = 5/8 (novel; = 20/32)
+  'pof-xfer': percentOf(20, 65), // 20% of 65 = 13 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -2162,6 +2188,12 @@ export function present(task: Task): { question: string; options: readonly strin
       options: [] /* type "n/d" */,
     };
   }
+  if (task.kind === 'percent_of') {
+    return {
+      question: `What is ${task.percent}% of ${task.whole}?`,
+      options: [] /* type the number */,
+    };
+  }
   if (task.kind === 'date_offset_select') {
     const choices = task.options.map((o) => fmtDate(o));
     const numbered = choices.map((c, i) => `${i + 1}) ${c}`).join('  ');
@@ -2605,6 +2637,16 @@ export function answerKeyValid(task: Task): boolean {
       claimedDenom: result.denom,
     }).correct;
   }
+  if (task.kind === 'percent_of') {
+    const result = percentOfResult(task.percent, task.whole);
+    if (result === null) return false;
+    return checkPercentOfTask({
+      kind: 'percent_of',
+      percent: task.percent,
+      whole: task.whole,
+      claimedResult: result,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2764,6 +2806,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'decimal_thousandth_compare') return isRelation(a); // lt / eq / gt
   if (task.kind === 'decimal_round_hundredth') return parseToThousandths(a) !== null; // a decimal
   if (task.kind === 'fraction_addsub_unlike') return parseFraction(a) !== null; // "n/d"
+  if (task.kind === 'percent_of') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -3140,6 +3183,14 @@ export function judge(task: Task, raw: string): boolean {
       claimedDenom: parsed.denom,
     }).correct;
   }
+  if (task.kind === 'percent_of') {
+    return checkPercentOfTask({
+      kind: 'percent_of',
+      percent: task.percent,
+      whole: task.whole,
+      claimedResult: Number(a),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3340,6 +3391,8 @@ export function correctAnswerFor(task: Task): string {
       );
       return `${r?.num ?? 0}/${r?.denom ?? task.leftDenom * task.rightDenom}`;
     }
+    case 'percent_of':
+      return String(percentOfResult(task.percent, task.whole) ?? 0);
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -3591,6 +3644,15 @@ export function wrongAnswerFor(task: Task): string {
       // across is wrong iff acrossNum/acrossDenom != r.num/r.denom (cross-multiply)
       const acrossWrong = acrossValid && acrossNum * r.denom !== r.num * acrossDenom;
       return acrossWrong ? `${acrossNum}/${acrossDenom}` : `${r.num + 1}/${r.denom}`;
+    }
+    case 'percent_of': {
+      // The "divided by 10 instead of 100" place-value slip — ten times the true
+      // value. Fall back to true+1 if the product is not divisible by 10 or the
+      // slip happens to coincide (only when the true result is 0).
+      const trueResult = percentOfResult(task.percent, task.whole) ?? 0;
+      const product = task.whole * task.percent;
+      const slip = product % 10 === 0 ? product / 10 : -1;
+      return slip >= 0 && slip !== trueResult ? String(slip) : String(trueResult + 1);
     }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
