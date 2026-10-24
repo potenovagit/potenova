@@ -1,0 +1,31 @@
+{
+  "strandId": "fractions-g6",
+  "version": "frac-g6-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-fraction-addsub-unlike",
+      "competency": "number:fractions",
+      "skill": "Add and subtract fractions with unlike denominators"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-fraction-add-across",
+      "skillId": "SK-NS-fraction-addsub-unlike",
+      "pattern": "Adds (or subtracts) numerators and denominators straight across (e.g. 1/2 + 1/3 = 2/5), without first rewriting the fractions over a common denominator.",
+      "probeIds": ["PR-NS-unlike-common-denominator"],
+      "remediationStrategyIds": ["ST-ns-common-denominator-first"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-common-denominator-first",
+      "intent": "Rewrite both fractions over a common denominator (the product of the two denominators always works), then add or subtract only the numerators and keep the common denominator.",
+      "approvedBands": ["junior"],
+      "representations": ["area-model", "symbolic"]
+    }
+  ]
+}

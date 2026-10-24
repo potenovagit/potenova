@@ -83,6 +83,8 @@ import {
   parseToThousandths,
   checkDecimalRoundHundredthTask,
   roundThousandthsToHundredth,
+  checkFractionAddSubUnlikeTask,
+  fractionAddSubUnlikeResult,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -185,6 +187,7 @@ export const TRIANGLE_AREA = 'SK-ME-triangle-area';
 export const INT_SIGNED_COMPARE = 'SK-NS-integer-signed-compare';
 export const DEC_T_COMPARE = 'SK-NS-decimal-thousandth-compare';
 export const DEC_ROUND_HUNDREDTH = 'SK-NS-decimal-round-hundredth';
+export const FRAC_ADDSUB_UNLIKE = 'SK-NS-fraction-addsub-unlike';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -524,6 +527,17 @@ interface DecimalRoundHundredthTaskT {
   readonly kind: 'decimal_round_hundredth';
   readonly thousandths: number;
 }
+interface FractionAddSubUnlikeTaskT {
+  readonly subject: 'math';
+  readonly course: 'fractions-g6';
+  readonly skillId: typeof FRAC_ADDSUB_UNLIKE;
+  readonly kind: 'fraction_addsub_unlike';
+  readonly leftNum: number;
+  readonly leftDenom: number;
+  readonly rightNum: number;
+  readonly rightDenom: number;
+  readonly op: FractionOp;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -665,6 +679,7 @@ export type Task =
   | SignedIntegerCompareTaskT
   | DecimalThousandthCompareTaskT
   | DecimalRoundHundredthTaskT
+  | FractionAddSubUnlikeTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -1107,6 +1122,23 @@ const decRoundHundredth = (thousandths: number): DecimalRoundHundredthTaskT => (
   kind: 'decimal_round_hundredth',
   thousandths,
 });
+const fracAddSubUnlike = (
+  leftNum: number,
+  leftDenom: number,
+  rightNum: number,
+  rightDenom: number,
+  op: FractionOp,
+): FractionAddSubUnlikeTaskT => ({
+  subject: 'math',
+  course: 'fractions-g6',
+  skillId: FRAC_ADDSUB_UNLIKE,
+  kind: 'fraction_addsub_unlike',
+  leftNum,
+  leftDenom,
+  rightNum,
+  rightDenom,
+  op,
+});
 /** Parse a fraction answer string "n/d" (or a whole "n" = n/1); null if malformed. */
 const parseFraction = (a: string): { num: number; denom: number } | null => {
   const frac = a.trim().match(/^(\d+)\s*\/\s*(\d+)$/);
@@ -1540,6 +1572,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'drh-2': decRoundHundredth(2473), // 2.473 → 2.47
   'drh-3': decRoundHundredth(2995), // 2.995 → 3.00 (carries)
   'drh-4': decRoundHundredth(600), // 0.600 → 0.60
+  // fractions — add/subtract with UNLIKE denominators (value-graded)
+  'fau-1': fracAddSubUnlike(1, 2, 1, 3, '+'), // 1/2 + 1/3 = 5/6
+  'fau-2': fracAddSubUnlike(3, 4, 1, 2, '-'), // 3/4 - 1/2 = 1/4 (= 2/8)
+  'fau-3': fracAddSubUnlike(2, 3, 1, 6, '+'), // 2/3 + 1/6 = 5/6 (= 10/12)
+  'fau-4': fracAddSubUnlike(5, 6, 1, 3, '-'), // 5/6 - 1/3 = 1/2 (= 3/6)
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1675,6 +1712,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'int-xfer': intCompare(-9, -11), // -9 > -11 → gt (novel)
   'dtc-xfer': decTCompare(4090, 4900), // 4.090 < 4.900 → lt (novel)
   'drh-xfer': decRoundHundredth(1678), // 1.678 → 1.68 (novel)
+  'fau-xfer': fracAddSubUnlike(3, 8, 1, 4, '+'), // 3/8 + 1/4 = 5/8 (novel; = 20/32)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -2117,6 +2155,13 @@ export function present(task: Task): { question: string; options: readonly strin
       options: [] /* type the decimal, e.g. 2.48 */,
     };
   }
+  if (task.kind === 'fraction_addsub_unlike') {
+    const sign = task.op === '+' ? '+' : '−';
+    return {
+      question: `What is ${task.leftNum}/${task.leftDenom} ${sign} ${task.rightNum}/${task.rightDenom}? Write your answer as a fraction, like "3/5".`,
+      options: [] /* type "n/d" */,
+    };
+  }
   if (task.kind === 'date_offset_select') {
     const choices = task.options.map((o) => fmtDate(o));
     const numbered = choices.map((c, i) => `${i + 1}) ${c}`).join('  ');
@@ -2540,6 +2585,26 @@ export function answerKeyValid(task: Task): boolean {
       claimedThousandths: roundThousandthsToHundredth(task.thousandths),
     }).correct;
   }
+  if (task.kind === 'fraction_addsub_unlike') {
+    const result = fractionAddSubUnlikeResult(
+      task.leftNum,
+      task.leftDenom,
+      task.rightNum,
+      task.rightDenom,
+      task.op,
+    );
+    if (result === null) return false;
+    return checkFractionAddSubUnlikeTask({
+      kind: 'fraction_addsub_unlike',
+      leftNum: task.leftNum,
+      leftDenom: task.leftDenom,
+      rightNum: task.rightNum,
+      rightDenom: task.rightDenom,
+      op: task.op,
+      claimedNum: result.num,
+      claimedDenom: result.denom,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2698,6 +2763,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'integer_signed_compare') return isRelation(a); // lt / eq / gt
   if (task.kind === 'decimal_thousandth_compare') return isRelation(a); // lt / eq / gt
   if (task.kind === 'decimal_round_hundredth') return parseToThousandths(a) !== null; // a decimal
+  if (task.kind === 'fraction_addsub_unlike') return parseFraction(a) !== null; // "n/d"
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -3060,6 +3126,20 @@ export function judge(task: Task, raw: string): boolean {
       claimedThousandths: parsed,
     }).correct;
   }
+  if (task.kind === 'fraction_addsub_unlike') {
+    const parsed = parseFraction(a);
+    if (!parsed) return false;
+    return checkFractionAddSubUnlikeTask({
+      kind: 'fraction_addsub_unlike',
+      leftNum: task.leftNum,
+      leftDenom: task.leftDenom,
+      rightNum: task.rightNum,
+      rightDenom: task.rightDenom,
+      op: task.op,
+      claimedNum: parsed.num,
+      claimedDenom: parsed.denom,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3250,6 +3330,16 @@ export function correctAnswerFor(task: Task): string {
       return thousandthsRelation(task.leftThousandths, task.rightThousandths);
     case 'decimal_round_hundredth':
       return formatThousandths(roundThousandthsToHundredth(task.thousandths));
+    case 'fraction_addsub_unlike': {
+      const r = fractionAddSubUnlikeResult(
+        task.leftNum,
+        task.leftDenom,
+        task.rightNum,
+        task.rightDenom,
+        task.op,
+      );
+      return `${r?.num ?? 0}/${r?.denom ?? task.leftDenom * task.rightDenom}`;
+    }
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -3480,6 +3570,27 @@ export function wrongAnswerFor(task: Task): string {
       const rounded = roundThousandthsToHundredth(task.thousandths);
       const truncated = Math.floor(task.thousandths / 10) * 10;
       return formatThousandths(truncated === rounded ? rounded + 10 : truncated);
+    }
+    case 'fraction_addsub_unlike': {
+      // The "added (or subtracted) straight across" error — numerators over
+      // combined denominators, without finding a common denominator. The true
+      // result (over the product denominator) is the guaranteed-wrong fallback
+      // nudged by one when the misconception happens to coincide in value.
+      const r = fractionAddSubUnlikeResult(
+        task.leftNum,
+        task.leftDenom,
+        task.rightNum,
+        task.rightDenom,
+        task.op,
+      ) ?? { num: 0, denom: task.leftDenom * task.rightDenom };
+      const acrossNum =
+        task.op === '+' ? task.leftNum + task.rightNum : task.leftNum - task.rightNum;
+      const acrossDenom =
+        task.op === '+' ? task.leftDenom + task.rightDenom : task.leftDenom - task.rightDenom;
+      const acrossValid = acrossNum >= 0 && acrossDenom > 0;
+      // across is wrong iff acrossNum/acrossDenom != r.num/r.denom (cross-multiply)
+      const acrossWrong = acrossValid && acrossNum * r.denom !== r.num * acrossDenom;
+      return acrossWrong ? `${acrossNum}/${acrossDenom}` : `${r.num + 1}/${r.denom}`;
     }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
