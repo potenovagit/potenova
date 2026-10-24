@@ -57,6 +57,7 @@ import {
   buildFractionsG6DraftGraph,
   buildPercentsG6DraftGraph,
   buildSquaresG7DraftGraph,
+  buildIntegersArithG7DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -153,6 +154,8 @@ import {
   PERCENTS_G6_STRATEGIES,
   SQUARES_G7_MISCONCEPTIONS,
   SQUARES_G7_STRATEGIES,
+  INTEGERS_ARITH_G7_MISCONCEPTIONS,
+  INTEGERS_ARITH_G7_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -236,6 +239,7 @@ export type CourseId =
   | 'fractions-g6'
   | 'percents-g6'
   | 'squares-g7'
+  | 'integers-arith-g7'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -816,6 +820,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
       'SK-NS-perfect-square-root': 'psr-xfer',
     },
   },
+  'integers-arith-g7': {
+    subject: 'math',
+    buildGraph: buildIntegersArithG7DraftGraph,
+    coachableSkillIds: ['SK-NS-integer-addsub-signed'],
+    defaultTask: { 'SK-NS-integer-addsub-signed': 'ias-1' },
+    practiceTasks: {
+      'SK-NS-integer-addsub-signed': ['ias-1', 'ias-2', 'ias-3', 'ias-4'],
+    },
+    remediationReps: ['number-line', 'symbolic'],
+    misconceptions: INTEGERS_ARITH_G7_MISCONCEPTIONS,
+    strategies: INTEGERS_ARITH_G7_STRATEGIES,
+    transferTask: { 'SK-NS-integer-addsub-signed': 'ias-xfer' },
+  },
   'area-g5': {
     subject: 'math',
     buildGraph: buildAreaG5DraftGraph,
@@ -1083,6 +1100,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'fractions-g6',
     'percents-g6',
     'squares-g7',
+    'integers-arith-g7',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],

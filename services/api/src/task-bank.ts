@@ -91,6 +91,9 @@ import {
   checkIsPerfectSquareTask,
   exactSqrt,
   isPerfectSquare,
+  checkIntegerAddSubTask,
+  integerAddSubResult,
+  type IntegerAddSubOp,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -197,6 +200,7 @@ export const FRAC_ADDSUB_UNLIKE = 'SK-NS-fraction-addsub-unlike';
 export const PERCENT_OF = 'SK-NS-percent-of';
 export const PERFECT_SQUARE_ROOT = 'SK-NS-perfect-square-root';
 export const IS_PERFECT_SQUARE = 'SK-NS-is-perfect-square';
+export const INT_ADDSUB_SIGNED = 'SK-NS-integer-addsub-signed';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -569,6 +573,15 @@ interface IsPerfectSquareTaskT {
   readonly kind: 'is_perfect_square';
   readonly value: number;
 }
+interface IntegerAddSubTaskT {
+  readonly subject: 'math';
+  readonly course: 'integers-arith-g7';
+  readonly skillId: typeof INT_ADDSUB_SIGNED;
+  readonly kind: 'integer_addsub_signed';
+  readonly left: number;
+  readonly right: number;
+  readonly op: IntegerAddSubOp;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -714,6 +727,7 @@ export type Task =
   | PercentOfTaskT
   | PerfectSquareRootTaskT
   | IsPerfectSquareTaskT
+  | IntegerAddSubTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -1195,6 +1209,20 @@ const isSquare = (value: number): IsPerfectSquareTaskT => ({
   kind: 'is_perfect_square',
   value,
 });
+const intAddSub = (left: number, right: number, op: IntegerAddSubOp): IntegerAddSubTaskT => ({
+  subject: 'math',
+  course: 'integers-arith-g7',
+  skillId: INT_ADDSUB_SIGNED,
+  kind: 'integer_addsub_signed',
+  left,
+  right,
+  op,
+});
+/** Parse a signed-integer answer string like "-7", "+3", or "12"; null if malformed. */
+const parseSignedInt = (a: string): number | null => {
+  const m = a.trim().match(/^[+-]?\d+$/);
+  return m ? Number(m[0]) : null;
+};
 /** Parse a fraction answer string "n/d" (or a whole "n" = n/1); null if malformed. */
 const parseFraction = (a: string): { num: number; denom: number } | null => {
   const frac = a.trim().match(/^(\d+)\s*\/\s*(\d+)$/);
@@ -1648,6 +1676,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'ips-2': isSquare(50), // no
   'ips-3': isSquare(121), // yes (11²)
   'ips-4': isSquare(90), // no
+  // signed integer add/subtract (results may be negative)
+  'ias-1': intAddSub(-5, 3, '+'), // -5 + 3 = -2
+  'ias-2': intAddSub(-5, -3, '-'), // -5 - (-3) = -2
+  'ias-3': intAddSub(4, 9, '-'), // 4 - 9 = -5
+  'ias-4': intAddSub(-8, -6, '+'), // -8 + (-6) = -14
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1787,6 +1820,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'pof-xfer': percentOf(20, 65), // 20% of 65 = 13 (novel)
   'psr-xfer': squareRoot(169), // √169 = 13 (novel)
   'ips-xfer': isSquare(196), // yes (14²) (novel)
+  'ias-xfer': intAddSub(7, -10, '+'), // 7 + (-10) = -3 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -2252,6 +2286,13 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `Is ${task.value} a perfect square? Answer "yes" or "no".`,
       options: [] /* type yes / no */,
+    };
+  }
+  if (task.kind === 'integer_addsub_signed') {
+    const r = task.right < 0 ? `(${task.right})` : `${task.right}`;
+    return {
+      question: `What is ${task.left} ${task.op} ${r}? Use a negative sign if the answer is below zero.`,
+      options: [] /* type the (possibly negative) integer */,
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -2723,6 +2764,15 @@ export function answerKeyValid(task: Task): boolean {
       claimedIsSquare: isPerfectSquare(task.value),
     }).correct;
   }
+  if (task.kind === 'integer_addsub_signed') {
+    return checkIntegerAddSubTask({
+      kind: 'integer_addsub_signed',
+      left: task.left,
+      right: task.right,
+      op: task.op,
+      claimedResult: integerAddSubResult(task.left, task.right, task.op),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2885,6 +2935,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'percent_of') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'perfect_square_root') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'is_perfect_square') return a === 'yes' || a === 'no';
+  if (task.kind === 'integer_addsub_signed') return parseSignedInt(a) !== null; // signed integer
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -3283,6 +3334,17 @@ export function judge(task: Task, raw: string): boolean {
       claimedIsSquare: a === 'yes',
     }).correct;
   }
+  if (task.kind === 'integer_addsub_signed') {
+    const parsed = parseSignedInt(a);
+    if (parsed === null) return false;
+    return checkIntegerAddSubTask({
+      kind: 'integer_addsub_signed',
+      left: task.left,
+      right: task.right,
+      op: task.op,
+      claimedResult: parsed,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3489,6 +3551,8 @@ export function correctAnswerFor(task: Task): string {
       return String(exactSqrt(task.square) ?? 0);
     case 'is_perfect_square':
       return isPerfectSquare(task.value) ? 'yes' : 'no';
+    case 'integer_addsub_signed':
+      return String(integerAddSubResult(task.left, task.right, task.op));
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -3759,6 +3823,11 @@ export function wrongAnswerFor(task: Task): string {
     case 'is_perfect_square':
       // The opposite judgement.
       return isPerfectSquare(task.value) ? 'no' : 'yes';
+    case 'integer_addsub_signed': {
+      // The "ignored the signs / wrong-direction" error — one off the true value
+      // (always a valid integer and never correct).
+      return String(integerAddSubResult(task.left, task.right, task.op) + 1);
+    }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
       const wrong = task.options.findIndex((_, i) => i !== correct);
