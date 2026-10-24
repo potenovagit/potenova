@@ -68,6 +68,7 @@ import {
   checkFractionAddSubLikeTask,
   fractionAddSubResultNum,
   type FractionOp,
+  checkMult2x2Task,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -162,6 +163,7 @@ export const RECT_SIDE = 'SK-ME-rect-missing-side';
 export const DEC_H_COMPARE = 'SK-NS-decimal-hundredth-compare';
 export const DEC_ROUND_TENTH = 'SK-NS-decimal-round-tenth';
 export const FRAC_ADDSUB_LIKE = 'SK-NS-fraction-addsub-like';
+export const MULT_2X2 = 'SK-NS-mult-2x2';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -437,6 +439,14 @@ interface FractionAddSubLikeTaskT {
   readonly denom: number;
   readonly op: FractionOp;
 }
+interface Mult2x2TaskT {
+  readonly subject: 'math';
+  readonly course: 'multiplication-g5';
+  readonly skillId: typeof MULT_2X2;
+  readonly kind: 'mult_2x2';
+  readonly factorA: number;
+  readonly factorB: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -570,6 +580,7 @@ export type Task =
   | DecimalHundredthCompareTaskT
   | DecimalRoundTenthTaskT
   | FractionAddSubLikeTaskT
+  | Mult2x2TaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -940,6 +951,14 @@ const fracAddSub = (
   rightNum,
   denom,
   op,
+});
+const mult2x2 = (factorA: number, factorB: number): Mult2x2TaskT => ({
+  subject: 'math',
+  course: 'multiplication-g5',
+  skillId: MULT_2X2,
+  kind: 'mult_2x2',
+  factorA,
+  factorB,
 });
 /** Parse a fraction answer string "n/d" (or a whole "n" = n/1); null if malformed. */
 const parseFraction = (a: string): { num: number; denom: number } | null => {
@@ -1335,6 +1354,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'fas-2': fracAddSub(5, 2, 6, '-'), // 5/6 - 2/6 = 3/6 (= 1/2)
   'fas-3': fracAddSub(3, 3, 8, '+'), // 3/8 + 3/8 = 6/8
   'fas-4': fracAddSub(7, 4, 10, '-'), // 7/10 - 4/10 = 3/10
+  // 2-digit × 2-digit multiplication
+  'm2-1': mult2x2(23, 45), // 1035
+  'm2-2': mult2x2(34, 12), // 408
+  'm2-3': mult2x2(50, 60), // 3000
+  'm2-4': mult2x2(27, 19), // 513 (ones-digit-only trap → 171)
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1462,6 +1486,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'dhc-xfer': decHCompare(409, 490), // 4.09 < 4.90 → lt (novel)
   'drt-xfer': decRoundTenth(168), // 1.68 → 1.7 (novel)
   'fas-xfer': fracAddSub(4, 5, 12, '+'), // 4/12 + 5/12 = 9/12 (novel)
+  'm2-xfer': mult2x2(38, 26), // 988 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -1525,6 +1550,7 @@ export const TRANSFER_TASKS = new Set([
   'dhc-xfer',
   'drt-xfer',
   'fas-xfer',
+  'm2-xfer',
   'date-xfer',
   'code-xfer',
   'wp-xfer',
@@ -1844,6 +1870,12 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `What is ${task.leftNum}/${task.denom} ${sign} ${task.rightNum}/${task.denom}? Write your answer as a fraction, like "3/5".`,
       options: [] /* type "n/d" */,
+    };
+  }
+  if (task.kind === 'mult_2x2') {
+    return {
+      question: `What is ${task.factorA} × ${task.factorB}?`,
+      options: [] /* type the number */,
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -2204,6 +2236,14 @@ export function answerKeyValid(task: Task): boolean {
       claimedDenom: task.denom,
     }).correct;
   }
+  if (task.kind === 'mult_2x2') {
+    return checkMult2x2Task({
+      kind: 'mult_2x2',
+      factorA: task.factorA,
+      factorB: task.factorB,
+      claimedProduct: task.factorA * task.factorB,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2354,6 +2394,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'decimal_hundredth_compare') return isRelation(a); // lt / eq / gt
   if (task.kind === 'decimal_round_tenth') return parseToHundredths(a) !== null; // a decimal
   if (task.kind === 'fraction_addsub_like') return parseFraction(a) !== null; // "n/d"
+  if (task.kind === 'mult_2x2') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -2647,6 +2688,14 @@ export function judge(task: Task, raw: string): boolean {
       claimedDenom: parsed.denom,
     }).correct;
   }
+  if (task.kind === 'mult_2x2') {
+    return checkMult2x2Task({
+      kind: 'mult_2x2',
+      factorA: task.factorA,
+      factorB: task.factorB,
+      claimedProduct: Number(a),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2821,6 +2870,8 @@ export function correctAnswerFor(task: Task): string {
       return formatHundredths(roundHundredthsToTenth(task.hundredths));
     case 'fraction_addsub_like':
       return `${fractionAddSubResultNum(task.leftNum, task.rightNum, task.op) ?? 0}/${task.denom}`;
+    case 'mult_2x2':
+      return String(task.factorA * task.factorB);
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -3015,6 +3066,10 @@ export function wrongAnswerFor(task: Task): string {
       const resultNum = fractionAddSubResultNum(task.leftNum, task.rightNum, task.op) ?? 0;
       return resultNum === 0 ? `1/${task.denom}` : `${resultNum}/${task.denom * 2}`;
     }
+    case 'mult_2x2':
+      // The ones-digit-only partial-product error (ones of A × B). Always smaller
+      // than the true product for two-digit factors, so always wrong.
+      return String((task.factorA % 10) * task.factorB);
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
       const wrong = task.options.findIndex((_, i) => i !== correct);
