@@ -1,0 +1,31 @@
+{
+  "strandId": "proportions-g7",
+  "version": "prop-g7-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-proportion-solve",
+      "competency": "number:ratios",
+      "skill": "Apply proportional reasoning to solve for a missing term in a proportion"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-proportion-add-constant",
+      "skillId": "SK-NS-proportion-solve",
+      "pattern": "Reasons additively instead of multiplicatively — adds the same amount to the known term rather than scaling by the same factor (treats 2/3 = 4/? as ? = 5 because 4 is 2 more than 2).",
+      "probeIds": ["PR-NS-solve-proportion"],
+      "remediationStrategyIds": ["ST-ns-find-the-scale-factor"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-find-the-scale-factor",
+      "intent": "Find how many times bigger the known numerator got (c ÷ a), then multiply the known denominator by that same factor. Equivalently, cross-multiply: a·x = b·c, so x = b·c ÷ a.",
+      "approvedBands": ["intermediate"],
+      "representations": ["symbolic"]
+    }
+  ]
+}

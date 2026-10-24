@@ -52,6 +52,7 @@ import exponentsG7Data from './data/exponents-g7.json';
 import factorsG7Data from './data/factors-g7.json';
 import fractionsMulDivG7Data from './data/fractions-muldiv-g7.json';
 import decimalsMulDivG7Data from './data/decimals-muldiv-g7.json';
+import proportionsG7Data from './data/proportions-g7.json';
 import englishData from './data/english.json';
 
 /**
@@ -119,6 +120,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   factorsG7Data as StrandDataset,
   fractionsMulDivG7Data as StrandDataset,
   decimalsMulDivG7Data as StrandDataset,
+  proportionsG7Data as StrandDataset,
   englishData as StrandDataset,
 ];
 
