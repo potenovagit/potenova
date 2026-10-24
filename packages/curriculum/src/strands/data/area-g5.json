@@ -1,0 +1,57 @@
+{
+  "strandId": "area-g5",
+  "version": "area-g5-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-ME-parallelogram-area",
+      "competency": "measurement:area",
+      "skill": "Find the area of a parallelogram as base × height"
+    },
+    {
+      "skillId": "SK-ME-triangle-area",
+      "competency": "measurement:area",
+      "skill": "Find the area of a triangle as base × height ÷ 2"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependencyId": "D-me-pgram-tri",
+      "fromSkillId": "SK-ME-parallelogram-area",
+      "toSkillId": "SK-ME-triangle-area",
+      "type": "strong",
+      "weight": 0.7
+    }
+  ],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-ME-pgram-adds-sides",
+      "skillId": "SK-ME-parallelogram-area",
+      "pattern": "Adds the base and height (or computes a perimeter) instead of multiplying them for the area of a parallelogram.",
+      "probeIds": ["PR-ME-shear-to-rectangle"],
+      "remediationStrategyIds": ["ST-me-shear-to-rectangle"]
+    },
+    {
+      "misconceptionId": "MC-ME-triangle-forgets-half",
+      "skillId": "SK-ME-triangle-area",
+      "pattern": "Computes base × height for a triangle and forgets to halve it (gives the whole parallelogram/rectangle area instead of half).",
+      "probeIds": ["PR-ME-half-the-rectangle"],
+      "remediationStrategyIds": ["ST-me-half-the-rectangle"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-me-shear-to-rectangle",
+      "intent": "A parallelogram shears into a rectangle of the same base and height, so its area is base × height — the slant side is not used.",
+      "approvedBands": ["junior"],
+      "representations": ["area-model", "symbolic"]
+    },
+    {
+      "strategyId": "ST-me-half-the-rectangle",
+      "intent": "A triangle is half of a rectangle with the same base and height, so find base × height and then halve it.",
+      "approvedBands": ["junior"],
+      "representations": ["area-model", "symbolic"]
+    }
+  ]
+}
