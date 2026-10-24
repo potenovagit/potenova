@@ -1,0 +1,31 @@
+{
+  "strandId": "fractions-g5",
+  "version": "frac-g5-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-fraction-addsub-like",
+      "competency": "number:fractions",
+      "skill": "Add and subtract fractions with like denominators"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-adds-denominators",
+      "skillId": "SK-NS-fraction-addsub-like",
+      "pattern": "Adds (or subtracts) the denominators as well as the numerators (e.g. 1/5 + 2/5 answered 3/10 instead of 3/5), instead of keeping the shared denominator.",
+      "probeIds": ["PR-NS-same-size-pieces"],
+      "remediationStrategyIds": ["ST-ns-count-same-pieces"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-count-same-pieces",
+      "intent": "The pieces are the same size (same denominator), so just count how many you have after joining or taking away — the denominator does not change.",
+      "approvedBands": ["junior"],
+      "representations": ["area-model", "number-line", "symbolic"]
+    }
+  ]
+}

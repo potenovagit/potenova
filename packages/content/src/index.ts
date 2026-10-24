@@ -30,6 +30,7 @@ export * from './division-remainder-check';
 export * from './decimal-check';
 export * from './rectangle-area-check';
 export * from './decimal-hundredths-check';
+export * from './fraction-addsub-check';
 export * from './validation';
 export * from './model-eval';
 export * from './eval-suite';

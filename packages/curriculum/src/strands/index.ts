@@ -37,6 +37,7 @@ import addSubtractG4Data from './data/add-subtract-g4.json';
 import decimalsG4Data from './data/decimals-g4.json';
 import areaG4Data from './data/area-g4.json';
 import decimalsG5Data from './data/decimals-g5.json';
+import fractionsG5Data from './data/fractions-g5.json';
 import englishData from './data/english.json';
 
 /**
@@ -89,6 +90,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   decimalsG4Data as StrandDataset,
   areaG4Data as StrandDataset,
   decimalsG5Data as StrandDataset,
+  fractionsG5Data as StrandDataset,
   englishData as StrandDataset,
 ];
 
