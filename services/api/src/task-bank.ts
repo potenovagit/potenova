@@ -110,6 +110,9 @@ import {
   type DecimalMulDivOp,
   checkProportionSolveTask,
   proportionSolve,
+  checkIntegerMulDivTask,
+  integerMulDivResult,
+  type IntegerMulDivOp,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -223,6 +226,7 @@ export const LCM_PAIR = 'SK-NS-lcm-pair';
 export const FRAC_MULDIV = 'SK-NS-fraction-muldiv';
 export const DEC_MULDIV = 'SK-NS-decimal-muldiv';
 export const PROPORTION_SOLVE = 'SK-NS-proportion-solve';
+export const INT_MULDIV_SIGNED = 'SK-NS-integer-muldiv-signed';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -657,6 +661,15 @@ interface ProportionSolveTaskT {
   readonly b: number;
   readonly c: number;
 }
+interface IntegerMulDivTaskT {
+  readonly subject: 'math';
+  readonly course: 'integers-muldiv-g8';
+  readonly skillId: typeof INT_MULDIV_SIGNED;
+  readonly kind: 'integer_muldiv_signed';
+  readonly left: number;
+  readonly right: number;
+  readonly op: IntegerMulDivOp;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -809,6 +822,7 @@ export type Task =
   | FractionMulDivTaskT
   | DecimalMulDivTaskT
   | ProportionSolveTaskT
+  | IntegerMulDivTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -1362,6 +1376,15 @@ const proportion = (a: number, b: number, c: number): ProportionSolveTaskT => ({
   b,
   c,
 });
+const intMulDiv = (left: number, right: number, op: IntegerMulDivOp): IntegerMulDivTaskT => ({
+  subject: 'math',
+  course: 'integers-muldiv-g8',
+  skillId: INT_MULDIV_SIGNED,
+  kind: 'integer_muldiv_signed',
+  left,
+  right,
+  op,
+});
 /** Parse a signed-integer answer string like "-7", "+3", or "12"; null if malformed. */
 const parseSignedInt = (a: string): number | null => {
   const m = a.trim().match(/^[+-]?\d+$/);
@@ -1855,6 +1878,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'prop-2': proportion(3, 4, 9), // 3/4 = 9/x → x = 12
   'prop-3': proportion(5, 2, 10), // 5/2 = 10/x → x = 4
   'prop-4': proportion(4, 5, 8), // 4/5 = 8/x → x = 10
+  // signed integer multiply / divide (sign rules; divide is exact only)
+  'imd-1': intMulDiv(-6, 7, '×'), // -6 × 7 = -42
+  'imd-2': intMulDiv(-6, -7, '×'), // -6 × -7 = 42
+  'imd-3': intMulDiv(-48, 6, '÷'), // -48 ÷ 6 = -8
+  'imd-4': intMulDiv(-48, -6, '÷'), // -48 ÷ -6 = 8
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -2001,6 +2029,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'fmd-xfer': fracMulDiv(2, 5, 3, 4, '×'), // 2/5 × 3/4 = 6/20 = 3/10 (novel)
   'dmd-xfer': decMulDiv(80, 150, '×'), // 0.8 × 1.5 = 1.2 (novel)
   'prop-xfer': proportion(3, 7, 6), // 3/7 = 6/x → x = 14 (novel)
+  'imd-xfer': intMulDiv(9, -8, '×'), // 9 × -8 = -72 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -2509,6 +2538,13 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `Solve for the missing number: ${task.a}/${task.b} = ${task.c}/? — what is the missing number?`,
       options: [] /* type the number */,
+    };
+  }
+  if (task.kind === 'integer_muldiv_signed') {
+    const r = task.right < 0 ? `(${task.right})` : `${task.right}`;
+    return {
+      question: `What is ${task.left} ${task.op} ${r}? Use a negative sign if the answer is below zero.`,
+      options: [] /* type the (possibly negative) integer */,
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -3061,6 +3097,17 @@ export function answerKeyValid(task: Task): boolean {
       claimedX: x,
     }).correct;
   }
+  if (task.kind === 'integer_muldiv_signed') {
+    const result = integerMulDivResult(task.left, task.right, task.op);
+    if (result === null) return false;
+    return checkIntegerMulDivTask({
+      kind: 'integer_muldiv_signed',
+      left: task.left,
+      right: task.right,
+      op: task.op,
+      claimedResult: result,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3229,6 +3276,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'fraction_muldiv') return parseFraction(a) !== null; // "n/d"
   if (task.kind === 'decimal_muldiv') return parseToTenThousandths(a) !== null; // a decimal (≤4 dp)
   if (task.kind === 'proportion_solve') return /^\d+$/.test(a); // a positive integer
+  if (task.kind === 'integer_muldiv_signed') return parseSignedInt(a) !== null; // signed integer
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -3696,6 +3744,17 @@ export function judge(task: Task, raw: string): boolean {
       claimedX: Number(a),
     }).correct;
   }
+  if (task.kind === 'integer_muldiv_signed') {
+    const parsed = parseSignedInt(a);
+    if (parsed === null) return false;
+    return checkIntegerMulDivTask({
+      kind: 'integer_muldiv_signed',
+      left: task.left,
+      right: task.right,
+      op: task.op,
+      claimedResult: parsed,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3926,6 +3985,8 @@ export function correctAnswerFor(task: Task): string {
       );
     case 'proportion_solve':
       return String(proportionSolve(task.a, task.b, task.c) ?? 0);
+    case 'integer_muldiv_signed':
+      return String(integerMulDivResult(task.left, task.right, task.op) ?? 0);
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -4255,6 +4316,12 @@ export function wrongAnswerFor(task: Task): string {
       // b·c swapped to a·c (used the wrong known term): a·c/b when divisible.
       const alt = (task.a * task.c) % task.b === 0 ? (task.a * task.c) / task.b : -1;
       return String(alt >= 1 && alt !== x ? alt : x + 1);
+    }
+    case 'integer_muldiv_signed': {
+      // The "sign-rule" error — correct magnitude, wrong sign (negated true
+      // value); fall back to +1 when the true value is 0.
+      const v = integerMulDivResult(task.left, task.right, task.op) ?? 0;
+      return String(v !== 0 ? -v : 1);
     }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);

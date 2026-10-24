@@ -1,0 +1,31 @@
+{
+  "strandId": "integers-muldiv-g8",
+  "version": "intmd-g8-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-integer-muldiv-signed",
+      "competency": "number:integers",
+      "skill": "Multiply and divide integers, including negatives"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-sign-rule-muldiv",
+      "skillId": "SK-NS-integer-muldiv-signed",
+      "pattern": "Misapplies the sign rules for multiplication and division (e.g. says a negative times a negative is negative, answering -6 × -7 as -42 instead of 42).",
+      "probeIds": ["PR-NS-integer-muldiv"],
+      "remediationStrategyIds": ["ST-ns-sign-pair-rule"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-sign-pair-rule",
+      "intent": "Multiply or divide the magnitudes, then set the sign: same signs give a positive result, different signs give a negative result. Count the negative factors — an even count is positive, an odd count is negative.",
+      "approvedBands": ["intermediate"],
+      "representations": ["symbolic"]
+    }
+  ]
+}
