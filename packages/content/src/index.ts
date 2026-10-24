@@ -43,6 +43,7 @@ export * from './perfect-square-check';
 export * from './integer-addsub-check';
 export * from './power-check';
 export * from './gcf-lcm-check';
+export * from './fraction-muldiv-check';
 export * from './validation';
 export * from './model-eval';
 export * from './eval-suite';

@@ -60,6 +60,7 @@ import {
   buildIntegersArithG7DraftGraph,
   buildExponentsG7DraftGraph,
   buildFactorsG7DraftGraph,
+  buildFractionsMulDivG7DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -162,6 +163,8 @@ import {
   EXPONENTS_G7_STRATEGIES,
   FACTORS_G7_MISCONCEPTIONS,
   FACTORS_G7_STRATEGIES,
+  FRACTIONS_MULDIV_G7_MISCONCEPTIONS,
+  FRACTIONS_MULDIV_G7_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -248,6 +251,7 @@ export type CourseId =
   | 'integers-arith-g7'
   | 'exponents-g7'
   | 'factors-g7'
+  | 'fractions-muldiv-g7'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -874,6 +878,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
       'SK-NS-lcm-pair': 'lcm-xfer',
     },
   },
+  'fractions-muldiv-g7': {
+    subject: 'math',
+    buildGraph: buildFractionsMulDivG7DraftGraph,
+    coachableSkillIds: ['SK-NS-fraction-muldiv'],
+    defaultTask: { 'SK-NS-fraction-muldiv': 'fmd-1' },
+    practiceTasks: {
+      'SK-NS-fraction-muldiv': ['fmd-1', 'fmd-2', 'fmd-3', 'fmd-4'],
+    },
+    remediationReps: ['area-model', 'symbolic'],
+    misconceptions: FRACTIONS_MULDIV_G7_MISCONCEPTIONS,
+    strategies: FRACTIONS_MULDIV_G7_STRATEGIES,
+    transferTask: { 'SK-NS-fraction-muldiv': 'fmd-xfer' },
+  },
   'area-g5': {
     subject: 'math',
     buildGraph: buildAreaG5DraftGraph,
@@ -1144,6 +1161,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'integers-arith-g7',
     'exponents-g7',
     'factors-g7',
+    'fractions-muldiv-g7',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
