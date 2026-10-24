@@ -52,6 +52,7 @@ import {
   buildDivisionG5DraftGraph,
   buildPercentsG5DraftGraph,
   buildAreaG5DraftGraph,
+  buildIntegersG6DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -138,6 +139,8 @@ import {
   PERCENTS_G5_STRATEGIES,
   AREA_G5_MISCONCEPTIONS,
   AREA_G5_STRATEGIES,
+  INTEGERS_G6_MISCONCEPTIONS,
+  INTEGERS_G6_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -216,6 +219,7 @@ export type CourseId =
   | 'division-g5'
   | 'percents-g5'
   | 'area-g5'
+  | 'integers-g6'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -717,6 +721,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: DIVISION_G4_STRATEGIES,
     transferTask: { 'SK-NS-div-remainder': 'drem-xfer' },
   },
+  'integers-g6': {
+    subject: 'math',
+    buildGraph: buildIntegersG6DraftGraph,
+    coachableSkillIds: ['SK-NS-integer-signed-compare'],
+    defaultTask: { 'SK-NS-integer-signed-compare': 'int-1' },
+    practiceTasks: {
+      'SK-NS-integer-signed-compare': ['int-1', 'int-2', 'int-3', 'int-4'],
+    },
+    remediationReps: ['number-line', 'symbolic'],
+    misconceptions: INTEGERS_G6_MISCONCEPTIONS,
+    strategies: INTEGERS_G6_STRATEGIES,
+    transferTask: { 'SK-NS-integer-signed-compare': 'int-xfer' },
+  },
   'area-g5': {
     subject: 'math',
     buildGraph: buildAreaG5DraftGraph,
@@ -979,6 +996,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'division-g5',
     'percents-g5',
     'area-g5',
+    'integers-g6',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],

@@ -1,0 +1,31 @@
+{
+  "strandId": "integers-g6",
+  "version": "int-g6-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-integer-signed-compare",
+      "competency": "number:integers",
+      "skill": "Compare and order integers, including negatives, on a number line"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-larger-magnitude-larger",
+      "skillId": "SK-NS-integer-signed-compare",
+      "pattern": "Treats the larger-magnitude negative as the greater number (thinks −5 > −2 because 5 > 2), ignoring that on the number line numbers decrease to the left.",
+      "probeIds": ["PR-NS-number-line-negatives"],
+      "remediationStrategyIds": ["ST-ns-walk-the-number-line"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-walk-the-number-line",
+      "intent": "Place both numbers on a number line — the one further left is smaller; for two negatives, the one closer to zero is greater.",
+      "approvedBands": ["junior"],
+      "representations": ["number-line", "symbolic"]
+    }
+  ]
+}

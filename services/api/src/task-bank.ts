@@ -74,6 +74,9 @@ import {
   checkParallelogramAreaTask,
   parallelogramArea,
   checkTriangleAreaTask,
+  checkSignedIntegerCompareTask,
+  signedRelation,
+  type SignedRelation,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -173,6 +176,7 @@ export const DIV_2DIGIT = 'SK-NS-div-2digit';
 export const FRAC_PCT_EQUIV = 'SK-NS-fraction-percent-equiv';
 export const PARALLELOGRAM_AREA = 'SK-ME-parallelogram-area';
 export const TRIANGLE_AREA = 'SK-ME-triangle-area';
+export const INT_SIGNED_COMPARE = 'SK-NS-integer-signed-compare';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -489,6 +493,14 @@ interface TriangleAreaTaskT {
   readonly base: number;
   readonly height: number;
 }
+interface SignedIntegerCompareTaskT {
+  readonly subject: 'math';
+  readonly course: 'integers-g6';
+  readonly skillId: typeof INT_SIGNED_COMPARE;
+  readonly kind: 'integer_signed_compare';
+  readonly left: number;
+  readonly right: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -627,6 +639,7 @@ export type Task =
   | FractionPercentEquivTaskT
   | ParallelogramAreaTaskT
   | TriangleAreaTaskT
+  | SignedIntegerCompareTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -1042,6 +1055,14 @@ const triArea = (base: number, height: number): TriangleAreaTaskT => ({
   kind: 'triangle_area',
   base,
   height,
+});
+const intCompare = (left: number, right: number): SignedIntegerCompareTaskT => ({
+  subject: 'math',
+  course: 'integers-g6',
+  skillId: INT_SIGNED_COMPARE,
+  kind: 'integer_signed_compare',
+  left,
+  right,
 });
 /** Parse a fraction answer string "n/d" (or a whole "n" = n/1); null if malformed. */
 const parseFraction = (a: string): { num: number; denom: number } | null => {
@@ -1461,6 +1482,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'tri-2': triArea(10, 5), // 25
   'tri-3': triArea(8, 7), // 28
   'tri-4': triArea(12, 9), // 54 (forgot-to-halve trap → 108)
+  // signed integer comparison
+  'int-1': intCompare(-5, -2), // -5 < -2 → lt (magnitude trap: 5 > 2)
+  'int-2': intCompare(3, -8), // 3 > -8 → gt
+  'int-3': intCompare(-7, -7), // eq
+  'int-4': intCompare(0, -4), // 0 > -4 → gt
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1593,6 +1619,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'fpc-xfer': fracPercent(3, 5, 60), // 3/5 == 60% → yes (novel)
   'pga-xfer': pgramArea(7, 9), // 63 (novel)
   'tri-xfer': triArea(14, 6), // 42 (novel)
+  'int-xfer': intCompare(-9, -11), // -9 > -11 → gt (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -1661,6 +1688,7 @@ export const TRANSFER_TASKS = new Set([
   'fpc-xfer',
   'pga-xfer',
   'tri-xfer',
+  'int-xfer',
   'date-xfer',
   'code-xfer',
   'wp-xfer',
@@ -2010,6 +2038,12 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `A triangle has base ${task.base} and height ${task.height}. What is its area (square units)?`,
       options: [] /* type the number */,
+    };
+  }
+  if (task.kind === 'integer_signed_compare') {
+    return {
+      question: `Compare ${task.left} and ${task.right} — is the first less than (lt), equal to (eq), or greater than (gt) the second?`,
+      options: ['lt', 'eq', 'gt'],
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -2412,6 +2446,14 @@ export function answerKeyValid(task: Task): boolean {
       claimedArea: (task.base * task.height) / 2,
     }).correct;
   }
+  if (task.kind === 'integer_signed_compare') {
+    return checkSignedIntegerCompareTask({
+      kind: 'integer_signed_compare',
+      left: task.left,
+      right: task.right,
+      claimedRelation: signedRelation(task.left, task.right),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2567,6 +2609,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'fraction_percent_equiv') return a === 'yes' || a === 'no';
   if (task.kind === 'parallelogram_area') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'triangle_area') return /^\d+$/.test(a); // a non-negative integer
+  if (task.kind === 'integer_signed_compare') return isRelation(a); // lt / eq / gt
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -2904,6 +2947,14 @@ export function judge(task: Task, raw: string): boolean {
       claimedArea: Number(a),
     }).correct;
   }
+  if (task.kind === 'integer_signed_compare') {
+    return checkSignedIntegerCompareTask({
+      kind: 'integer_signed_compare',
+      left: task.left,
+      right: task.right,
+      claimedRelation: a as SignedRelation,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3088,6 +3139,8 @@ export function correctAnswerFor(task: Task): string {
       return String(parallelogramArea(task.base, task.height));
     case 'triangle_area':
       return String((task.base * task.height) / 2);
+    case 'integer_signed_compare':
+      return signedRelation(task.left, task.right);
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -3306,6 +3359,9 @@ export function wrongAnswerFor(task: Task): string {
       // The forgot-to-halve error (base × height) — always larger than the true
       // half for a valid item, so always wrong.
       return String(task.base * task.height);
+    case 'integer_signed_compare':
+      // Any relation other than the true one (eq → lt is wrong too).
+      return signedRelation(task.left, task.right) === 'lt' ? 'gt' : 'lt';
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
       const wrong = task.options.findIndex((_, i) => i !== correct);
