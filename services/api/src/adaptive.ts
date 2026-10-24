@@ -48,6 +48,7 @@ import {
   buildAreaG4DraftGraph,
   buildDecimalsG5DraftGraph,
   buildFractionsG5DraftGraph,
+  buildMultiplicationG5DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -126,6 +127,8 @@ import {
   DECIMALS_G5_STRATEGIES,
   FRACTIONS_G5_MISCONCEPTIONS,
   FRACTIONS_G5_STRATEGIES,
+  MULTIPLICATION_G5_MISCONCEPTIONS,
+  MULTIPLICATION_G5_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -200,6 +203,7 @@ export type CourseId =
   | 'area-g4'
   | 'decimals-g5'
   | 'fractions-g5'
+  | 'multiplication-g5'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -701,6 +705,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: DIVISION_G4_STRATEGIES,
     transferTask: { 'SK-NS-div-remainder': 'drem-xfer' },
   },
+  'multiplication-g5': {
+    subject: 'math',
+    buildGraph: buildMultiplicationG5DraftGraph,
+    coachableSkillIds: ['SK-NS-mult-2x2'],
+    defaultTask: { 'SK-NS-mult-2x2': 'm2-1' },
+    practiceTasks: {
+      'SK-NS-mult-2x2': ['m2-1', 'm2-2', 'm2-3', 'm2-4'],
+    },
+    remediationReps: ['area-model', 'symbolic'],
+    misconceptions: MULTIPLICATION_G5_MISCONCEPTIONS,
+    strategies: MULTIPLICATION_G5_STRATEGIES,
+    transferTask: { 'SK-NS-mult-2x2': 'm2-xfer' },
+  },
   'fractions-g5': {
     subject: 'math',
     buildGraph: buildFractionsG5DraftGraph,
@@ -900,6 +917,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'area-g4',
     'decimals-g5',
     'fractions-g5',
+    'multiplication-g5',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],

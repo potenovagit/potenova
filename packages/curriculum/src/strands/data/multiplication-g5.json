@@ -1,0 +1,31 @@
+{
+  "strandId": "multiplication-g5",
+  "version": "mult-g5-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-mult-2x2",
+      "competency": "number:multiplication",
+      "skill": "Multiply a two-digit whole number by a two-digit whole number"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-one-partial-product",
+      "skillId": "SK-NS-mult-2x2",
+      "pattern": "Computes only one partial product (e.g. multiplies by the ones digit of one factor and stops), instead of adding the partial products from every place of both factors.",
+      "probeIds": ["PR-NS-area-model-parts"],
+      "remediationStrategyIds": ["ST-ns-area-model-partials"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-area-model-partials",
+      "intent": "Split each factor into tens and ones and multiply the four parts (the area-model rectangles), then add all four partial products.",
+      "approvedBands": ["junior"],
+      "representations": ["area-model", "symbolic"]
+    }
+  ]
+}
