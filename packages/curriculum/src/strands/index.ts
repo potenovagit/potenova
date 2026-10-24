@@ -44,6 +44,7 @@ import percentsG5Data from './data/percents-g5.json';
 import areaG5Data from './data/area-g5.json';
 import integersG6Data from './data/integers-g6.json';
 import decimalsG6Data from './data/decimals-g6.json';
+import fractionsG6Data from './data/fractions-g6.json';
 import englishData from './data/english.json';
 
 /**
@@ -103,6 +104,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   areaG5Data as StrandDataset,
   integersG6Data as StrandDataset,
   decimalsG6Data as StrandDataset,
+  fractionsG6Data as StrandDataset,
   englishData as StrandDataset,
 ];
 

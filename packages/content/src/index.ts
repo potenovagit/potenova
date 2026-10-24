@@ -37,6 +37,7 @@ export * from './fraction-percent-check';
 export * from './polygon-area-check';
 export * from './signed-integer-check';
 export * from './decimal-thousandths-check';
+export * from './fraction-addsub-unlike-check';
 export * from './validation';
 export * from './model-eval';
 export * from './eval-suite';
