@@ -58,6 +58,7 @@ import {
   buildPercentsG6DraftGraph,
   buildSquaresG7DraftGraph,
   buildIntegersArithG7DraftGraph,
+  buildExponentsG7DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -156,6 +157,8 @@ import {
   SQUARES_G7_STRATEGIES,
   INTEGERS_ARITH_G7_MISCONCEPTIONS,
   INTEGERS_ARITH_G7_STRATEGIES,
+  EXPONENTS_G7_MISCONCEPTIONS,
+  EXPONENTS_G7_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -240,6 +243,7 @@ export type CourseId =
   | 'percents-g6'
   | 'squares-g7'
   | 'integers-arith-g7'
+  | 'exponents-g7'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -833,6 +837,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: INTEGERS_ARITH_G7_STRATEGIES,
     transferTask: { 'SK-NS-integer-addsub-signed': 'ias-xfer' },
   },
+  'exponents-g7': {
+    subject: 'math',
+    buildGraph: buildExponentsG7DraftGraph,
+    coachableSkillIds: ['SK-NS-power-eval'],
+    defaultTask: { 'SK-NS-power-eval': 'pow-1' },
+    practiceTasks: {
+      'SK-NS-power-eval': ['pow-1', 'pow-2', 'pow-3', 'pow-4'],
+    },
+    remediationReps: ['symbolic'],
+    misconceptions: EXPONENTS_G7_MISCONCEPTIONS,
+    strategies: EXPONENTS_G7_STRATEGIES,
+    transferTask: { 'SK-NS-power-eval': 'pow-xfer' },
+  },
   'area-g5': {
     subject: 'math',
     buildGraph: buildAreaG5DraftGraph,
@@ -1101,6 +1118,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'percents-g6',
     'squares-g7',
     'integers-arith-g7',
+    'exponents-g7',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],

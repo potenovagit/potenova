@@ -94,6 +94,8 @@ import {
   checkIntegerAddSubTask,
   integerAddSubResult,
   type IntegerAddSubOp,
+  checkPowerEvalTask,
+  powerValue,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -201,6 +203,7 @@ export const PERCENT_OF = 'SK-NS-percent-of';
 export const PERFECT_SQUARE_ROOT = 'SK-NS-perfect-square-root';
 export const IS_PERFECT_SQUARE = 'SK-NS-is-perfect-square';
 export const INT_ADDSUB_SIGNED = 'SK-NS-integer-addsub-signed';
+export const POWER_EVAL = 'SK-NS-power-eval';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -582,6 +585,14 @@ interface IntegerAddSubTaskT {
   readonly right: number;
   readonly op: IntegerAddSubOp;
 }
+interface PowerEvalTaskT {
+  readonly subject: 'math';
+  readonly course: 'exponents-g7';
+  readonly skillId: typeof POWER_EVAL;
+  readonly kind: 'power_eval';
+  readonly base: number;
+  readonly exponent: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -728,6 +739,7 @@ export type Task =
   | PerfectSquareRootTaskT
   | IsPerfectSquareTaskT
   | IntegerAddSubTaskT
+  | PowerEvalTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -1218,6 +1230,14 @@ const intAddSub = (left: number, right: number, op: IntegerAddSubOp): IntegerAdd
   right,
   op,
 });
+const power = (base: number, exponent: number): PowerEvalTaskT => ({
+  subject: 'math',
+  course: 'exponents-g7',
+  skillId: POWER_EVAL,
+  kind: 'power_eval',
+  base,
+  exponent,
+});
 /** Parse a signed-integer answer string like "-7", "+3", or "12"; null if malformed. */
 const parseSignedInt = (a: string): number | null => {
   const m = a.trim().match(/^[+-]?\d+$/);
@@ -1681,6 +1701,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'ias-2': intAddSub(-5, -3, '-'), // -5 - (-3) = -2
   'ias-3': intAddSub(4, 9, '-'), // 4 - 9 = -5
   'ias-4': intAddSub(-8, -6, '+'), // -8 + (-6) = -14
+  // exponents — repeated multiplication of whole numbers
+  'pow-1': power(2, 5), // 2^5 = 32
+  'pow-2': power(10, 3), // 10^3 = 1000
+  'pow-3': power(7, 2), // 7^2 = 49
+  'pow-4': power(3, 4), // 3^4 = 81
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1821,6 +1846,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'psr-xfer': squareRoot(169), // √169 = 13 (novel)
   'ips-xfer': isSquare(196), // yes (14²) (novel)
   'ias-xfer': intAddSub(7, -10, '+'), // 7 + (-10) = -3 (novel)
+  'pow-xfer': power(5, 3), // 5^3 = 125 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -2293,6 +2319,12 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `What is ${task.left} ${task.op} ${r}? Use a negative sign if the answer is below zero.`,
       options: [] /* type the (possibly negative) integer */,
+    };
+  }
+  if (task.kind === 'power_eval') {
+    return {
+      question: `What is ${task.base} to the power of ${task.exponent} (${task.base}^${task.exponent})?`,
+      options: [] /* type the number */,
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -2773,6 +2805,16 @@ export function answerKeyValid(task: Task): boolean {
       claimedResult: integerAddSubResult(task.left, task.right, task.op),
     }).correct;
   }
+  if (task.kind === 'power_eval') {
+    const value = powerValue(task.base, task.exponent);
+    if (value === null) return false;
+    return checkPowerEvalTask({
+      kind: 'power_eval',
+      base: task.base,
+      exponent: task.exponent,
+      claimedResult: value,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2936,6 +2978,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'perfect_square_root') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'is_perfect_square') return a === 'yes' || a === 'no';
   if (task.kind === 'integer_addsub_signed') return parseSignedInt(a) !== null; // signed integer
+  if (task.kind === 'power_eval') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -3345,6 +3388,14 @@ export function judge(task: Task, raw: string): boolean {
       claimedResult: parsed,
     }).correct;
   }
+  if (task.kind === 'power_eval') {
+    return checkPowerEvalTask({
+      kind: 'power_eval',
+      base: task.base,
+      exponent: task.exponent,
+      claimedResult: Number(a),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3553,6 +3604,8 @@ export function correctAnswerFor(task: Task): string {
       return isPerfectSquare(task.value) ? 'yes' : 'no';
     case 'integer_addsub_signed':
       return String(integerAddSubResult(task.left, task.right, task.op));
+    case 'power_eval':
+      return String(powerValue(task.base, task.exponent) ?? 0);
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -3827,6 +3880,13 @@ export function wrongAnswerFor(task: Task): string {
       // The "ignored the signs / wrong-direction" error — one off the true value
       // (always a valid integer and never correct).
       return String(integerAddSubResult(task.left, task.right, task.op) + 1);
+    }
+    case 'power_eval': {
+      // The "multiplied the base by the exponent" error (base·exp instead of
+      // base^exp). Fall back to true+1 on the rare coincidence (e.g. exp 1).
+      const trueVal = powerValue(task.base, task.exponent) ?? 0;
+      const product = task.base * task.exponent;
+      return String(product !== trueVal ? product : trueVal + 1);
     }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
