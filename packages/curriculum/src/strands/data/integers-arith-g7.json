@@ -1,0 +1,31 @@
+{
+  "strandId": "integers-arith-g7",
+  "version": "intar-g7-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-integer-addsub-signed",
+      "competency": "number:integers",
+      "skill": "Add and subtract integers, including negatives"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-subtract-negative-decreases",
+      "skillId": "SK-NS-integer-addsub-signed",
+      "pattern": "Treats subtracting a negative as making the value smaller (answers -5 - (-3) as -8), instead of recognizing that subtracting a negative adds.",
+      "probeIds": ["PR-NS-integer-addsub"],
+      "remediationStrategyIds": ["ST-ns-move-on-the-number-line"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-move-on-the-number-line",
+      "intent": "Start at the first number on a number line. Adding moves right, subtracting moves left; a negative second number flips the direction, so subtracting a negative moves right (adds).",
+      "approvedBands": ["intermediate"],
+      "representations": ["number-line", "symbolic"]
+    }
+  ]
+}
