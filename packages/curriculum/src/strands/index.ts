@@ -49,6 +49,7 @@ import percentsG6Data from './data/percents-g6.json';
 import squaresG7Data from './data/squares-g7.json';
 import integersArithG7Data from './data/integers-arith-g7.json';
 import exponentsG7Data from './data/exponents-g7.json';
+import factorsG7Data from './data/factors-g7.json';
 import englishData from './data/english.json';
 
 /**
@@ -113,6 +114,7 @@ export const STRAND_DATASETS: readonly StrandDataset[] = [
   squaresG7Data as StrandDataset,
   integersArithG7Data as StrandDataset,
   exponentsG7Data as StrandDataset,
+  factorsG7Data as StrandDataset,
   englishData as StrandDataset,
 ];
 

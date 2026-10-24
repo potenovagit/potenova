@@ -1,0 +1,51 @@
+{
+  "strandId": "factors-g7",
+  "version": "fac-g7-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-gcf-pair",
+      "competency": "number:factors",
+      "skill": "Determine the greatest common factor of two whole numbers"
+    },
+    {
+      "skillId": "SK-NS-lcm-pair",
+      "competency": "number:factors",
+      "skill": "Determine the lowest common multiple of two whole numbers"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependencyId": "D-ns-gcf-supports-lcm",
+      "fromSkillId": "SK-NS-gcf-pair",
+      "toSkillId": "SK-NS-lcm-pair",
+      "type": "supporting",
+      "weight": 0.4
+    }
+  ],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-gcf-lcm-swapped",
+      "skillId": "SK-NS-gcf-pair",
+      "pattern": "Reports the lowest common multiple when asked for the greatest common factor (answers GCF of 4 and 6 as 12 instead of 2), swapping the two ideas.",
+      "probeIds": ["PR-NS-gcf-of-pair"],
+      "remediationStrategyIds": ["ST-ns-factor-vs-multiple"]
+    },
+    {
+      "misconceptionId": "MC-NS-lcm-gcf-swapped",
+      "skillId": "SK-NS-lcm-pair",
+      "pattern": "Reports the greatest common factor when asked for the lowest common multiple (answers LCM of 4 and 6 as 2 instead of 12), swapping the two ideas.",
+      "probeIds": ["PR-NS-lcm-of-pair"],
+      "remediationStrategyIds": ["ST-ns-factor-vs-multiple"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-factor-vs-multiple",
+      "intent": "A factor divides into the number (so the GCF is no larger than the smaller number); a multiple is the number counted up (so the LCM is at least the larger number). List factors for GCF and count up in multiples for LCM.",
+      "approvedBands": ["intermediate"],
+      "representations": ["symbolic"]
+    }
+  ]
+}
