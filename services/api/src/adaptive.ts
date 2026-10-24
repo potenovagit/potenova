@@ -53,6 +53,7 @@ import {
   buildPercentsG5DraftGraph,
   buildAreaG5DraftGraph,
   buildIntegersG6DraftGraph,
+  buildDecimalsG6DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -141,6 +142,8 @@ import {
   AREA_G5_STRATEGIES,
   INTEGERS_G6_MISCONCEPTIONS,
   INTEGERS_G6_STRATEGIES,
+  DECIMALS_G6_MISCONCEPTIONS,
+  DECIMALS_G6_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -220,6 +223,7 @@ export type CourseId =
   | 'percents-g5'
   | 'area-g5'
   | 'integers-g6'
+  | 'decimals-g6'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -721,6 +725,26 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: DIVISION_G4_STRATEGIES,
     transferTask: { 'SK-NS-div-remainder': 'drem-xfer' },
   },
+  'decimals-g6': {
+    subject: 'math',
+    buildGraph: buildDecimalsG6DraftGraph,
+    coachableSkillIds: ['SK-NS-decimal-thousandth-compare', 'SK-NS-decimal-round-hundredth'],
+    defaultTask: {
+      'SK-NS-decimal-thousandth-compare': 'dtc-1',
+      'SK-NS-decimal-round-hundredth': 'drh-1',
+    },
+    practiceTasks: {
+      'SK-NS-decimal-thousandth-compare': ['dtc-1', 'dtc-2', 'dtc-3', 'dtc-4'],
+      'SK-NS-decimal-round-hundredth': ['drh-1', 'drh-2', 'drh-3', 'drh-4'],
+    },
+    remediationReps: ['number-line', 'symbolic'],
+    misconceptions: DECIMALS_G6_MISCONCEPTIONS,
+    strategies: DECIMALS_G6_STRATEGIES,
+    transferTask: {
+      'SK-NS-decimal-thousandth-compare': 'dtc-xfer',
+      'SK-NS-decimal-round-hundredth': 'drh-xfer',
+    },
+  },
   'integers-g6': {
     subject: 'math',
     buildGraph: buildIntegersG6DraftGraph,
@@ -997,6 +1021,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'percents-g5',
     'area-g5',
     'integers-g6',
+    'decimals-g6',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
