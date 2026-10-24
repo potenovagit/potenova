@@ -1,0 +1,31 @@
+{
+  "strandId": "exponents-g7",
+  "version": "exp-g7-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-power-eval",
+      "competency": "number:powers",
+      "skill": "Evaluate repeated multiplication written in exponential notation"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-power-is-base-times-exponent",
+      "skillId": "SK-NS-power-eval",
+      "pattern": "Multiplies the base by the exponent instead of multiplying the base by itself (answers 2^5 as 10 rather than 32).",
+      "probeIds": ["PR-NS-evaluate-power"],
+      "remediationStrategyIds": ["ST-ns-expand-the-power"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-expand-the-power",
+      "intent": "Write the power out as repeated multiplication (2^5 = 2×2×2×2×2), then multiply step by step. The exponent counts how many times the base appears, not what to multiply it by.",
+      "approvedBands": ["intermediate"],
+      "representations": ["symbolic"]
+    }
+  ]
+}
