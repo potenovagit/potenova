@@ -1,0 +1,31 @@
+{
+  "strandId": "percents-g6",
+  "version": "pct-g6-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-percent-of",
+      "competency": "number:percents",
+      "skill": "Determine a percent of a whole number"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-percent-place-value-slip",
+      "skillId": "SK-NS-percent-of",
+      "pattern": "Divides by 10 instead of 100 when converting the percent (e.g. 25% of 80 answered 200 rather than 20), misplacing the decimal.",
+      "probeIds": ["PR-NS-percent-of-whole"],
+      "remediationStrategyIds": ["ST-ns-percent-as-hundredths"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-percent-as-hundredths",
+      "intent": "Read pct% as pct hundredths: multiply the whole by the percent, then divide by 100 (two decimal places). 10% is one tenth, 50% is one half, 25% is one quarter.",
+      "approvedBands": ["junior"],
+      "representations": ["area-model", "symbolic"]
+    }
+  ]
+}
