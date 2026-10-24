@@ -100,6 +100,9 @@ import {
   checkLcmPairTask,
   gcd,
   lcm,
+  checkFractionMulDivTask,
+  fractionMulDivResult,
+  type FractionMulDivOp,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -210,6 +213,7 @@ export const INT_ADDSUB_SIGNED = 'SK-NS-integer-addsub-signed';
 export const POWER_EVAL = 'SK-NS-power-eval';
 export const GCF_PAIR = 'SK-NS-gcf-pair';
 export const LCM_PAIR = 'SK-NS-lcm-pair';
+export const FRAC_MULDIV = 'SK-NS-fraction-muldiv';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -615,6 +619,17 @@ interface LcmPairTaskT {
   readonly a: number;
   readonly b: number;
 }
+interface FractionMulDivTaskT {
+  readonly subject: 'math';
+  readonly course: 'fractions-muldiv-g7';
+  readonly skillId: typeof FRAC_MULDIV;
+  readonly kind: 'fraction_muldiv';
+  readonly leftNum: number;
+  readonly leftDenom: number;
+  readonly rightNum: number;
+  readonly rightDenom: number;
+  readonly op: FractionMulDivOp;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -764,6 +779,7 @@ export type Task =
   | PowerEvalTaskT
   | GcfPairTaskT
   | LcmPairTaskT
+  | FractionMulDivTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -1278,6 +1294,23 @@ const lcmPair = (a: number, b: number): LcmPairTaskT => ({
   a,
   b,
 });
+const fracMulDiv = (
+  leftNum: number,
+  leftDenom: number,
+  rightNum: number,
+  rightDenom: number,
+  op: FractionMulDivOp,
+): FractionMulDivTaskT => ({
+  subject: 'math',
+  course: 'fractions-muldiv-g7',
+  skillId: FRAC_MULDIV,
+  kind: 'fraction_muldiv',
+  leftNum,
+  leftDenom,
+  rightNum,
+  rightDenom,
+  op,
+});
 /** Parse a signed-integer answer string like "-7", "+3", or "12"; null if malformed. */
 const parseSignedInt = (a: string): number | null => {
   const m = a.trim().match(/^[+-]?\d+$/);
@@ -1756,6 +1789,11 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'lcm-2': lcmPair(8, 12), // LCM = 24
   'lcm-3': lcmPair(5, 9), // LCM = 45
   'lcm-4': lcmPair(6, 10), // LCM = 30
+  // fraction multiply / divide (value-graded)
+  'fmd-1': fracMulDiv(2, 3, 3, 4, '×'), // 2/3 × 3/4 = 6/12 = 1/2
+  'fmd-2': fracMulDiv(1, 2, 3, 4, '÷'), // 1/2 ÷ 3/4 = 4/6 = 2/3
+  'fmd-3': fracMulDiv(3, 5, 5, 6, '×'), // 3/5 × 5/6 = 15/30 = 1/2
+  'fmd-4': fracMulDiv(3, 4, 1, 2, '÷'), // 3/4 ÷ 1/2 = 6/4 = 3/2
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1899,6 +1937,7 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'pow-xfer': power(5, 3), // 5^3 = 125 (novel)
   'gcf-xfer': gcfPair(48, 72), // GCF = 24 (novel)
   'lcm-xfer': lcmPair(9, 12), // LCM = 36 (novel)
+  'fmd-xfer': fracMulDiv(2, 5, 3, 4, '×'), // 2/5 × 3/4 = 6/20 = 3/10 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -2389,6 +2428,12 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `What is the lowest common multiple (LCM) of ${task.a} and ${task.b}?`,
       options: [] /* type the number */,
+    };
+  }
+  if (task.kind === 'fraction_muldiv') {
+    return {
+      question: `What is ${task.leftNum}/${task.leftDenom} ${task.op} ${task.rightNum}/${task.rightDenom}? Write your answer as a fraction, like "3/5".`,
+      options: [] /* type "n/d" */,
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -2895,6 +2940,26 @@ export function answerKeyValid(task: Task): boolean {
       claimedResult: lcm(task.a, task.b),
     }).correct;
   }
+  if (task.kind === 'fraction_muldiv') {
+    const result = fractionMulDivResult(
+      task.leftNum,
+      task.leftDenom,
+      task.rightNum,
+      task.rightDenom,
+      task.op,
+    );
+    if (result === null) return false;
+    return checkFractionMulDivTask({
+      kind: 'fraction_muldiv',
+      leftNum: task.leftNum,
+      leftDenom: task.leftDenom,
+      rightNum: task.rightNum,
+      rightDenom: task.rightDenom,
+      op: task.op,
+      claimedNum: result.num,
+      claimedDenom: result.denom,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3060,6 +3125,7 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'integer_addsub_signed') return parseSignedInt(a) !== null; // signed integer
   if (task.kind === 'power_eval') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'gcf_pair' || task.kind === 'lcm_pair') return /^\d+$/.test(a); // positive integer
+  if (task.kind === 'fraction_muldiv') return parseFraction(a) !== null; // "n/d"
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -3493,6 +3559,20 @@ export function judge(task: Task, raw: string): boolean {
       claimedResult: Number(a),
     }).correct;
   }
+  if (task.kind === 'fraction_muldiv') {
+    const parsed = parseFraction(a);
+    if (!parsed) return false;
+    return checkFractionMulDivTask({
+      kind: 'fraction_muldiv',
+      leftNum: task.leftNum,
+      leftDenom: task.leftDenom,
+      rightNum: task.rightNum,
+      rightDenom: task.rightDenom,
+      op: task.op,
+      claimedNum: parsed.num,
+      claimedDenom: parsed.denom,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3707,6 +3787,16 @@ export function correctAnswerFor(task: Task): string {
       return String(gcd(task.a, task.b));
     case 'lcm_pair':
       return String(lcm(task.a, task.b));
+    case 'fraction_muldiv': {
+      const r = fractionMulDivResult(
+        task.leftNum,
+        task.leftDenom,
+        task.rightNum,
+        task.rightDenom,
+        task.op,
+      );
+      return `${r?.num ?? 0}/${r?.denom ?? task.leftDenom * task.rightDenom}`;
+    }
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -4002,6 +4092,25 @@ export function wrongAnswerFor(task: Task): string {
       const g = gcd(task.a, task.b);
       const l = lcm(task.a, task.b);
       return String(g !== l ? g : l + 1);
+    }
+    case 'fraction_muldiv': {
+      // The "wrong operation" error: for ÷ multiply straight across (forgot the
+      // reciprocal); for × flip the divisor (reciprocal by mistake). Fall back to
+      // true+1/denom on the rare coincidence.
+      const r = fractionMulDivResult(
+        task.leftNum,
+        task.leftDenom,
+        task.rightNum,
+        task.rightDenom,
+        task.op,
+      ) ?? { num: 0, denom: task.leftDenom * task.rightDenom };
+      const cand =
+        task.op === '÷'
+          ? { num: task.leftNum * task.rightNum, denom: task.leftDenom * task.rightDenom }
+          : { num: task.leftNum * task.rightDenom, denom: task.leftDenom * task.rightNum };
+      const candWrong =
+        cand.num >= 0 && cand.denom > 0 && cand.num * r.denom !== r.num * cand.denom;
+      return candWrong ? `${cand.num}/${cand.denom}` : `${r.num + 1}/${r.denom}`;
     }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);

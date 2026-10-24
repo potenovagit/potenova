@@ -1,0 +1,31 @@
+{
+  "strandId": "fractions-muldiv-g7",
+  "version": "fracmd-g7-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-fraction-muldiv",
+      "competency": "number:fractions",
+      "skill": "Multiply and divide fractions by fractions"
+    }
+  ],
+  "dependencies": [],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-divide-without-reciprocal",
+      "skillId": "SK-NS-fraction-muldiv",
+      "pattern": "Divides fractions by multiplying straight across instead of multiplying by the reciprocal (answers 1/2 ÷ 3/4 as 3/8 rather than 2/3).",
+      "probeIds": ["PR-NS-fraction-muldiv"],
+      "remediationStrategyIds": ["ST-ns-keep-change-flip"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-keep-change-flip",
+      "intent": "To multiply, multiply the numerators and the denominators. To divide, keep the first fraction, change ÷ to ×, and flip the second fraction (its reciprocal), then multiply.",
+      "approvedBands": ["intermediate"],
+      "representations": ["area-model", "symbolic"]
+    }
+  ]
+}

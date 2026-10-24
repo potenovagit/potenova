@@ -52,6 +52,7 @@ export * from './squares-g7-draft';
 export * from './integers-arith-g7-draft';
 export * from './exponents-g7-draft';
 export * from './factors-g7-draft';
+export * from './fractions-muldiv-g7-draft';
 export * from './lessons';
 export * from './ontario';
 export * from './overlay';
