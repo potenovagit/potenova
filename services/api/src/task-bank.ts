@@ -77,6 +77,12 @@ import {
   checkSignedIntegerCompareTask,
   signedRelation,
   type SignedRelation,
+  checkDecimalThousandthCompareTask,
+  thousandthsRelation,
+  formatThousandths,
+  parseToThousandths,
+  checkDecimalRoundHundredthTask,
+  roundThousandthsToHundredth,
   checkDateOffsetSelectTask,
   addDays,
   matchingDateIndices,
@@ -177,6 +183,8 @@ export const FRAC_PCT_EQUIV = 'SK-NS-fraction-percent-equiv';
 export const PARALLELOGRAM_AREA = 'SK-ME-parallelogram-area';
 export const TRIANGLE_AREA = 'SK-ME-triangle-area';
 export const INT_SIGNED_COMPARE = 'SK-NS-integer-signed-compare';
+export const DEC_T_COMPARE = 'SK-NS-decimal-thousandth-compare';
+export const DEC_ROUND_HUNDREDTH = 'SK-NS-decimal-round-hundredth';
 export const DATE_OFFSET = 'SK-TIME-date-offset';
 export const CODE_SEQUENCE = 'SK-AL-code-sequence';
 export const WORD_PROBLEM = 'SK-NS-word-problem-addsub';
@@ -501,6 +509,21 @@ interface SignedIntegerCompareTaskT {
   readonly left: number;
   readonly right: number;
 }
+interface DecimalThousandthCompareTaskT {
+  readonly subject: 'math';
+  readonly course: 'decimals-g6';
+  readonly skillId: typeof DEC_T_COMPARE;
+  readonly kind: 'decimal_thousandth_compare';
+  readonly leftThousandths: number;
+  readonly rightThousandths: number;
+}
+interface DecimalRoundHundredthTaskT {
+  readonly subject: 'math';
+  readonly course: 'decimals-g6';
+  readonly skillId: typeof DEC_ROUND_HUNDREDTH;
+  readonly kind: 'decimal_round_hundredth';
+  readonly thousandths: number;
+}
 interface DateOffsetSelectTaskT {
   readonly subject: 'math';
   readonly course: 'date-calendar';
@@ -640,6 +663,8 @@ export type Task =
   | ParallelogramAreaTaskT
   | TriangleAreaTaskT
   | SignedIntegerCompareTaskT
+  | DecimalThousandthCompareTaskT
+  | DecimalRoundHundredthTaskT
   | DateOffsetSelectTaskT
   | CodeReachSelectTaskT
   | WordProblemTaskT
@@ -1064,6 +1089,24 @@ const intCompare = (left: number, right: number): SignedIntegerCompareTaskT => (
   left,
   right,
 });
+const decTCompare = (
+  leftThousandths: number,
+  rightThousandths: number,
+): DecimalThousandthCompareTaskT => ({
+  subject: 'math',
+  course: 'decimals-g6',
+  skillId: DEC_T_COMPARE,
+  kind: 'decimal_thousandth_compare',
+  leftThousandths,
+  rightThousandths,
+});
+const decRoundHundredth = (thousandths: number): DecimalRoundHundredthTaskT => ({
+  subject: 'math',
+  course: 'decimals-g6',
+  skillId: DEC_ROUND_HUNDREDTH,
+  kind: 'decimal_round_hundredth',
+  thousandths,
+});
 /** Parse a fraction answer string "n/d" (or a whole "n" = n/1); null if malformed. */
 const parseFraction = (a: string): { num: number; denom: number } | null => {
   const frac = a.trim().match(/^(\d+)\s*\/\s*(\d+)$/);
@@ -1487,6 +1530,16 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'int-2': intCompare(3, -8), // 3 > -8 → gt
   'int-3': intCompare(-7, -7), // eq
   'int-4': intCompare(0, -4), // 0 > -4 → gt
+  // decimal thousandths — compare
+  'dtc-1': decTCompare(2475, 2500), // 2.475 < 2.500 → lt (longer-looks-bigger trap)
+  'dtc-2': decTCompare(800, 80), // 0.800 > 0.080 → gt
+  'dtc-3': decTCompare(3050, 3050), // 3.050 == 3.050 → eq
+  'dtc-4': decTCompare(1500, 1050), // 1.500 > 1.050 → gt
+  // decimal — round to the nearest hundredth
+  'drh-1': decRoundHundredth(2475), // 2.475 → 2.48
+  'drh-2': decRoundHundredth(2473), // 2.473 → 2.47
+  'drh-3': decRoundHundredth(2995), // 2.995 → 3.00 (carries)
+  'drh-4': decRoundHundredth(600), // 0.600 → 0.60
   // Date arithmetic across months (year 2026, non-leap); exactly one option matches.
   'date-1': dateOffset(2026, 3, 5, 3, [
     { month: 3, day: 8 }, // Mar 8 ✓
@@ -1620,6 +1673,8 @@ export const TASK_BANK: Readonly<Record<string, Task>> = {
   'pga-xfer': pgramArea(7, 9), // 63 (novel)
   'tri-xfer': triArea(14, 6), // 42 (novel)
   'int-xfer': intCompare(-9, -11), // -9 > -11 → gt (novel)
+  'dtc-xfer': decTCompare(4090, 4900), // 4.090 < 4.900 → lt (novel)
+  'drh-xfer': decRoundHundredth(1678), // 1.678 → 1.68 (novel)
   'date-xfer': dateOffset(2026, 7, 30, 4, [
     { month: 8, day: 3 }, // Aug 3 ✓ (Jul has 31)
     { month: 8, day: 4 },
@@ -1689,6 +1744,8 @@ export const TRANSFER_TASKS = new Set([
   'pga-xfer',
   'tri-xfer',
   'int-xfer',
+  'dtc-xfer',
+  'drh-xfer',
   'date-xfer',
   'code-xfer',
   'wp-xfer',
@@ -2044,6 +2101,20 @@ export function present(task: Task): { question: string; options: readonly strin
     return {
       question: `Compare ${task.left} and ${task.right} — is the first less than (lt), equal to (eq), or greater than (gt) the second?`,
       options: ['lt', 'eq', 'gt'],
+    };
+  }
+  if (task.kind === 'decimal_thousandth_compare') {
+    return {
+      question: `Compare ${formatThousandths(task.leftThousandths)} and ${formatThousandths(
+        task.rightThousandths,
+      )} — is the first less than (lt), equal to (eq), or greater than (gt) the second?`,
+      options: ['lt', 'eq', 'gt'],
+    };
+  }
+  if (task.kind === 'decimal_round_hundredth') {
+    return {
+      question: `Round ${formatThousandths(task.thousandths)} to the nearest hundredth.`,
+      options: [] /* type the decimal, e.g. 2.48 */,
     };
   }
   if (task.kind === 'date_offset_select') {
@@ -2454,6 +2525,21 @@ export function answerKeyValid(task: Task): boolean {
       claimedRelation: signedRelation(task.left, task.right),
     }).correct;
   }
+  if (task.kind === 'decimal_thousandth_compare') {
+    return checkDecimalThousandthCompareTask({
+      kind: 'decimal_thousandth_compare',
+      leftThousandths: task.leftThousandths,
+      rightThousandths: task.rightThousandths,
+      claimedRelation: thousandthsRelation(task.leftThousandths, task.rightThousandths),
+    }).correct;
+  }
+  if (task.kind === 'decimal_round_hundredth') {
+    return checkDecimalRoundHundredthTask({
+      kind: 'decimal_round_hundredth',
+      thousandths: task.thousandths,
+      claimedThousandths: roundThousandthsToHundredth(task.thousandths),
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -2610,6 +2696,8 @@ export function tokenValid(task: Task, raw: string): boolean {
   if (task.kind === 'parallelogram_area') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'triangle_area') return /^\d+$/.test(a); // a non-negative integer
   if (task.kind === 'integer_signed_compare') return isRelation(a); // lt / eq / gt
+  if (task.kind === 'decimal_thousandth_compare') return isRelation(a); // lt / eq / gt
+  if (task.kind === 'decimal_round_hundredth') return parseToThousandths(a) !== null; // a decimal
   if (task.kind === 'date_offset_select' || task.kind === 'code_reach_select') {
     if (!/^\d+$/.test(a)) return false; // a 1-based option number
     const n = Number(a);
@@ -2955,6 +3043,23 @@ export function judge(task: Task, raw: string): boolean {
       claimedRelation: a as SignedRelation,
     }).correct;
   }
+  if (task.kind === 'decimal_thousandth_compare') {
+    return checkDecimalThousandthCompareTask({
+      kind: 'decimal_thousandth_compare',
+      leftThousandths: task.leftThousandths,
+      rightThousandths: task.rightThousandths,
+      claimedRelation: a as SignedRelation,
+    }).correct;
+  }
+  if (task.kind === 'decimal_round_hundredth') {
+    const parsed = parseToThousandths(a);
+    if (parsed === null) return false;
+    return checkDecimalRoundHundredthTask({
+      kind: 'decimal_round_hundredth',
+      thousandths: task.thousandths,
+      claimedThousandths: parsed,
+    }).correct;
+  }
   if (task.kind === 'date_offset_select') {
     return checkDateOffsetSelectTask({
       kind: 'date_offset_select',
@@ -3141,6 +3246,10 @@ export function correctAnswerFor(task: Task): string {
       return String((task.base * task.height) / 2);
     case 'integer_signed_compare':
       return signedRelation(task.left, task.right);
+    case 'decimal_thousandth_compare':
+      return thousandthsRelation(task.leftThousandths, task.rightThousandths);
+    case 'decimal_round_hundredth':
+      return formatThousandths(roundThousandthsToHundredth(task.thousandths));
     case 'date_offset_select':
       return String(correctDateOffsetIndex(task) + 1);
     case 'code_reach_select':
@@ -3362,6 +3471,16 @@ export function wrongAnswerFor(task: Task): string {
     case 'integer_signed_compare':
       // Any relation other than the true one (eq → lt is wrong too).
       return signedRelation(task.left, task.right) === 'lt' ? 'gt' : 'lt';
+    case 'decimal_thousandth_compare':
+      return thousandthsRelation(task.leftThousandths, task.rightThousandths) === 'lt'
+        ? 'gt'
+        : 'lt';
+    case 'decimal_round_hundredth': {
+      // Truncate to the hundredth instead of rounding (drop the thousandths digit).
+      const rounded = roundThousandthsToHundredth(task.thousandths);
+      const truncated = Math.floor(task.thousandths / 10) * 10;
+      return formatThousandths(truncated === rounded ? rounded + 10 : truncated);
+    }
     case 'date_offset_select': {
       const correct = correctDateOffsetIndex(task);
       const wrong = task.options.findIndex((_, i) => i !== correct);

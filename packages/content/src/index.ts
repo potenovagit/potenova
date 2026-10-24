@@ -36,6 +36,7 @@ export * from './division-2digit-check';
 export * from './fraction-percent-check';
 export * from './polygon-area-check';
 export * from './signed-integer-check';
+export * from './decimal-thousandths-check';
 export * from './validation';
 export * from './model-eval';
 export * from './eval-suite';

@@ -1,0 +1,57 @@
+{
+  "strandId": "decimals-g6",
+  "version": "dec-g6-draft-0.1",
+  "domain": "math",
+  "reviewStatus": "draft",
+  "skills": [
+    {
+      "skillId": "SK-NS-decimal-thousandth-compare",
+      "competency": "number:decimals",
+      "skill": "Compare and order decimal numbers up to thousandths"
+    },
+    {
+      "skillId": "SK-NS-decimal-round-hundredth",
+      "competency": "number:decimals",
+      "skill": "Round a decimal number to the nearest hundredth"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependencyId": "D-ns-dec-t-compare-round",
+      "fromSkillId": "SK-NS-decimal-thousandth-compare",
+      "toSkillId": "SK-NS-decimal-round-hundredth",
+      "type": "supporting",
+      "weight": 0.4
+    }
+  ],
+  "misconceptions": [
+    {
+      "misconceptionId": "MC-NS-longer-decimal-bigger-thousandths",
+      "skillId": "SK-NS-decimal-thousandth-compare",
+      "pattern": "Thinks a decimal with more digits is larger (e.g. 2.475 > 2.5 because 475 > 5), comparing the fractional part as a whole number instead of place by place.",
+      "probeIds": ["PR-NS-which-thousandth-bigger"],
+      "remediationStrategyIds": ["ST-ns-pad-and-compare-thousandths"]
+    },
+    {
+      "misconceptionId": "MC-NS-decimal-hundredth-truncates",
+      "skillId": "SK-NS-decimal-round-hundredth",
+      "pattern": "Drops the thousandths digit instead of rounding to the nearest hundredth (e.g. 2.475 answered 2.47 rather than 2.48).",
+      "probeIds": ["PR-NS-nearest-hundredth"],
+      "remediationStrategyIds": ["ST-ns-thousandths-decide"]
+    }
+  ],
+  "strategies": [
+    {
+      "strategyId": "ST-ns-pad-and-compare-thousandths",
+      "intent": "Give both numbers the same number of decimal places (pad with zeros), then compare place by place from the largest place down.",
+      "approvedBands": ["junior"],
+      "representations": ["number-line", "symbolic"]
+    },
+    {
+      "strategyId": "ST-ns-thousandths-decide",
+      "intent": "Look at the thousandths digit: 5 or more rounds the hundredth up, less than 5 keeps it; then drop the thousandths.",
+      "approvedBands": ["junior"],
+      "representations": ["number-line", "symbolic"]
+    }
+  ]
+}
