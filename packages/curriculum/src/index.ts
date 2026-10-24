@@ -57,6 +57,7 @@ export * from './decimals-muldiv-g7-draft';
 export * from './proportions-g7-draft';
 export * from './integers-muldiv-g8-draft';
 export * from './powers-of-ten-g8-draft';
+export * from './sqrt-estimate-g8-draft';
 export * from './lessons';
 export * from './ontario';
 export * from './overlay';

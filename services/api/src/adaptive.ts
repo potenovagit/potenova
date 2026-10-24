@@ -65,6 +65,7 @@ import {
   buildProportionsG7DraftGraph,
   buildIntegersMulDivG8DraftGraph,
   buildPowersOfTenG8DraftGraph,
+  buildSqrtEstimateG8DraftGraph,
   buildPlaceValueG2DraftGraph,
   hintsForSkill,
   FRACTION_MISCONCEPTIONS,
@@ -177,6 +178,8 @@ import {
   INTEGERS_MULDIV_G8_STRATEGIES,
   POWERS_OF_TEN_G8_MISCONCEPTIONS,
   POWERS_OF_TEN_G8_STRATEGIES,
+  SQRT_ESTIMATE_G8_MISCONCEPTIONS,
+  SQRT_ESTIMATE_G8_STRATEGIES,
   PLACE_VALUE_G2_MISCONCEPTIONS,
   PLACE_VALUE_G2_STRATEGIES,
   CurriculumGraph,
@@ -268,6 +271,7 @@ export type CourseId =
   | 'proportions-g7'
   | 'integers-muldiv-g8'
   | 'powers-of-ten-g8'
+  | 'sqrt-estimate-g8'
   | 'place-value-g2'
   | 'plurals'
   | 'past-tense'
@@ -959,6 +963,19 @@ const COURSES: Record<CourseId, CoursePlan> = {
     strategies: POWERS_OF_TEN_G8_STRATEGIES,
     transferTask: { 'SK-NS-power-of-ten-scale': 'pt-xfer' },
   },
+  'sqrt-estimate-g8': {
+    subject: 'math',
+    buildGraph: buildSqrtEstimateG8DraftGraph,
+    coachableSkillIds: ['SK-NS-sqrt-between'],
+    defaultTask: { 'SK-NS-sqrt-between': 'sqb-1' },
+    practiceTasks: {
+      'SK-NS-sqrt-between': ['sqb-1', 'sqb-2', 'sqb-3', 'sqb-4'],
+    },
+    remediationReps: ['number-line', 'symbolic'],
+    misconceptions: SQRT_ESTIMATE_G8_MISCONCEPTIONS,
+    strategies: SQRT_ESTIMATE_G8_STRATEGIES,
+    transferTask: { 'SK-NS-sqrt-between': 'sqb-xfer' },
+  },
   'area-g5': {
     subject: 'math',
     buildGraph: buildAreaG5DraftGraph,
@@ -1234,6 +1251,7 @@ export const COURSES_BY_SUBJECT: Record<Subject, CourseId[]> = {
     'proportions-g7',
     'integers-muldiv-g8',
     'powers-of-ten-g8',
+    'sqrt-estimate-g8',
     'place-value-g2',
   ],
   english: ['plurals', 'past-tense', 'comparative'],
